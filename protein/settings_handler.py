@@ -1,13 +1,20 @@
 __description__ = """
 This is the handler for the settings to control where to save stuff, etc.
 It allows customisation of output if the script is not running on a server.
+The key parts are:
+
+
+
+
+Note that the folder pages (.pages_folder) was for when it was not for a server. .wipe_html() clears them.
 """
 ################## Environment ###########################
 
 import os
 from pprint import PrettyPrinter
 
-import requests
+#these are needed for reference file retrieval
+import urllib, gzip, shutil
 
 pprint = PrettyPrinter().pprint
 from warnings import warn
@@ -18,11 +25,16 @@ class GlobalSettings:
     Hence why in these two is the attribute .settings
     """
     verbose = False
-    subdirectory_names = ('manual', 'transcript', 'protein', 'uniprot', 'pfam', 'pdb', 'ELM', 'ELM_variant', 'pdb_pre_allele', 'pdb_post_allele', 'ExAC', 'pdb_blast', 'pickle', 'references', 'go',
-                          'binders')
+    subdirectory_names = ('reference', 'temp', 'uniprot')
+
+                          #'manual', 'transcript', 'protein', 'uniprot', 'pfam', 'pdb', 'ELM', 'ELM_variant', 'pdb_pre_allele', 'pdb_post_allele', 'ExAC', 'pdb_blast', 'pickle', 'references', 'go',
+                          #'binders')
     fetch = True
     missing_attribute_tolerant = True
     error_tolerant = False
+    addresses = ('ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz',
+                 'ftp://ftp.ncbi.nlm.nih.gov/blast/db/pdbaa.tar.gz',
+                 'ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/functional_gene_constraint/fordist_cleaned_exac_r03_march16_z_pli_rec_null_data.txt')
 
     # getter of data_folder
     def _get_datafolder(self):
@@ -56,59 +68,71 @@ class GlobalSettings:
     def get_folder_of(self, name):
         return getattr(self, name + '_folder')
 
-    @classmethod
-    def degunk(cls, verbose=False):
-        for dir in cls.data_subdirectories:
+    def degunk(self):
+        """
+        Removes the zero sized files that may ahve arised from error or keyboard interuption.
+        :return:
+        """
+        for dir in self.data_subdirectories:
             for file in os.listdir(dir):
                 if os.stat(os.path.join(dir, file)).st_size < 100 and not os.path.isdir(
                         os.path.join(dir, file)):
-                    if verbose: print('Removing file {}'.format(file))
+                    if self.verbose: print('Removing file {}'.format(file))
                     os.remove(os.path.join(dir, file))
-        if verbose: print('clean-up complete')
+        if self.verbose: print('clean-up complete')
 
-    @classmethod
-    def wipe_html(cls):
-        for file in os.listdir(cls.page_folder):
+    def wipe_html(self):
+        """
+        No longer needed.
+        :return:
+        """
+        for file in os.listdir(self.page_folder):
             if '.htm' in file or '.pdb' in file:
-                os.remove(os.path.join(cls.page_folder, file))
+                os.remove(os.path.join(self.page_folder, file))
 
-    def retrieve_references(self):
-        print('*' * 20)
-        print('CORE REFERENCE DATA IS MISSING')
-        print('There are two options, you have never ever run this script before or the folder {0} is not corrent'.format(self.reference_folder))
-        print('this is super experimental (i.e. I\'ve never bother')
-        i = input('Continue y/[n] _')
-        if not i or i in ('N', 'n'):
-            print('Exiting...')
-            exit()
-        addresses = ('ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/functional_gene_constraint/fordist_cleaned_exac_r03_march16_z_pli_rec_null_data.txt',
-                     'ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/ExAC.r1.sites.vep.vcf.gz',
-                     'http://geneontology.org/gene-associations/goa_human.gaf.gz',
-                     'http://purl.obolibrary.org/obo/go.obo',
-                     'http://interactome.baderlab.org/data/Raul-Vidal(Nature_2005).psi',
-                     'http://slorth.biochem.sussex.ac.uk/download/h.sapiens_ssl_predictions.csv',
-                     'https://downloads.thebiogrid.org/Download/BioGRID/Release-Archive/BIOGRID-3.5.166/BIOGRID-ALL-3.5.166.mitab.zip',
-                     'https://stringdb-static.org/download/protein.links.v10.5/9606.protein.links.v10.5.txt.gz',
-                     'http://www.ensembl.org/biomart/martview/436b8b2b06f64bbee960592afda10817?VIRTUALSCHEMANAME=default&ATTRIBUTES=hsapiens_gene_ensembl.default.feature_page.ensembl_gene_id|hsapiens_gene_ensembl.default.feature_page.ensembl_transcript_id|hsapiens_gene_ensembl.default.feature_page.external_gene_name|hsapiens_gene_ensembl.default.feature_page.uniprotswissprot|hsapiens_gene_ensembl.default.feature_page.uniprot_gn|hsapiens_gene_ensembl.default.feature_page.ensembl_peptide_id&FILTERS=&VISIBLEPANEL=resultspanel',
-                     'ftp://ftp.nextprot.org/pub/current_release/mapping/nextprot_refseq.txt')
-        for url in addresses:
-            file = os.path.split(url)[1]
-            if os.path.isfile(os.path.join(self.reference_folder, file)):
-                continue
+    def retrieve_references(self, ask = True):
+        if ask:
+            print('*' * 20)
+            print('CORE reference DATA IS MISSING')
+            print('There are two options, you have never ever run this script before or the folder {0} is not corrent'.format(self.reference_folder))
+            print('this is super experimental (i.e. I\'ve never bother)')
+            i = input('Continue y/[n] _')
+            if not i or i in ('N', 'n'):
+                print('Exiting...')
+                exit()
+        for url in self.addresses:
+            file = os.path.join(self.reference_folder, os.path.split(url)[1])
+            if os.path.isfile(file):
+                if self.verbose:
+                    print('{0} file is present already'.format(file))
             else:
-                req = requests.get(url)  # headers={"Accept": "application/xml"}
-                if req.status_code != 200:
-                    raise ConnectionError('Could not retrieve data: ' + req.text)
-                data = req.text
-                open(file, 'w').write(data)
-                if os.path.splitext(url) == 'gz':
-                    raise Exception('Okay. this will not work on windows... Can you unzip this file?? cd {0}; tar -x {1}; cd ../..'.format(self.reference_folder, file))
-            raise NotImplementedError('Due to crappy windows 8 computer... this part is manual in VM: cat *.psi > cat.psi where psi files are from http://interactome.baderlab.org/data/')
+                if self.verbose:
+                    print('{0} file is being downloaded'.format(file))
+                self._get_url(url, file)
+            #raise NotImplementedError('Due to crappy windows 8 computer... this part is manual in VM: cat *.psi > cat.psi where psi files are from http://interactome.baderlab.org/data/')
+
+    def _get_url(self, url, file):
+        req = urllib.request.Request(url)
+        response = urllib.request.urlopen(req)
+        data = response.read()
+        with open(file, 'wb') as w:
+            w.write(data)
 
     def _open_reference(self, file):
-        fullfile = os.path.join(self.references_folder, file)
+        fullfile = os.path.join(self.reference_folder, file)
         if not os.path.isfile(fullfile):
             self.retrieve_references()
+        ## handle compression
+        unfile = os.path.join(self.temp_folder, file.replace('.gz',''))
+        if '.gz' in file and not os.path.isfile(unfile):
+            if self.verbose:
+                print('{0} file is being temporily extracted to {1}'.format(file, unfile))
+                exit(69)
+            with open(unfile, 'wb') as f_out:
+                with gzip.open(file, 'rb') as f_in:
+                    shutil.copyfileobj(f_in, f_out)
+        elif '.gz' in file:
+            if self.verbose: print('{0} file is already decompressed'.format(file))
         return open(fullfile)
 
     def open(self, kind):

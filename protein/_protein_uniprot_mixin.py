@@ -150,7 +150,7 @@ class _UniprotMixin(_BaseMixin):
         if position is not None:  # single residue
             x = position.attrib['position']
             return {'x':int(x), 'y': int(x), 'description': description, 'id': '{t}_{s}'.format(s=x, t=elem.attrib['type'].replace(' ','').replace('-',''))}
-        elif start is not None and end is not None:  # region or disulfide
+        elif start is not None and end is not None and not start.has_attr('status') and not end.has_attr('status'):
             x = start.attrib['position']
             y = end.attrib['position']
             return {'x': int(x), 'y': int(y), 'description': description, 'id': '{t}_{x}_{y}'.format(x=x, y=y, t=elem.attrib['type'].replace(' ', '').replace('-',''))}
