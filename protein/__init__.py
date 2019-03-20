@@ -23,12 +23,14 @@ from Bio.Blast import NCBIWWW
 from Bio.Blast import NCBIXML
 
 from protein._protein_uniprot_mixin import _UniprotMixin
+from protein._protein_base_mixin import _BaseMixin
+from protein._protein_disused_mixin import _DisusedMixin
 # Protein inherits _UniprotMixin, which in turn inherits _BaseMixin
 # `.settings` class attribute is global_settings from settings_handler.py and is added by _BaseMixin.
 # _BaseMixin is inherited by _UniprotMixin contains _failsafe decorator, __getattr__ and settings
 
 #######################
-class Protein(_UniprotMixin):
+class Protein(_BaseMixin, _DisusedMixin, _UniprotMixin):
     """
     This class handles each protein entry from Uniprot. See __init__ for the list of variables stored.
     It fills them from various other sources.
@@ -49,7 +51,7 @@ class Protein(_UniprotMixin):
     def _failsafe(func):
         def wrapper(self, *args, **kargs):
             # the call happned after chekcing if it should croak on error so to make the traceback cleaner.
-            if self.settings.error_tollerant:
+            if self.settings.error_tolerant:
                 try:
                     return func(self, *args, **kargs)
                 except Exception as error:
@@ -271,17 +273,6 @@ class Protein(_UniprotMixin):
         self.xml = ET.fromstring(xml)[0]
         self._parse_uniprot_xml(self.xml)
         return self
-
-    @_failsafe
-    def parse_pfam(self):
-        # https://pfam.xfam.org/help#tabview=tab11
-        xml = self.xml_fetch_n_parser('pfam')
-        if isinstance(xml, list):
-            self.pfam = xml
-        elif isinstance(xml, dict):
-            self.pfam = [xml]
-        else:
-            raise ValueError('not list or dict pfam data: ' + str(xml))
 
     @_failsafe
     def fetch_binders(self):
@@ -620,39 +611,6 @@ class Protein(_UniprotMixin):
             self.user_text = ''
             self.pdb_file = ''
         # done
-        return self
-
-    @_failsafe
-    def match_pdb(self):
-        # variable self.matched_pdbs not used...
-        file = os.path.join(self.settings.pdb_blast_folder, self.uniprot + '_blastPDB.xml')
-        if os.path.isfile(file):
-            pass
-        else:
-            raise Exception('This is impossible. Preparsed.') #todo make a settings flag for this
-            self._assert_fetchable(self.gene_name + ' PDB match')
-            self.log('Blasting against PDB dataset of NCBI')
-            result_handle = NCBIWWW.qblast("blastp", "pdb", self.seq)  # the whole sequence.
-            open(file, "w").write(result_handle.read())
-        blast_record = NCBIXML.read(open(file))
-        # Parse!
-        matches = []
-        for align in blast_record.alignments:
-            for hsp in align.hsps:
-                if hsp.score > 100:
-                    d = {'match': align.title[0:50], 'match_score': hsp.score, 'match_start': hsp.query_start, 'match_length': hsp.align_length, 'match_identity': hsp.identities / hsp.align_length}
-                    self.pdb_matches.append(d)
-                    #if hsp.query_start < self.resi < hsp.align_length + hsp.query_start:
-
-                    # self.pdb_resi=self.resi+(hsp.sbjct_start-hsp.query_start) #this is a massive pickle as the NCBI pdb data has different numbering.
-        if matches:
-            self.log('GENE MUTANT WITHIN CRYSTAL STRUCTURE!!')
-            # mostly based on identity, but if a long one exists and it is only marginally worse the go for that.
-            best = sorted(matches, key=lambda m: m['match_length'] * m['match_identity'] ** 3, reverse=True)[0]
-            for k in best:
-                setattr(self, k, best[k]) #forgot what the hell this is!
-        else:
-            self.log('UNCRYSTALLISED MUTATION')
         return self
 
     def parse_all(self, mode='parallel'):

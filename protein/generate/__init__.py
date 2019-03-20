@@ -1,11 +1,16 @@
+"""
+Generates the data to be used.
+"""
+
 import os
 from protein import Protein
 from .uniprot_to_jsons import UniprotReader
+from .PDB_blast import Blaster
 
 def generate():
     ################ FETCH ALL RAW FILES #################################################
     Protein.settings.verbose = True
-    Protein.settings.retrieve_references(ask=False)
+    #Protein.settings.retrieve_references(ask=False)
 
     ################ PARSE UNIPROT #######################################################
     master_file = os.path.join(Protein.settings.temp_folder, 'uniprot_sprot.xml')
@@ -13,6 +18,15 @@ def generate():
     # But mainly the `UniprotReader.convert('uniprot_sprot.xml')` method whcih generates the JSON files required.
     # first_n_protein is for testing.
     #UniprotReader.convert(uniprot_master_file = master_file, first_n_protein=0)
+
+    ################ BLAST PDB #######################################################
+    # uncompresses the pdbaa
+    #Blaster.extract_db()
+    # blasts the human.fa agains the newly extracted pdbaa
+    Blaster.pdb_blaster()
+    # converts the files to something reasonable.
+    Blaster.parse('pdb')
+
 
 refs=(
      'ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/ExAC.r1.sites.vep.vcf.gz',

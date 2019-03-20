@@ -90,4 +90,4 @@ class UniprotReader:
         json.dump(namedex, open(os.path.join(Protein.settings.data_folder, 'human_prot_namedex.json'), 'w'))  ## name to uniprot
         #json.dump(genedex, open(os.path.join(Protein.settings.temp_folder, 'human_prot_genedex.json'), 'w'))  ## uniprot to name. not needed.
         #json.dump(seqdex, open(os.path.join(Protein.settings.temp_folder, 'human_prot_seqdex.json'), 'w'))    ## not needed.
-        open(os.path.join(Protein.settings.temp_folder, 'blast','human.fa'), 'w').writelines(['>{i}\n{s}\n\n'.format(s=seqdex[k], i=k) for k in seqdex])
+        open(os.path.join(Protein.settings.temp_folder, 'human.fa'), 'w').writelines(['>{i}\n{s}\n\n'.format(s=seqdex[k], i=k) for k in seqdex])

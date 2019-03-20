@@ -14,7 +14,7 @@ import os
 from pprint import PrettyPrinter
 
 #these are needed for reference file retrieval
-import urllib, gzip, shutil
+import urllib, gzip, shutil, tarfile
 
 pprint = PrettyPrinter().pprint
 from warnings import warn
@@ -25,7 +25,7 @@ class GlobalSettings:
     Hence why in these two is the attribute .settings
     """
     verbose = False
-    subdirectory_names = ('reference', 'temp', 'uniprot')
+    subdirectory_names = ('reference', 'temp', 'uniprot','pdbblast')
 
                           #'manual', 'transcript', 'protein', 'uniprot', 'pfam', 'pdb', 'ELM', 'ELM_variant', 'pdb_pre_allele', 'pdb_post_allele', 'ExAC', 'pdb_blast', 'pickle', 'references', 'go',
                           #'binders')
@@ -123,8 +123,12 @@ class GlobalSettings:
         if not os.path.isfile(fullfile):
             self.retrieve_references()
         ## handle compression
-        unfile = os.path.join(self.temp_folder, file.replace('.gz',''))
-        if '.gz' in file and not os.path.isfile(unfile):
+        unfile = os.path.join(self.temp_folder, file.replace('.gz','').replace('.tar'))
+        if '.tar.gz' in file and not os.path.exists(unfile):
+            tar = tarfile.open(file)
+            tar.extractall()
+            tar.close()
+        elif '.gz' in file and not os.path.isfile(unfile):
             if self.verbose:
                 print('{0} file is being temporily extracted to {1}'.format(file, unfile))
                 exit(69)

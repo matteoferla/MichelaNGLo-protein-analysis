@@ -42,7 +42,7 @@ class TestProtein(unittest.TestCase):
         Protein.settings.error_tollerant = False
         Protein.settings.tollerate_missing_attributes = False
         Protein.settings.verbose = True
-        irak = Protein(uniprot = 'Q9NWZ3', gene = 'IRAK4')
+        irak = Protein(uniprot = 'Q9NWZ3', gene_name = 'IRAK4')
         irak.parse_all(mode='serial')
 
 

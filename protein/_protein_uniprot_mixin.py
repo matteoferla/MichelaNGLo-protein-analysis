@@ -2,7 +2,7 @@
 from protein._protein_base_mixin import _BaseMixin
 _failsafe = _BaseMixin._failsafe
 
-class _UniprotMixin(_BaseMixin):
+class _UniprotMixin:
 
     @_failsafe
     def _parse_protein_element(self, elem):
