@@ -17,14 +17,14 @@ from warnings import warn
 from shutil import copyfile
 import requests  # for xml fetcher.
 
-from protein.ET_monkeypatch import ET #monkeypatched version
-from protein.settings_handler import global_settings
+from .ET_monkeypatch import ET #monkeypatched version
+from .settings_handler import global_settings
 from Bio.Blast import NCBIWWW
 from Bio.Blast import NCBIXML
 
-from protein._protein_uniprot_mixin import _UniprotMixin
-from protein._protein_base_mixin import _BaseMixin
-from protein._protein_disused_mixin import _DisusedMixin
+from ._protein_uniprot_mixin import _UniprotMixin
+from ._protein_base_mixin import _BaseMixin
+from ._protein_disused_mixin import _DisusedMixin
 # Protein inherits _UniprotMixin, which in turn inherits _BaseMixin
 # `.settings` class attribute is global_settings from settings_handler.py and is added by _BaseMixin.
 # _BaseMixin is inherited by _UniprotMixin contains _failsafe decorator, __getattr__ and settings
@@ -95,6 +95,7 @@ class Protein(_BaseMixin, _DisusedMixin, _UniprotMixin):
         self.pNull = -1
         ### pdb
         self.pdb_matches =[] #{'match': align.title[0:50], 'match_score': hsp.score, 'match_start': hsp.query_start, 'match_length': hsp.align_length, 'match_identity': hsp.identities / hsp.align_length}
+        self.swissmodel = []
         ### other ###
         self.user_text = ''
         ### mutation ###
@@ -685,9 +686,36 @@ class Protein(_BaseMixin, _DisusedMixin, _UniprotMixin):
         return self
 
 
-    ## depraction zone.
-    def write(self, file=None):
-        raise Exception('DEPRACATED. use write_uniprot')
+    def parse_swissmodel(self):
+        models=self.settings.open('swissmodel')['index']
+        for model in self.index:
+            if self.uniprot == model['uniprot_ac']:
+                self.swissmodel.append({'x': model['from'],
+                                        'y': model['to'],
+                                        'id': model['coordinate_id'],
+                                        'description': '{template} ({seqid}%)'.format(**model),
+                                        'url': model['url']})
+        return self
+
+
+    def get_percent_modelled(self):
+        """Returns the [0,1] fraction of the protein length that is modelled (repeats arent recounted)"""
+
+        def clean(text):
+            return int(text.lstrip().replace('-', ' ').replace(',', ' ').split(' ')[0]) - 1
+
+        try:
+            if len(self) == 0:
+                return 0
+            state = [False for i in range(len(self))]
+            for dataset in (self.swissmodel,self.pdbs):
+                for model in dataset:
+                    for i in range(clean(model['x']),clean(model['y'])):
+                        state[i]=True
+            return sum(state)/len(self)
+        except:
+            return 0
+
 
     @_failsafe
     def _test_failsafe(self):
@@ -700,7 +728,7 @@ class Protein(_BaseMixin, _DisusedMixin, _UniprotMixin):
             return False # call mutation_discrepancy to see why.
 
     def mutation_discrepancy(self, mutation):
-        # returns a string explaining the check_mutation discrepancy
+        # returns a string explaining the `check_mutation` discrepancy error
         neighbours=''
         if len(self.sequence) < mutation.residue_index:
             return 'Uniprot {g} is {l} amino acids long, while user claimed a mutation at {i}.'.format(

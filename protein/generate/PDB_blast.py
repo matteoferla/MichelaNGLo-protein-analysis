@@ -6,7 +6,7 @@ import os
 import tarfile
 from ..settings_handler import global_settings
 from Bio.Blast import NCBIXML
-from Bio.Blast.Applications import NcbiblastpCommandline ## because I am using a ducking window piece of crap
+from Bio.Blast.Applications import NcbiblastpCommandline #the worlds most pointless wrapper...
 
 
 class Blaster:
@@ -42,11 +42,11 @@ class Blaster:
 
     @classmethod
     def pdb_blaster(cls):
-        return cls.full_blaster('blastpdb', 'pdbaa')
+        return cls.full_blaster('blastpdb', os.path.join(global_settings.temp_folder,'pdbaa'))
 
     @classmethod
     def self_blaster(cls):
-        return cls.full_blaster('blastself', 'human')
+        return cls.full_blaster('blastself', os.path.join(global_settings.temp_folder,'human'))
 
     @classmethod
     def full_blaster(cls, outfolder_name, db):
@@ -64,11 +64,17 @@ class Blaster:
             outfile = infile.replace('.fa', '.xml')
             if global_settings.verbose:
                 print(infile)
-            NcbiblastpCommandline(query=os.path.join(infolder, infile), db=db, evalue=0.001, outfmt = 5, out = os.path.join(outfolder, outfile))()
+            NcbiblastpCommandline(cmd='C:\\Program Files\\NCBI\\blast-2.8.1+\\bin\\blastp.exe',
+                                  query=os.path.join(infolder, infile),
+                                  db=db,
+                                  evalue=0.001,
+                                  outfmt = 5,
+                                  out = os.path.join(outfolder, outfile))()
         return cls
 
     @staticmethod
     def part_blaster(todo):
+        raise DeprecationWarning
         """
         Like full blaster but for the fails.
         :param todo: todo is a set of ids that may have failed.
@@ -81,27 +87,32 @@ class Blaster:
             os.system('blastp -query {infile} -db pdbaa -outfmt 5 -num_threads 6 > {outfile}'.format(infile=file, outfile=file.replace('.fa', '_blastPDB.xml')))
 
     @staticmethod
-    def parse(folder):
-        for file in os.listdir(os.path.join(global_settings.temp_folder, folder)):
-            if '_blast.xml' in file:
+    def parse(infolder,outfolder):
+        if not os.path.exists(os.path.join(global_settings.temp_folder, outfolder)):
+            os.mkdir(os.path.join(global_settings.temp_folder, outfolder))
+        for file in os.listdir(os.path.join(global_settings.temp_folder, infolder)):
+            if '.xml' in file:
                 print(file)
                 try:
-                    blast_record = NCBIXML.read(open(os.path.join(global_settings.temp_folder, folder, file)))
+                    blast_record = NCBIXML.read(open(os.path.join(global_settings.temp_folder, infolder, file)))
                     matches = []
                     for align in blast_record.alignments:
-                        print(align.title)
                         for hsp in align.hsps:
                             if hsp.score > 100:
+                                pdb = align.title.split('|')[3]
+                                chain = align.title.split('|')[4]
                                 d = {'x': hsp.query_start,
                                      'y': hsp.align_length + hsp.query_start,
                                      'description': align.title[0:20],
-                                     'id': 'blastpdb_',
+                                     'id': 'blastpdb_{p}_{x}_{y}_{c}'.format(p=pdb, c=chain, x=hsp.query_start, y=hsp.align_length + hsp.query_start),
                                      'original': {'match': align.title[0:50],
                                                   'match_score': hsp.score,
                                                   'match_start': hsp.query_start,
                                                   'match_length': hsp.align_length,
                                                   'match_identity': hsp.identities / hsp.align_length}}
                                 matches.append(d)
+                    with open(os.path.join(global_settings.temp_folder, outfolder, file.replace('.xml','.json')),'w') as w:
+                        json.dump(matches,w)
                 except ValueError as err:
                     print('Value error: ' + str(err))  ##why art thou so empty?
 
