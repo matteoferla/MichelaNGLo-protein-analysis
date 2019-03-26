@@ -25,7 +25,7 @@ class GlobalSettings:
     Hence why in these two is the attribute .settings
     """
     verbose = False
-    subdirectory_names = ('reference', 'temp', 'uniprot','pdbblast')
+    subdirectory_names = ('reference', 'temp', 'uniprot','pdbblast', 'pickle', 'binders')
 
                           #'manual', 'transcript', 'protein', 'uniprot', 'pfam', 'pdb', 'ELM', 'ELM_variant', 'pdb_pre_allele', 'pdb_post_allele', 'ExAC', 'pdb_blast', 'pickle', 'references', 'go',
                           #'binders')
@@ -90,9 +90,10 @@ class GlobalSettings:
             if '.htm' in file or '.pdb' in file:
                 os.remove(os.path.join(self.page_folder, file))
 
-    def retrieve_references(self, ask = True):
+    def retrieve_references(self, ask = True, issue = ''):
         if ask:
             print('*' * 20)
+            print('CORE reference DATA IS MISSING '+issue)
             print('CORE reference DATA IS MISSING')
             print('There are two options, you have never ever run this script before or the folder {0} is not corrent'.format(self.reference_folder))
             print('this is super experimental (i.e. I\'ve never bother)')
@@ -121,9 +122,9 @@ class GlobalSettings:
     def _open_reference(self, file):
         fullfile = os.path.join(self.reference_folder, file)
         if not os.path.isfile(fullfile):
-            self.retrieve_references()
+            self.retrieve_references(issue = fullfile)
         ## handle compression
-        unfile = os.path.join(self.temp_folder, file.replace('.gz','').replace('.tar'))
+        unfile = os.path.join(self.temp_folder, file.replace('.gz','').replace('.tar',''))
         if '.tar.gz' in file and not os.path.exists(unfile):
             tar = tarfile.open(file)
             tar.extractall()

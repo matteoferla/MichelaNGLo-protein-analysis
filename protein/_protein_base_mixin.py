@@ -36,6 +36,3 @@ class _BaseMixin:
                     warn('Accessed non-existant attribute {item} for Protein instance. Likely cause the code changed, but the from_pickle flag is True.'.format(v=self, item=item))
                     self.__dict__[item] = 'Unknown'
         return self.__dict__[item]
-
-    def __str__(self):
-        return self.gene_name
