@@ -186,3 +186,10 @@ class _UniprotMixin:
                 self._parse_protein_comment(elem)
             elif elem.is_tag('keyword'):
                 pass
+        ## Ater all the parsing some weirdnesses can arise
+        for group in self.features:
+            for i in range(len(self.features[group])):
+                self.features[group][i]['type'] = group  ## in case of flattening.
+                if self.features[group][i]['description'] == '-':
+                    self.features[group][i]['description'] = group
+        return self

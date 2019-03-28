@@ -65,15 +65,15 @@ class ProteinLite:
         pickle.dump(self.__dict__, open(file, 'wb'))
         self.log('Data saved to {} as pickled dictionary'.format(file))
 
-    @classmethod
-    def load(cls, file):
-        self = cls.__new__(cls)
-        self.__dict__ = pickle.load(open(file, 'rb'))
-        self.log('Data from the pickled dictionary {}'.format(file))
-        return self
-
-    def load_from_uniprot_accession(self):
-        file = os.path.join(self.settings)
+    #@classmethod
+    def load(clelf, file=None):  # clelf made-up portmanteau of cls and self, non PEP
+        if isinstance(clelf, type):  # clelf is a class
+            self = clelf.__new__(clelf)
+            assert file, 'file is mandatory for `Protein.load()` as a class method. optional as bound method.'
+        else:
+            self = clelf
+            if not file:
+                file = os.path.join(self.settings.pickle_folder,self.uniprot+'.p')
         self.__dict__ = pickle.load(open(file, 'rb'))
         self.log('Data from the pickled dictionary {}'.format(file))
         return self
@@ -103,3 +103,64 @@ class ProteinLite:
                 self._threads[k].join()
         self._threads = {}
         return self
+
+
+    ################### mutant related
+    def predict_effect(self):
+        pass
+        ##TOdo write>!
+
+    def check_mutation(self, mutation):
+        if len(self.sequence) > mutation.residue_index and self.sequence[mutation.residue_index - 1] == mutation.from_residue:
+            return True
+        else:
+            return False # call mutation_discrepancy to see why.
+
+    def mutation_discrepancy(self, mutation):
+        # returns a string explaining the `check_mutation` discrepancy error
+        neighbours=''
+        if len(self.sequence) < mutation.residue_index:
+            return 'Uniprot {g} is {l} amino acids long, while user claimed a mutation at {i}.'.format(
+                g=self.uniprot,
+                i=mutation.residue_index,
+                l=len(self.sequence)
+                )
+        else:
+            if mutation.residue_index < 5:
+                neighbours = '{pre}*{i}*{post}'.format(pre=self.sequence[:mutation.residue_index-1],
+                                                       i=self.sequence[mutation.residue_index-1],
+                                                       post=self.sequence[mutation.residue_index:mutation.residue_index+5])
+            elif mutation.residue_index > 5 and len(self.sequence) > mutation.residue_index + 5:
+                neighbours = '{pre}*{i}*{post}'.format(pre=self.sequence[mutation.residue_index - 6:mutation.residue_index - 1],
+                                                       i=self.sequence[mutation.residue_index - 1],
+                                                       post=self.sequence[mutation.residue_index:mutation.residue_index + 5])
+            elif len(self.sequence) < mutation.residue_index + 5:
+                neighbours = '{pre}*{i}*{post}'.format(pre=self.sequence[mutation.residue_index - 6:mutation.residue_index - 1],
+                                                       i=self.sequence[mutation.residue_index - 1],
+                                                       post=self.sequence[mutation.residue_index:])
+            else:
+                print('impossible?!')
+                neighbours = 'ERROR.'
+            return 'Residue {i} is {n} in Uniprot {g}, while user claimed it was {f}. (neighbouring residues: {s}'.format(
+                                                                            i=mutation.residue_index,
+                                                                            n=self.sequence[mutation.residue_index - 1],
+                                                                            g=self.uniprot,
+                                                                            f=mutation.from_residue,
+                                                                            s=neighbours
+                                                                            )
+
+    def get_features_at_position(self, position):
+        return self.get_features_near_position(position,wobble=0)
+
+    def get_features_near_position(self, position, wobble=10):
+        ## dodgy position?
+        if isinstance(position,str):
+            position = int(position)
+        elif not isinstance(position,int):
+            position = position.residue_index
+        else:
+            position = position
+        ## deal with it.
+        valid = [{**f,'type': g} for g in self.features for f in self.features[g] if f['x'] - wobble < position < f['y'] + wobble]
+        return valid
+

@@ -8,6 +8,7 @@ from ..settings_handler import global_settings
 from Bio.Blast import NCBIXML
 from Bio.Blast.Applications import NcbiblastpCommandline #the worlds most pointless wrapper...
 
+from warnings import warn
 
 class Blaster:
     """
@@ -92,7 +93,6 @@ class Blaster:
             os.mkdir(os.path.join(global_settings.temp_folder, outfolder))
         for file in os.listdir(os.path.join(global_settings.temp_folder, infolder)):
             if '.xml' in file:
-                print(file)
                 try:
                     blast_record = NCBIXML.read(open(os.path.join(global_settings.temp_folder, infolder, file)))
                     matches = []
@@ -100,9 +100,9 @@ class Blaster:
                         for hsp in align.hsps:
                             if hsp.score > 100:
                                 pdb = align.title.split('|')[3]
-                                chain = align.title.split('|')[4]
-                                d = {'x': hsp.query_start,
-                                     'y': hsp.align_length + hsp.query_start,
+                                chain = align.title.split('|')[4][0]
+                                d = {'x': int(hsp.query_start),
+                                     'y': int(hsp.align_length + hsp.query_start),
                                      'description': align.title[0:20],
                                      'id': 'blastpdb_{p}_{x}_{y}_{c}'.format(p=pdb, c=chain, x=hsp.query_start, y=hsp.align_length + hsp.query_start),
                                      'original': {'match': align.title[0:50],
@@ -114,7 +114,7 @@ class Blaster:
                     with open(os.path.join(global_settings.temp_folder, outfolder, file.replace('.xml','.json')),'w') as w:
                         json.dump(matches,w)
                 except ValueError as err:
-                    print('Value error: ' + str(err))  ##why art thou so empty?
+                    warn('Value error: ' + str(err))  ##why art thou so empty?
 
     @staticmethod
     def _test_describe():
