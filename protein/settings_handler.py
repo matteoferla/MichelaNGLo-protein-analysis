@@ -152,7 +152,9 @@ class GlobalSettings:
                 'string':'9606.protein.links.v10.5.txt',
                 'ensembl':'ensemb.txt',
                 'nextprot':'nextprot_refseq.txt',
-                'swissmodel':'swissmodel_index.json'}
+                'swissmodel':'swissmodel_index.json',
+                'pdb_chain_uniprot': 'pdb_chain_uniprot.tsv',
+                'elm':'elm_classes.tsv'}
         assert kind in kdex, 'This is weird. unknown kind, should be: {0}'.format(list(kdex.keys()))
         return self._open_reference(kdex[kind])
 

@@ -441,6 +441,7 @@ class Mutation:
         self.to_residue = ''
         self.residue_index = 0
         self.apriori_effect = 'TBD'
+        self.elm = []  # protein.check_elm(mutation) fills it.
         if mutation:
             self.parse_mutation(mutation)
 
@@ -515,6 +516,3 @@ class Mutation:
     @classmethod
     def long_name(cls, letter):
         return ['{n} ({s}, {t})'.format(n=n,s=s,t=t) for s, t, n in cls.names if s == letter][0]
-
-
-

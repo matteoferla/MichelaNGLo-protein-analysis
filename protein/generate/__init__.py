@@ -20,10 +20,12 @@ def generate():
     raise Exception('What???!!!!')
 
 def _generate():
+    skip = True
     ################ FETCH ALL RAW FILES #################################################
     Protein.settings.verbose = True
     announce('Retrieving references')
-    #Protein.settings.retrieve_references(ask=False)
+    if not skip:
+        Protein.settings.retrieve_references(ask=False)
 
     ################ PARSE UNIPROT #######################################################
     master_file = os.path.join(Protein.settings.reference_folder, 'uniprot_sprot.xml')
@@ -31,18 +33,22 @@ def _generate():
     # But mainly the `UniprotReader.convert('uniprot_sprot.xml')` method whcih generates the JSON files required.
     # first_n_protein is for testing.
     announce('Convert Master Uniprot file')
-    #UniprotReader.convert(uniprot_master_file = master_file, first_n_protein=0)
+    if not skip:
+        UniprotReader.convert(uniprot_master_file = master_file, first_n_protein=0)
 
     ################ BLAST PDB #######################################################
     # uncompresses the pdbaa
     announce('Extracting blast db')
-    #Blaster.extract_db()
+    if not skip:
+        Blaster.extract_db()
     # blasts the human.fa agains the newly extracted pdbaa
     announce('Blasting')
-    #Blaster.pdb_blaster()
+    if not skip:
+        Blaster.pdb_blaster()
     # converts the files to something reasonable.
     announce('Parsing blast output')
-    #Blaster.parse('blastpdb','blastpdb2')
+    if not skip:
+        Blaster.parse('blastpdb','blastpdb2')
     ################ ASSEMBLE #######################################################
     announce('Assembing proteome')
     parse_proteome()
@@ -80,4 +86,5 @@ refs=(
      'https://stringdb-static.org/download/protein.links.v10.5/9606.protein.links.v10.5.txt.gz',
      'http://www.ensembl.org/biomart/martview/436b8b2b06f64bbee960592afda10817?VIRTUALSCHEMANAME=default&ATTRIBUTES=hsapiens_gene_ensembl.default.feature_page.ensembl_gene_id|hsapiens_gene_ensembl.default.feature_page.ensembl_transcript_id|hsapiens_gene_ensembl.default.feature_page.external_gene_name|hsapiens_gene_ensembl.default.feature_page.uniprotswissprot|hsapiens_gene_ensembl.default.feature_page.uniprot_gn|hsapiens_gene_ensembl.default.feature_page.ensembl_peptide_id&FILTERS=&VISIBLEPANEL=resultspanel',
      'ftp://ftp.nextprot.org/pub/current_release/mapping/nextprot_refseq.txt',
-     'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/genomes/gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz')
+     'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/genomes/gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'
+    'ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/flatfiles/tsv/pdb_chain_uniprot.tsv.gz')

@@ -14,7 +14,7 @@ The Mutation class uses a variable that was originally generated in _apriori_eff
 """
 
 from ._protein_lite import ProteinLite
-from ._protein_full import Protein
+#from .protein_full import Protein
 from ._mutation import Mutation
 
 from .ET_monkeypatch import ET #monkeypatched version
