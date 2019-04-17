@@ -1,5 +1,7 @@
 ############################# UNIPROT PARSING METHODS #############################
-from protein._protein_base_mixin import _BaseMixin
+from protein.generate._protein_base_mixin import _BaseMixin
+# this class requires mixin classes from `_protein_*_mixin.py`. The XML parser for Uniprot requires a special ET from `.ET_monkeypatched`.
+
 _failsafe = _BaseMixin._failsafe
 
 class _UniprotMixin:

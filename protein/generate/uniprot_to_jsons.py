@@ -5,8 +5,8 @@ Be warned that ET.Element is a monkeypatched version.
 """
 
 import os, json, re
-from protein.ET_monkeypatch import ET
-from protein import Protein
+from .ET_monkeypatch import ET
+from ._protein_gatherer import ProteinGatherer as Protein
 
 ##### Uniprot reader
 class UniprotReader:

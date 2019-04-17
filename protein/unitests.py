@@ -1,14 +1,14 @@
 import unittest
-from protein import Protein
+from . import ProteinCore
 
 
-class TestProtein(unittest.TestCase):
+class TestProteinCore(unittest.TestCase):
 
     def test_warn(self):
         print('Two userwarnings coming up')
-        Protein.settings.verbose = True
-        Protein.settings.missing_attribute_tolerant = True # default for now but may change
-        irak = Protein()
+        ProteinCore.settings.verbose = True
+        ProteinCore.settings.missing_attribute_tolerant = True # default for now but may change
+        irak = ProteinCore()
         with self.assertWarns(UserWarning) as cm:
             foo = irak.foo
         with self.assertWarns(UserWarning) as cm:
@@ -17,20 +17,20 @@ class TestProtein(unittest.TestCase):
 
     def test_error_tollerant(self):
         print('testing failsafe decorator')
-        Protein.settings.error_tolerant = False
-        mock = Protein()
+        ProteinCore.settings.error_tolerant = False
+        mock = ProteinCore()
         try:
             self.assertRaises(ValueError, mock._test_failsafe)
         except:
             pass
-        Protein.settings.error_tolerant = True
+        ProteinCore.settings.error_tolerant = True
         self.assertIsNone(mock._test_failsafe())
 
     def test_parse(self):
         print('testing Uniprot parsing')
-        Protein.settings.error_tolerant = False
-        Protein.settings.tolerate_missing_attributes = False
-        irak = Protein()
+        ProteinCore.settings.error_tolerant = False
+        ProteinCore.settings.tolerate_missing_attributes = False
+        irak = ProteinCore()
         irak.uniprot = 'Q9NWZ3'
         irak.gene_name = 'IRAK4'
         irak.parse_uniprot()
@@ -39,10 +39,10 @@ class TestProtein(unittest.TestCase):
 
     def test_full_parse(self):
         print('testing serial parsing')
-        Protein.settings.error_tollerant = False
-        Protein.settings.tollerate_missing_attributes = False
-        Protein.settings.verbose = True
-        irak = Protein(uniprot = 'Q9NWZ3', gene_name = 'IRAK4')
+        ProteinCore.settings.error_tollerant = False
+        ProteinCore.settings.tollerate_missing_attributes = False
+        ProteinCore.settings.verbose = True
+        irak = ProteinCore(uniprot = 'Q9NWZ3', gene_name = 'IRAK4')
         irak.parse_all(mode='serial')
 
 

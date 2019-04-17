@@ -8,5 +8,3 @@ http://www.ebi.ac.uk/pdbe/docs/sifts/
 # binders
 One problem is that the search for binders is super slow.
 Can the data be parsed all at one and stored in memory??
-
-#

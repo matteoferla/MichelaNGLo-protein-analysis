@@ -1,4 +1,4 @@
-from protein._protein_base_mixin import _BaseMixin
+from protein.generate._protein_base_mixin import _BaseMixin
 _failsafe = _BaseMixin._failsafe
 
 from warnings import warn

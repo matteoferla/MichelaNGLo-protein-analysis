@@ -1,3 +1,9 @@
+__doc__ = """
+The script protein.aprior_effect generates the dictionary that is used to say what the apriori effect are. Namely, what amino acid is smaller etc.
+>>> from protein.apriori_effect import Changedex
+>>> pprint(Changedex().fill().to_dict())
+"""
+
 from collections import defaultdict
 
 
@@ -64,7 +70,7 @@ class Changedex:
                     if a != 'P':
                         self[a, 'SC'] = 'S'
                 pass
-            if a in positive:
+            if a in self.positive:
                 pass
 
         self['S', 'C'] = 'E'

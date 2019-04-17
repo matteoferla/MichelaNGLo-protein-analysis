@@ -3,9 +3,9 @@ from warnings import warn
 
 class Mutation:
     """
-    Moved out of Protein.
+    Stores the mutation.
     """
-    # the following variable was made in _apriori_effect.py
+    # the following variable was made in apriori_effect.py
     _apriori_data = { 'A>A': 'identical',
                 'A>C': 'bigger|more polar',
                 'A>D': 'differently charged|bigger',
@@ -483,7 +483,6 @@ class Mutation:
                 self.file_friendly_mutation = 'del' + self.from_residue + str(self.residue_index)
                 self.clean_mutation = 'del' + self.from_residue + str(self.residue_index)
                 warn('Mutation parsing: Deletions are not handled correctly atm...')
-                self.log('Residue deletion is not handled correctly at the moment...')
             else:
                 raise ValueError('odd mutation of type deletion' + self.mutation)
         else:

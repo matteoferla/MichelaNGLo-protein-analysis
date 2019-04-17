@@ -21,16 +21,16 @@ from .ET_monkeypatch import ET  # monkeypatched version
 from ._protein_uniprot_mixin import _UniprotMixin
 from ._protein_base_mixin import _BaseMixin
 from ._protein_disused_mixin import _DisusedMixin
-from ._protein_lite import ProteinLite
+from ..core import ProteinCore
 
-class Protein(ProteinLite, _BaseMixin, _DisusedMixin, _UniprotMixin):
+class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     """
     This class handles each protein entry from Uniprot. See __init__ for the list of variables stored.
     It fills them from various other sources.
 
-        >>> Protein()
-        >>> Protein(xml_entry) # equivalent to Protein()._parse_uniprot_xml(xml_entry)
-        >>> Protein.load('filename')
+        >>> ProteinGatherer()
+        >>> ProteinGatherer(xml_entry) # equivalent to Protein()._parse_uniprot_xml(xml_entry)
+        >>> ProteinGatherer.load('filename')
 
     NB. The ET.Element has to be monkeypatched. See `help(ElementalExpansion)`
     """
@@ -539,7 +539,7 @@ class Protein(ProteinLite, _BaseMixin, _DisusedMixin, _UniprotMixin):
             self.parse_uniprot()
         ### fetch!
         tasks = {'Uniprot': self.parse_uniprot, #done.
-                 'PFam': self.parse_pfam, #done.
+                 #'PFam': self.parse_pfam, #done.
                  'Swissmodel': self.parse_swissmodel,
                  'pLI': self.parse_pLI,
                  'gNOMAD': self.parse_gNOMAD,
@@ -639,7 +639,7 @@ class Protein(ProteinLite, _BaseMixin, _DisusedMixin, _UniprotMixin):
 
     ####################### model checks.
     # pdb_chain_uniprot.tsv
-    def lookup_pdb_chain_uniprot(self, pdb):
+    def lookup_pdb_chain_uniprot(self, pdb, chain):
         details = []
         headers = 'PDB     CHAIN   SP_PRIMARY      RES_BEG RES_END PDB_BEG PDB_END SP_BEG  SP_END'.split('\t')
         with self.settings.open('pdb_chain_uniprot') as fh:
@@ -656,10 +656,19 @@ class Protein(ProteinLite, _BaseMixin, _DisusedMixin, _UniprotMixin):
         return True
 
     # figure out which is best model
-    def analyse_models(self):
-        pass
-
-
+    def get_best_model(self):
+        #So ideally making a multidomain concatenation would be best. But that is hard as it must not be overlapping spacially and sequentially.
+        #figuring out what works best is key
+        smodels = sorted(self.pdbs, key=lambda x: int(x['y'])-int(x['x']), reverse=True)
+        for smodel in smodels:
+            details = self.lookup_pdb_chain_uniprot(smodel['id'].split('_')[0], smodel['id'].split('_')[1])
+            if self.check_discrepancy_in_pdb_chain_uniprot(details):
+                return smodel
+        smodels = sorted(self.swissmodel, key=lambda x: int(x['y'])-int(x['x']), reverse=True)
+        if smodels:
+            return smodels[0]
+        else:
+            return None
 
 
     @_failsafe
