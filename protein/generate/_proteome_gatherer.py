@@ -55,7 +55,7 @@ class ProteomeGatherer:
             Blaster.pdb_blaster()
         # converts the files to something reasonable.
         announce('Parsing blast output')
-        if not skip:
+        if 1==1:#not skip:
             Blaster.parse('blastpdb','blastpdb2')
         ################ ASSEMBLE #######################################################
         announce('Assembing proteome')

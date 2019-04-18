@@ -103,9 +103,12 @@ class Blaster:
                                 chain = align.title.split('|')[4][0]
                                 d = {'x': int(hsp.query_start),
                                      'y': int(hsp.align_length + hsp.query_start),
-                                     'description': align.title[0:20],
+                                     'description': align.hit_def.split('&gt;')[0],
                                      'id': 'blastpdb_{p}_{x}_{y}_{c}'.format(p=pdb, c=chain, x=hsp.query_start, y=hsp.align_length + hsp.query_start),
-                                     'original': {'match': align.title[0:50],
+                                     'chain': chain,
+                                     'url': pdb,
+                                     'offset': hsp.sbjct_start - hsp.query_start,
+                                     'extra': {'match': align.title[0:50],
                                                   'match_score': hsp.score,
                                                   'match_start': hsp.query_start,
                                                   'match_length': hsp.align_length,
@@ -114,7 +117,7 @@ class Blaster:
                     with open(os.path.join(global_settings.temp_folder, outfolder, file.replace('.xml','.json')),'w') as w:
                         json.dump(matches,w)
                 except ValueError as err:
-                    warn('Value error: ' + str(err))  ##why art thou so empty?
+                    warn(f'Value error for {file}: {err}')  ##why art thou so empty?
 
     @staticmethod
     def _test_describe():

@@ -1,6 +1,7 @@
 ############################# UNIPROT PARSING METHODS #############################
 from protein.generate._protein_base_mixin import _BaseMixin
 # this class requires mixin classes from `_protein_*_mixin.py`. The XML parser for Uniprot requires a special ET from `.ET_monkeypatched`.
+from ..core import Structure
 
 _failsafe = _BaseMixin._failsafe
 
@@ -37,7 +38,14 @@ class _UniprotMixin:
             if chain is not None:  ## this is so unpredictable. It needs to be done by blast.
                 loca=chain.attrib['value'].split('=')[1].split('-')
                 chainid=chain.attrib['value'].split('=')[0].split('/')[0]
-                self.pdbs.append({'description': elem.attrib['id'], 'id': elem.attrib['id']+'_'+chainid, 'x': loca[0], 'y': loca[1]})
+                model = Structure(description=elem.attrib['id'],
+                                   id=elem.attrib['id']+'_'+chainid,
+                                   chain=chainid,
+                                   url=elem.attrib['id'],
+                                   x=int(loca[0]),
+                                   y=int(loca[1]),
+                                   type='rcsb')
+                self.pdbs.append(model)
         elif elem.has_attr('type', 'Ensembl'):
             self.ENST = elem.attrib['id']
             for subelem in elem:
@@ -195,3 +203,22 @@ class _UniprotMixin:
                 if self.features[group][i]['description'] == '-':
                     self.features[group][i]['description'] = group
         return self
+
+
+    ####################### model checks.
+    # pdb_chain_uniprot.tsv
+    def lookup_pdb_chain_uniprot(self, pdb, chain):
+        details = []
+        headers = 'PDB     CHAIN   SP_PRIMARY      RES_BEG RES_END PDB_BEG PDB_END SP_BEG  SP_END'.split('\t')
+        with self.settings.open('pdb_chain_uniprot') as fh:
+            for row in fh:
+                if pdb.lower() == row[0:4]:
+                    details.append(dict(zip(headers,row.split('\t'))))
+        return details
+
+    def check_discrepancy_in_pdb_chain_uniprot(self, details):
+        for detail in details:
+            if detail['PDB_BEG'] != detail['SP_BEG'] or detail['PDB_END'] != detail['SP_END']:
+                print('Sequence discrepancy.')
+                return False
+        return True

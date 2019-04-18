@@ -14,3 +14,6 @@ refs = (
     'ftp://ftp.nextprot.org/pub/current_release/mapping/nextprot_refseq.txt',
     'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/genomes/gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'
     'ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/flatfiles/tsv/pdb_chain_uniprot.tsv.gz')
+
+
+failed_blast_pdbs ='A0A0K0K1G8'

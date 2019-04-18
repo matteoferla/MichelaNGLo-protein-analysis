@@ -1,13 +1,31 @@
 import pickle, os, re
 from datetime import datetime
 from .settings_handler import global_settings #the instance not the class.
+from collections import namedtuple
+import gzip
+
+Variant = namedtuple('Variant', ['id', 'x', 'y', 'impact', 'description'])
+Variant.__doc__="""
+Stores the gNOMAD data for easy use by FeatureViewer and co. Can be converted to Mutation.
+"""
+
+Structure = namedtuple('Structure', ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'extra'])
+Structure.__new__.__defaults__=(None, None, None, None, None, 'rcsb', 'A',0, None)
+Structure.__doc__="""
+Stores the structural data for easy use by FeatureViewer and co. Can be converted to StructureAnalyser
+type = rcsb | swissmodel | homologue
+"""
 
 class ProteinCore:
     """
     This is a lightweight version of Protein that is intended to run of pre parsed pickles.
     It forms the base of Protein. This does no protein analyses.
+    It has IO powers! .dump/.gdump saves an instance .load/.gload loads and can work as a class method if the filename is provided as an argument.
+    The gzipped forms (.gdump and .gload) are about 1/3 the size. 50 KB.
     """
     settings = global_settings
+    version = 1.0 #this is for pickled file migration/maintenance.
+
 
     ############## elm
     elmdata = []
@@ -49,7 +67,7 @@ class ProteinCore:
         self.ENSG = ''
         ### ExAC
         self.gNOMAD = [] #formerlly alleles
-        self.ExAC_type = 'Unparsed' # Dominant | Recessive | None | Unknown (=???)
+        #self.ExAC_type (property= 'Unparsed' # Dominant | Recessive | None | Unknown (=???)
         self.pLI = -1
         self.pRec = -1
         self.pNull = -1
@@ -57,16 +75,27 @@ class ProteinCore:
         self.pdb_matches =[] #{'match': align.title[0:50], 'match_score': hsp.score, 'match_start': hsp.query_start, 'match_length': hsp.align_length, 'match_identity': hsp.identities / hsp.align_length}
         self.swissmodel = []
         self.percent_modelled = 0
-        ### other ###
-        self.user_text = ''
-        ### mutation ###
-        self.mutation = None
         ### junk
         self.other = other ### this is a garbage bin. But a handy one.
         self.logbook = [] # debug purposes only. See self.log()
         self._threads = {}
         #not needed for ProteinLite
         self.xml = None
+
+    ############################## property objects
+
+    @property
+    def ExAC_type(self):
+        if self.pLI < 0:  # error.
+            return 'Unknown'
+        elif self.pLI > max(self.pRec, self.pNull):
+            return 'Dominant'
+        elif self.pRec > max(self.pLI, self.pNull):
+            return 'Recessive'
+        elif self.pNull > max(self.pLI, self.pRec):
+            return 'None'
+        else:
+            return 'Unknown'
 
     ############################# IO #############################
     def dump(self, file=None):
@@ -76,17 +105,47 @@ class ProteinCore:
         pickle.dump(self.__dict__, open(file, 'wb'))
         self.log('Data saved to {} as pickled dictionary'.format(file))
 
-    #fake @classmethod
-    def load(clelf, file=None):  # clelf made-up portmanteau of cls and self, non PEP
-        if isinstance(clelf, type):  # clelf is a class
-            self = clelf.__new__(clelf)
-            assert file, 'file is mandatory for `Protein.load()` as a class method. optional as bound method.'
-        else:
-            self = clelf
-            if not file:
-                file = os.path.join(self.settings.pickle_folder,self.uniprot+'.p')
+    def gdump(self, file=None):
+        if not file:
+            file = os.path.join(self.settings.pickle_folder, f'{self.uniprot}.pgz')
+        self.complete()  # wait complete.
+        with gzip.GzipFile(file, 'w') as f:
+            pickle.dump(self.__dict__, f)
+        self.log('Data saved to {} as gzipped pickled dictionary'.format(file))
+
+    #decorator /fake @classmethod
+    def _ready_load(fun):
+        """
+        Prepare loading for both load and gload. Deals with the fact that load can be used as a class method or a bound method.
+        :return:
+        """
+        def loader(clelf,file=None): # clelf made-up portmanteau of cls and self, non PEP
+            if isinstance(clelf, type):  # clelf is a class
+                self = clelf.__new__(clelf)
+                assert file, 'file is mandatory for `Protein.load()` as a class method. optional as bound method.'
+            else:
+                self = clelf
+                if not file:
+                    if fun.__name__ == 'load':
+                        extension = '.p'
+                    else:
+                        extension = '.pgz'
+                    file = os.path.join(self.settings.pickle_folder, self.uniprot+extension)
+            fun(self, file)
+            return self
+        return loader
+
+    @_ready_load
+    def load(self, file):
         self.__dict__ = pickle.load(open(file, 'rb'))
         self.log('Data from the pickled dictionary {}'.format(file))
+        return self
+
+    @_ready_load
+    def gload(self, file):
+        with gzip.GzipFile(file, 'r') as f:
+            self.__dict__ = pickle.load(f)
+        self.log('Data from the gzipped pickled dictionary {}'.format(file))
         return self
 
     ####################### Misc Magic methods ##################

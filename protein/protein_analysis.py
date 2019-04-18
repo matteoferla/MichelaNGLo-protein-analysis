@@ -4,21 +4,35 @@ The class ProteinAnalyser builds upon the ProteinLite core and expands it with
 
 from .core import ProteinCore
 import re
+from Bio.PDB import PDBParser
+from Bio.PDB.HSExposure import HSExposureCB
+import io
 
 class ProteinAnalyser(ProteinCore):
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        ### other ###
+        self.user_text = ''
+        ### mutation ###
+        self.mutation = None
+        ## structure
+        self.model = None #Structural instance
 
     # decorator
     def _sanitise_position(fun):
         """
-        Decorator that makes sure that position is a number.
+        Decorator that makes sure that position is a number. It is a bit unnecassary for a one job task...
         :return: int,
         """
-
         def sanitiser(self, position):
             if isinstance(position, str):
                 position = int(position)
+            elif isinstance(position, int):
+                pass
             elif not isinstance(position, int):
                 position = position.residue_index
+            elif position == None:
+                position = self.mutation.residue_index
             else:
                 position = position
             return fun(self, position)
@@ -58,9 +72,13 @@ class ProteinAnalyser(ProteinCore):
     ################### mutant related
     def predict_effect(self, mutation=None):
         if mutation:
-            self.mutation = mutation
+            if self.check_mutation(mutation):
+                self.mutation = mutation
+            else:
+                raise ValueError(self.mutation_discrepancy(mutation))
         assert self.mutation, 'No mutation specified.'
         self.check_elm()
+        self.get_features_at_position()
 
     def check_mutation(self, mutation):
         if len(self.sequence) > mutation.residue_index and self.sequence[mutation.residue_index - 1] == mutation.from_residue:
@@ -133,7 +151,7 @@ class ProteinAnalyser(ProteinCore):
     ##################### Position queries.
 
     @_sanitise_position
-    def get_features_at_position(self, position):
+    def get_features_at_position(self, position=None):
         """
         :param position: mutation, str or position
         :return: list of gNOMAD mutations, which are dictionary e.g. {'id': 'gNOMAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
@@ -141,13 +159,13 @@ class ProteinAnalyser(ProteinCore):
         return self.get_features_near_position(position, wobble=0)
 
     @_sanitise_position
-    def get_features_near_position(self, position, wobble=10):
+    def get_features_near_position(self, position=None, wobble=10):
         valid = [{**f, 'type': g} for g in self.features for f in self.features[g] if f['x'] - wobble < position < f['y'] + wobble]
         svalid = sorted(valid, key=lambda v: int(v['y']) - int(v['x']))
         return svalid
 
     @_sanitise_position
-    def get_gNOMAD_near_position(self, position, wobble=5):
+    def get_gNOMAD_near_position(self, position=None, wobble=5):
         """
         :param position: mutation, str or position
         :param wobble: int, number of residues before and after.
@@ -161,7 +179,16 @@ class ProteinAnalyser(ProteinCore):
     #### THE FUTURE
 
     @_sanitise_position
-    def get_structures_with_position(self, position):
+    def analyse_structure(self, position=None):
+        structures = self._get_structures_with_position(position)
+        if not structures:
+            return self
+        self.structure_code = structures[0]['id']
+        self.model = StructureAnalyser(position, structure=self.get_structure(self, structures[0]['id']), chain=structures[0]['chain'], code=structures[0]['id'])
+        self._get_structure_neighbours(self.structure, position)
+
+
+    def _get_structures_with_position(self, position):
         """
         Fetches structures that exists at a given position.
         :param position: mutation, str or position
@@ -169,22 +196,84 @@ class ProteinAnalyser(ProteinCore):
         """
         return [pdb for pdb in self.pdbs + self.swissmodel + self.pdb_matches if int(pdb['x']) < position < int(pdb['y'])]
 
-    def is_core(self):
-        pass
 
-    @_sanitise_position
-    def get_structure_neighbours(self, position):
-        """
-        Finds residues nearby
-        :param position:
-        :return:
-        """
-        pdbs = self.get_structures_with_position(position)
-        if not pdbs:
-            return None
-        pdb = pdbs[0]
-        #a function to fetch pdb?
+    def get_structure(self, code):  #a function to fetch pdb?
+        pass
 
 
     # conservation score
     # disorder
+
+class StructureAnalyser:
+
+    def __init__(self, position, structure, chain, code):
+        self.position = position
+        self.structure = PDBParser().get_structure('model', io.StringIO(structure))
+        self.chain = chain
+        self.code = code
+        self.target_residue = self.structure[0][self.chain][self.position]
+        self._target_hse = None
+
+    @property
+    def target_hse(self):
+        if not self._target_hse:
+            hse = HSExposureCB(self.structure)
+            self._target_hse = hse[(self.structure[0][self.chain].get_id(), self.target_residue.id)]
+        return self._target_hse
+
+
+    def is_full_surface(self):
+        """
+        Uses half solvent exposure within PDB module.
+        """
+        return self.target_hse[0] < 1
+
+    def is_core(self):
+        """
+        Uses half solvent exposure within PDB module.
+        """
+        return self.target_hse[0] > 15
+
+    def is_partial_surface(self):
+        """
+        Uses half solvent exposure within PDB module.
+        """
+        return 0 < self.target_hse[0] < 15
+
+    def get_superficiality(self):
+        if self.target_hse[0] == 0:
+            return 'surface'
+        elif self.target_hse[0] < 15:
+            return 'partially buried'
+        else:
+            return 'buried'
+
+    def get_structure_neighbours(self, threshhold:float=3):
+        """
+
+        :param threshhold: &Aring;ngstrom distance.
+        :return:
+        """
+        # the longest amino acid is 10&Aring; long.
+        neighbours = set()
+        overthreshhold = 10+threshhold #no atom in a arginine will be within threshhold of a given atom if any atom is greater than this.
+        double_overthreshhold = 20 + threshhold #no atom in a arginine will be within threshhold of a any atom in a given residue if any atom is greater than this.
+        doublebreak = False
+        for residue in self.structure[0][self.chain]:
+            for atom in residue:
+                if doublebreak==True:
+                    doublebreak = False
+                    break
+                for ref_atoms in self.target_residue:
+                    if atom - ref_atoms > double_overthreshhold:
+                        doublebreak=True # no point in checking the distances to the whole residue
+                        break
+                    elif atom - ref_atoms > overthreshhold:
+                        break # no point in checking the distances to this atom
+                    elif atom - ref_atoms < 4:
+                        if residue.id[0] == 'W':
+                            break #water
+                        neighbours.add(residue.id[1])
+        return neighbours
+
+

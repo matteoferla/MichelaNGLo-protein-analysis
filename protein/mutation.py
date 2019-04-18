@@ -3,7 +3,11 @@ from warnings import warn
 
 class Mutation:
     """
-    Stores the mutation.
+    Stores the mutation. Not to be confused with the namedtuple Variant, which stores gNOMAD mutations.
+    >>> Mutation('p.M12D')
+    >>> Mutation('M12D')
+    >>> Mutation(gNOMAD_variant_instance)
+    This class does not do analyses with Protein, but ProteinAnalysis do. Here however, wordy conversions happen.
     """
     # the following variable was made in apriori_effect.py
     _apriori_data = { 'A>A': 'identical',
@@ -441,8 +445,12 @@ class Mutation:
         self.to_residue = ''
         self.residue_index = 0
         self.apriori_effect = 'TBD'
+        self.surface_expose = ''
+        #self.exposure_effect see property.getter exposure_effect
         self.elm = []  # protein.check_elm(mutation) fills it.
         if mutation:
+            if not isinstance(mutation,str): #it is the namedtuple Variant!
+                mutation = mutation.description
             self.parse_mutation(mutation)
 
     def __str__(self):
@@ -500,6 +508,19 @@ class Mutation:
                 raise ValueError(self.mutation + ' is an odd_mutation')
 
         ### classify apriori effect
+        """
+        {'S': 'smaller',
+         'B': 'bigger',
+         'E': 'equally sized',
+         'F': 'more flexible',
+         'R': 'more rigid',
+         'C': 'differently charged',
+         'H': 'more hydrophobic',
+         'P': 'more polar',
+         'I': 'identical',
+         'D': 'differently shaped',
+         'a': 'from an aromatic to a non-aromatic',
+         'A': 'from a non-aromatic to an aromatic'}"""
         if '*' in self.to_residue:
             self.apriori_effect = 'The mutation results in a truncation.'
         elif '*' in self.from_residue:
@@ -511,6 +532,49 @@ class Mutation:
                                   ', '.join(self._apriori_data[self.from_residue+'>'+self.to_residue].split('|'))+\
                                   '.'
         return self
+
+    @property
+    def exposure_effect(self):
+        lowconc = '(lowering protein concentrations)'
+        lessbind = '(less binding means less activation or inhibition)'
+        neglegible = 'The effect should be negligible.'
+        if self.surface_expose == 'buried':
+            if self.to_residue == 'P':
+                return f'Proline is highly destabilising in protein cores (it cannot be part of &alpha;-helices for example) {lowconc}.'
+            elif 'differently charged' in self.apriori_effect:
+                return f'Charge changes in protein cores are highly destabilising {lowconc}.'
+            elif 'bigger' in self.apriori_effect or 'shaped' in self.apriori_effect:
+                return f'Larger residues in protein cores are highly destabilising {lowconc}.'
+            elif 'polar' in self.apriori_effect:
+                return f'Protein cores are generally hydrophobic, so a change in polarity is generally destabilising {lowconc}.'
+            elif 'smaller' in self.apriori_effect:
+                return f'Changes to smaller residues remove some interactions, thus weakly destabilising the protein (potentially lowering protein concentrations) but most likely have no effect.'
+            else:
+                return f'Mutations in protein cores are generally destabilising {lowconc}, but the mutation is very mild.'
+        elif self.surface_expose == 'partially buried':
+            if self.to_residue == 'P':
+                return f'Proline is highly destabilising in protein cores (it cannot be part of &alpha;-helices for example) {lowconc}.'
+            elif 'differently charged' in self.apriori_effect:
+                return f'Charge changes are most often destabilising {lowconc}.'
+            elif 'bigger' in self.apriori_effect or 'shaped' in self.apriori_effect:
+                return f'Larger residues are most often destabilising {lowconc}.'
+            elif 'polar' in self.apriori_effect:
+                return f'A change in polarity is generally destabilising {lowconc} depending how buried it is.'
+            elif 'smaller' in self.apriori_effect:
+                return f'Changes to smaller residues remove some interactions, but most likely have no effect.'
+            else:
+                return neglegible
+        elif self.surface_expose == 'surface':
+            if 'differently charged' in self.apriori_effect:
+                return f'A difference in charge on the surface may strongly affect membrane and partner binding {lessbind}.'
+            elif 'more hydrophobic' in self.apriori_effect:
+                return f'A more hydrophobic residue on the surface may result in aggregation {lowconc}.'
+            elif 'bigger' in self.apriori_effect:
+                return f'A larger residue on the surface may inhibit binding if it is part of a interface surface {lessbind}.'
+            else:
+                return neglegible
+        else: #no surface_expose value. fill with the ProteinAnalyser
+            return '*Could not be calculated*'
 
     @classmethod
     def long_name(cls, letter):

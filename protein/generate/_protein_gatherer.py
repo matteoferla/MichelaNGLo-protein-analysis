@@ -1,6 +1,8 @@
-# Protein inherits _UniprotMixin, which in turn inherits _BaseMixin
-# `.settings` class attribute is global_settings from settings_handler.py and is added by _BaseMixin.
-# _BaseMixin is inherited by _UniprotMixin contains _failsafe decorator, __getattr__ and settings
+__doc__="""
+Protein inherits _UniprotMixin, which in turn inherits _BaseMixin
+`.settings` class attribute is global_settings from settings_handler.py and is added by _BaseMixin.
+_BaseMixin is inherited by _UniprotMixin contains _failsafe decorator, __getattr__ and settings
+"""
 
 import os
 import pickle
@@ -21,7 +23,7 @@ from .ET_monkeypatch import ET  # monkeypatched version
 from ._protein_uniprot_mixin import _UniprotMixin
 from ._protein_base_mixin import _BaseMixin
 from ._protein_disused_mixin import _DisusedMixin
-from ..core import ProteinCore
+from ..core import ProteinCore, Variant, Structure
 
 class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     """
@@ -424,12 +426,10 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         if os.path.exists(file):
             for snp in json.load(open(file)):
                 resi = int(snp['residue_index'].split('-')[0])
-                self.gNOMAD.append({'id': 'gNOMAD_{x}_{x}_{id}'.format(x=resi, id=snp['id']),
-                                    'description': '{from_residue}{residue_index}{to_residue} ({id})'.format(**snp),
-                                    'x': resi,
-                                    'y': resi,
-                                    'impact': snp['impact']
-                                    })
+                variant = Variant(id=f'gNOMAD_{resi}_{resi}_{snp["id"]}',
+                             description='{from_residue}{residue_index}{to_residue} ({id})'.format(**snp),
+                             x=resi, y=resi, impact=snp['impact'])
+                self.gNOMAD.append(variant)
         else:
             self.gNOMAD = []
             warn('No gNOMAD data from {0} {1}?'.format(self.gene_name, self.uniprot))
@@ -478,53 +478,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         else:
             return False
 
-    # @_failsafe
-    def add_manual_data(self):
-        man = {x['Gene']: x for x in csv.DictReader(open(os.path.join(self.settings.manual_folder, 'manual.csv')))}
-        ### PDB
-        pdb_candidate = os.path.join(self.settings.manual_folder, self.uniprot + '.pdb')
-        if os.path.isfile(pdb_candidate):
-            pdb_man_file = pdb_candidate
-        elif self.uniprot in man and man[self.uniprot]['PDB']:
-            pdb_candidate = os.path.join(self.settings.manual_folder, man[self.uniprot]['PDB'].lstrip().rstrip())
-            if os.path.isfile(pdb_candidate):
-                pdb_man_file = pdb_candidate
-            else:  # csv is wrong
-                pdb_man_file = None
-                warn('Cannot find structure file, claimed by manual.csv: '+pdb_candidate)
-        else:
-            pdb_man_file = None
-        if pdb_man_file:
-            self.pdb_file = os.path.join(self.settings.page_folder, self.uniprot + '.pdb')
-            self.pdb_resi = 0  # self.resi - int(man[self.gene]['PDB_offset'])
-            if not os.path.isfile(self.pdb_file):  # make the html copy
-                copyfile(pdb_man_file, self.pdb_file)
-        ### MD
-        txt_candidate = os.path.join(self.settings.manual_folder, self.uniprot + '.md')
-        if os.path.isfile(txt_candidate):
-            txt = txt_candidate
-        elif self.gene_name in man and man[self.uniprot]['Text']:
-            txt_candidate = os.path.join(self.settings.manual_folder, man[self.uniprot]['Text'])
-            if os.path.isfile(txt_candidate):
-                txt = txt_candidate
-            else:
-                warn('Cannot find text file, ' + txt_candidate + ' claimed by manual.csv.')
-                txt = None
-        else:
-            txt = None
-        if txt:
-            self.user_text = markdown.markdown(open(txt).read())
-        # log
-        if self.user_text and self.pdb_file:
-            self.log('Manual data added.')
-        elif self.user_text and not self.pdb_file:
-            self.log('Manual data. No structure.')
-        else:  # this is unnedded except for legacy pickled files.
-            self.user_text = ''
-            self.pdb_file = ''
-        # done
-        return self
-
     def parse_all(self, mode='parallel'):
         """
         Gets all the data. if running in parallel see self._threads list.
@@ -568,20 +521,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                 task_fn()
         return self
 
-    #to do fix
-    def parse_ExAC_type(self):
-        if self.pLI < 0:  # error.
-            self.ExAC_type='Unknown'
-        elif self.pLI > max(self.pRec, self.pNull):
-            self.ExAC_type ='Dominant'
-        elif self.pRec > max(self.pLI, self.pNull):
-            self.ExAC_type ='Recessive'
-        elif self.pNull > max(self.pLI, self.pRec):
-            self.ExAC_type ='None'
-        else:
-            self.ExAC_type ='Unknown'
-        return self
-
     @_failsafe
     def parse_pLI(self):
         for line in csv.DictReader(self.settings.open('ExAC_pLI'), delimiter='\t'):
@@ -590,7 +529,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                 self.pLI = float(line['pLI'])  # intolerant of a single loss-of-function variant (like haploinsufficient genes, observed ~ 0.1*expected)
                 self.pRec = float(line['pRec'])  # intolerant of two loss-of-function variants (like recessive genes, observed ~ 0.5*expected)
                 self.pNull = float(line['pNull'])  # completely tolerant of loss-of-function variation (observed = expected)
-                self.parse_ExAC_type()
                 break
         else:
             warn('Gene {} not found in ExAC table.'.format(self.gene_name))
@@ -601,11 +539,13 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         models=json.load(self.settings.open('swissmodel'))['index']
         for model in models:
             if self.uniprot == model['uniprot_ac']:
-                self.swissmodel.append({'x': model['from'],
-                                        'y': model['to'],
-                                        'id': model['coordinate_id'],
-                                        'description': '{template} (id:{seqid:.0}%)'.format(**model),
-                                        'url': model['url']})
+                self.swissmodel.append(model = Structure(description='{template} (id:{seqid:.0}%)'.format(**model),
+                                       id=model['coordinate_id'],
+                                       chain='A',
+                                       url=model['url'],
+                                       x=int(model['from']),
+                                       y=int(model['to']),
+                                       type='rcsb'))
         self.log('Swissmodel has {0} models.'.format(len(self.swissmodel)))
         return self
 
@@ -632,28 +572,10 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     def parse_pdb_blast(self):
         file = os.path.join(self.settings.temp_folder, 'blastpdb2', self.uniprot + '.json')
         if os.path.exists(file):
-            self.pdb_matches = json.load(open(file))
+            self.pdb_matches = [Structure(**match) for match in json.load(open(file))]
         else:
             warn('No PDB blast data from {0} {1}?'.format(self.gene_name, self.uniprot))
         return self
-
-    ####################### model checks.
-    # pdb_chain_uniprot.tsv
-    def lookup_pdb_chain_uniprot(self, pdb, chain):
-        details = []
-        headers = 'PDB     CHAIN   SP_PRIMARY      RES_BEG RES_END PDB_BEG PDB_END SP_BEG  SP_END'.split('\t')
-        with self.settings.open('pdb_chain_uniprot') as fh:
-            for row in fh:
-                if pdb.lower() == row[0:4]:
-                    details.append(dict(zip(headers,row.split('\t'))))
-        return details
-
-    def check_discrepancy_in_pdb_chain_uniprot(self, details):
-        for detail in details:
-            if detail['PDB_BEG'] != detail['SP_BEG'] or detail['PDB_END'] != detail['SP_END']:
-                print('Sequence discrepancy.')
-                return False
-        return True
 
     # figure out which is best model
     def get_best_model(self):
