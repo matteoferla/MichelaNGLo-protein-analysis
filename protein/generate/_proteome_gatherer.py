@@ -24,7 +24,7 @@ class ProteomeGatherer:
     Will assume all is prepared.
     """
 
-    def __init__(self, skip=False):
+    def __init__(self, skip=False, remake_pickles=False):
         """
         Calls the variaous parts that get things ready.
         :param skip: boolean, if true it runs parse_proteome
@@ -55,7 +55,7 @@ class ProteomeGatherer:
             Blaster.pdb_blaster()
         # converts the files to something reasonable.
         announce('Parsing blast output')
-        if 1==1:#not skip:
+        if not skip:
             Blaster.parse('blastpdb','blastpdb2')
         ################ ASSEMBLE #######################################################
         announce('Assembing proteome')
@@ -67,13 +67,14 @@ class ProteomeGatherer:
         random.shuffle(uniprot_ids)
         for acc in uniprot_ids:
             prot = ProteinGatherer(uniprot=acc)
-            try:
-                prot.load()
-            except:
+            if not remake_pickles:
+                prot.gload()
+            else:
                 print(prot.uniprot)
                 prot.parse_uniprot()
-                prot.parse_all( mode='parallel')
+                prot.parse_all(mode='parallel')
                 prot.complete()
                 prot.get_percent_modelled()
                 prot.parse_ExAC_type()
-                prot.dump()
+                prot.gdump()
+

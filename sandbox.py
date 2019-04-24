@@ -1,6 +1,6 @@
-from protein import ProteinAnalyser, ProteinCore, Mutation, settings_handler
-from protein.generate import ProteinGatherer, ProteomeGatherer
-from protein.protein_analysis import StructureAnalyser
+#from protein import ProteinAnalyser, ProteinCore, Mutation, settings_handler
+#from protein.generate import ProteinGatherer, ProteomeGatherer
+#from protein.protein_analysis import StructureAnalyser
 
 
 def test_ProteinAnalyser():
@@ -1816,6 +1816,11 @@ def test_ProteinAnalyser():
 
 #p=ProteinGatherer(uniprot='Q6ZN55').parse_uniprot().parse_pdb_blast()
 
-ProteomeGatherer(skip=True)
+#ProteomeGatherer(skip=True, remake_pickles=True)
+
+from protein.apriori_effect import WikiTable
+print(WikiTable(WikiTable.miyata).ndata)
+
+
 
 

@@ -203,22 +203,3 @@ class _UniprotMixin:
                 if self.features[group][i]['description'] == '-':
                     self.features[group][i]['description'] = group
         return self
-
-
-    ####################### model checks.
-    # pdb_chain_uniprot.tsv
-    def lookup_pdb_chain_uniprot(self, pdb, chain):
-        details = []
-        headers = 'PDB     CHAIN   SP_PRIMARY      RES_BEG RES_END PDB_BEG PDB_END SP_BEG  SP_END'.split('\t')
-        with self.settings.open('pdb_chain_uniprot') as fh:
-            for row in fh:
-                if pdb.lower() == row[0:4]:
-                    details.append(dict(zip(headers,row.split('\t'))))
-        return details
-
-    def check_discrepancy_in_pdb_chain_uniprot(self, details):
-        for detail in details:
-            if detail['PDB_BEG'] != detail['SP_BEG'] or detail['PDB_END'] != detail['SP_END']:
-                print('Sequence discrepancy.')
-                return False
-        return True

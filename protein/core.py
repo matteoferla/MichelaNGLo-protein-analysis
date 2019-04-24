@@ -9,12 +9,29 @@ Variant.__doc__="""
 Stores the gNOMAD data for easy use by FeatureViewer and co. Can be converted to Mutation.
 """
 
-Structure = namedtuple('Structure', ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'extra'])
-Structure.__new__.__defaults__=(None, None, None, None, None, 'rcsb', 'A',0, None)
-Structure.__doc__="""
-Stores the structural data for easy use by FeatureViewer and co. Can be converted to StructureAnalyser
-type = rcsb | swissmodel | homologue
-"""
+class Structure:
+    """
+    No longer a namedtuple.
+    Stores the structural data for easy use by FeatureViewer and co. Can be converted to StructureAnalyser
+    type = rcsb | swissmodel | homologue
+    """
+    __slots__ = ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'coordinates', 'extra']
+    def __init__(self, id, description, x:int, y:int, url, type='rcsb',chain='A',offset:int=0, coordinates=None, extra=None):
+        """
+        Stores the structural data for easy use by FeatureViewer and co. Can be converted to StructureAnalyser
+        type = rcsb | swissmodel | homologue
+        """
+        self.id = id
+        self.description = description
+        self.x = int(x)
+        self.y = int(y)
+        self.url = url
+        self.type = type
+        self.chain = chain
+        self.offset = int(offset)
+        self.extra = extra
+        self.coordinates = coordinates
+
 
 class ProteinCore:
     """

@@ -497,7 +497,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                  'pLI': self.parse_pLI,
                  'gNOMAD': self.parse_gNOMAD,
                  'parse_pdb_blast': self.parse_pdb_blast,
-                 'manual': self.add_manual_data,
+                 #'manual': self.add_manual_data,
                  'Binding partners': self.fetch_binders}
         #prot.get_percent_modelled()
         #prot.parse_ExAC_type()
@@ -536,16 +536,26 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
 
 
     def parse_swissmodel(self):
+        # entry: {"uniprot_seq_length": 246, "provider": "PDB", "seqid": "", "from": 3, "uniprot_ac": "P31946",
+        # "uniprot_seq_md5": "c82f2efd57f939ee3c4e571708dd31a8", "url": "https://swissmodel.expasy.org/repository/uniprot/P31946.pdb?from=3&to=232&template=6byk&provider=pdb",
+        # "to": 232, "template": "6byk", "iso_id": "P31946-1", "coordinate_id": "5be4a9c602efd0e456a7ffeb"}
         models=json.load(self.settings.open('swissmodel'))['index']
         for model in models:
             if self.uniprot == model['uniprot_ac']:
+                r = requests.get(model['url'])
+                if r.status_code == 200:
+                    coordinates = r.content
+                else:
+                    coordinates = None
                 self.swissmodel.append(model = Structure(description='{template} (id:{seqid:.0}%)'.format(**model),
                                        id=model['coordinate_id'],
                                        chain='A',
                                        url=model['url'],
                                        x=int(model['from']),
                                        y=int(model['to']),
-                                       type='rcsb'))
+                                       coordinates=coordinates,
+                                       type='swissmodel'))
+
         self.log('Swissmodel has {0} models.'.format(len(self.swissmodel)))
         return self
 
@@ -577,6 +587,46 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             warn('No PDB blast data from {0} {1}?'.format(self.gene_name, self.uniprot))
         return self
 
+
+
+    ####################### model checks.
+    def augment_pdb_w_offset(self):
+        # namedtuple('Structure', ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'extra'])
+        for i in range(len(self.pdbs)):
+            model = self.pdbs[i]
+            details = self.lookup_pdb_chain_uniprot(model.url,model.chain)
+            detail = details[0] #offset should be the same for all.. check_discrepancy_in_pdb_chain_uniprot() not needed
+            if detail['PDB_BEG'] != detail['SP_BEG'] or detail['PDB_END'] != detail['SP_END']:
+                model.offset = int(detail['PDB_BEG']) - int(detail['SP_BEG'])
+                self.pdbs[i] = model # remnant from when it was a new namedtuple
+        return self
+
+
+    # pdb_chain_uniprot.tsv
+    def lookup_pdb_chain_uniprot(self, pdb, chain):
+        details = []
+        headers = 'PDB     CHAIN   SP_PRIMARY      RES_BEG RES_END PDB_BEG PDB_END SP_BEG  SP_END'.split('\t')
+        with self.settings.open('pdb_chain_uniprot') as fh:
+            for row in fh:
+                if pdb.lower() == row[0:4]:
+                    details.append(dict(zip(headers, row.split('\t'))))
+        return details
+
+    def check_discrepancy_in_pdb_chain_uniprot(self, details):
+        for detail in details:
+            if detail['PDB_BEG'] != detail['SP_BEG'] or detail['PDB_END'] != detail['SP_END']:
+                print('Sequence discrepancy.')
+                return False
+        return True
+
+    def get_structures(self):
+        for model in self.pdbs:
+            r = requests.get(f'https://files.rcsb.org/download/{model.url}.pdb')
+            if r.status_code == 200:
+                model.coordinates = r.content
+            else:
+                warn(f'Model {model.url} of {self.gene_name} failed.')
+
     # figure out which is best model
     def get_best_model(self):
         #So ideally making a multidomain concatenation would be best. But that is hard as it must not be overlapping spacially and sequentially.
@@ -591,7 +641,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             return smodels[0]
         else:
             return None
-
 
     @_failsafe
     def _test_failsafe(self):
