@@ -2411,11 +2411,22 @@ class WikiTable:
 |} 
 |}'''
 
+    @classmethod
+    def wiki_to_csv(cls,table):
+        matrix = [[entry.lstrip().rstrip() for entry in row.split('|') if '|+' not in entry and '!' not in entry] for row in table.replace('{| class="wikitable"','').replace('|}','').replace('\n','').split('|-')]
+    raise Error... was working here
+
     def __init__(self, table):
         self.data = {}
-        matrix = [[entry.lstrip().rstrip() for entry in row.split('|') if '|+' not in entry and '!' not in entry] for row in table.replace('{| class="wikitable"','').replace('|}','').split('|-')]
+        matrix = [[entry.lstrip().rstrip() for entry in row.split('|') if '|+' not in entry and '!' not in entry] for row in table.replace('{| class="wikitable"','').replace('|}','').replace('\n','').split('|-')]
+        from pprint import PrettyPrinter
+        pprint = PrettyPrinter().pprint
+        pprint(matrix)
         hheader = matrix[0]
+        print(hheader)
         vheader = [row[0] for row in matrix[1:-1]]
+        print(vheader)
+
         for i in range(1, len(matrix)):
             row = matrix[i]
             for j in range(1, len(row)):

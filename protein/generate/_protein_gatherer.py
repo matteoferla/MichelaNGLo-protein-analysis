@@ -11,7 +11,7 @@ import csv
 import json
 import time
 import markdown
-import xmlschema
+#import xmlschema
 import threading
 from collections import defaultdict
 from warnings import warn
