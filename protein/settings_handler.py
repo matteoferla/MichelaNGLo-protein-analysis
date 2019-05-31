@@ -59,7 +59,7 @@ class GlobalSettings:
 
     data_folder = property(_get_datafolder, _set_datafolder)
 
-    def __init__(self, data_folder='data', page_folder='pages', home_url='/'):
+    def __init__(self, data_folder='/home/matteo/Coding/protein-module-for-VENUS/data', page_folder='/home/matteo/Coding/protein-module-for-VENUS/pages', home_url='/'):
         self.data_folder = data_folder
         self.page_folder = page_folder
         self.home_url = home_url

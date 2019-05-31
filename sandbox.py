@@ -1,4 +1,5 @@
-from protein import ProteinAnalyser, ProteinCore, Mutation, settings_handler
+from protein import ProteinAnalyser, ProteinCore, Mutation
+from protein.settings_handler import global_settings
 from protein.generate import ProteinGatherer, ProteomeGatherer
 from protein.protein_analysis import StructureAnalyser
 
@@ -1818,9 +1819,10 @@ def test_ProteinAnalyser():
 
 #ProteomeGatherer(skip=True, remake_pickles=True)
 
-from protein.apriori_effect import WikiTable
-print(WikiTable(WikiTable.grantham).ndata)
 
+#from protein.apriori_effect import WikiTable
+#print(WikiTable(WikiTable.grantham).ndata)
 
+global_settings.error_tolerant = True
 
-
+ProteomeGatherer(skip=True, remake_pickles=True)

@@ -6,6 +6,7 @@ from pprint import PrettyPrinter
 pprint = PrettyPrinter().pprint
 
 import os, json
+from warnings import warn
 from ._protein_gatherer import ProteinGatherer
 from .uniprot_to_jsons import UniprotReader
 from .PDB_blast import Blaster
@@ -36,7 +37,7 @@ class ProteomeGatherer:
             ProteinGatherer.settings.retrieve_references(ask=False)
 
         ################ PARSE UNIPROT #######################################################
-        self.master_file = os.path.join(ProteinGatherer.settings.reference_folder, 'uniprot_sprot.xml')
+        self.master_file = os.path.join(ProteinGatherer.settings.temp_folder, 'uniprot_sprot.xml')
         # This class parses the uniprot FTP file and can do various things. such as making a small one that is only human.
         # But mainly the `UniprotReader.convert('uniprot_sprot.xml')` method whcih generates the JSON files required.
         # first_n_protein is for testing.
@@ -72,9 +73,10 @@ class ProteomeGatherer:
             else:
                 print(prot.uniprot)
                 prot.parse_uniprot()
-                prot.parse_all(mode='parallel')
+                #prot.parse_all(mode='parallel')
                 prot.complete()
-                prot.get_percent_modelled()
-                prot.parse_ExAC_type()
+                warn(f'lines silenced for now at {__name__} 77')
+                #prot.get_percent_modelled()
+                #prot.parse_ExAC_type()
                 prot.gdump()
 

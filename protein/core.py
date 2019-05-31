@@ -9,7 +9,7 @@ Variant.__doc__="""
 Stores the gNOMAD data for easy use by FeatureViewer and co. Can be converted to Mutation.
 """
 
-class Structure:
+class Structure: #a C++ coder would hate this... Sturcture as in protein structure
     """
     No longer a namedtuple.
     Stores the structural data for easy use by FeatureViewer and co. Can be converted to StructureAnalyser
@@ -91,7 +91,7 @@ class ProteinCore:
         ### pdb
         self.pdb_matches =[] #{'match': align.title[0:50], 'match_score': hsp.score, 'match_start': hsp.query_start, 'match_length': hsp.align_length, 'match_identity': hsp.identities / hsp.align_length}
         self.swissmodel = []
-        self.percent_modelled = 0
+        self.percent_modelled = -1
         ### junk
         self.other = other ### this is a garbage bin. But a handy one.
         self.logbook = [] # debug purposes only. See self.log()
@@ -182,7 +182,7 @@ class ProteinCore:
         return self
 
     def __str__(self):
-        if self.gene_name:
+        if len(self.gene_name):
             return self.gene_name
         else:
             return self.uniprot

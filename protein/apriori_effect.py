@@ -2414,7 +2414,7 @@ class WikiTable:
     @classmethod
     def wiki_to_csv(cls,table):
         matrix = [[entry.lstrip().rstrip() for entry in row.split('|') if '|+' not in entry and '!' not in entry] for row in table.replace('{| class="wikitable"','').replace('|}','').replace('\n','').split('|-')]
-    raise Error... was working here
+        raise Error_working_here
 
     def __init__(self, table):
         self.data = {}

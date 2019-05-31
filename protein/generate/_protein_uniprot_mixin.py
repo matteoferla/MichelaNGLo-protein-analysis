@@ -37,15 +37,16 @@ class _UniprotMixin:
             chain = elem.get_sub_by_type('chains')
             if chain is not None:  ## this is so unpredictable. It needs to be done by blast.
                 loca=chain.attrib['value'].split('=')[1].split('-')
-                chainid=chain.attrib['value'].split('=')[0].split('/')[0]
-                model = Structure(description=elem.attrib['id'],
-                                   id=elem.attrib['id']+'_'+chainid,
-                                   chain=chainid,
-                                   url=elem.attrib['id'],
-                                   x=int(loca[0]),
-                                   y=int(loca[1]),
-                                   type='rcsb')
-                self.pdbs.append(model)
+                if loca[0] != '':
+                    chainid=chain.attrib['value'].split('=')[0].split('/')[0]
+                    model = Structure(description=elem.attrib['id'],
+                                       id=elem.attrib['id']+'_'+chainid,
+                                       chain=chainid,
+                                       url=elem.attrib['id'],
+                                       x=int(loca[0].split(',')[0]),
+                                       y=int(loca[1].split(',')[0]),
+                                       type='rcsb')
+                    self.pdbs.append(model)
         elif elem.has_attr('type', 'Ensembl'):
             self.ENST = elem.attrib['id']
             for subelem in elem:

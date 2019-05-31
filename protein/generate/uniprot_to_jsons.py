@@ -66,7 +66,7 @@ class UniprotReader:
             count+=1
             if count == first_n_protein:
                 break
-            prot = Protein(entry)
+            prot = Protein.from_uniprot(entry)
             chosen_name = prot.accession_list[0] #ideally prot.uniprot_name or the first acc id. But for code usage going for gene name.
             ## fill namedex
             namedex[prot.uniprot_name] = chosen_name

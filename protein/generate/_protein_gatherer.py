@@ -31,7 +31,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     It fills them from various other sources.
 
         >>> ProteinGatherer()
-        >>> ProteinGatherer(xml_entry) # equivalent to Protein()._parse_uniprot_xml(xml_entry)
+        >>> ProteinGatherer.from_uniprot(xml_entry)
         >>> ProteinGatherer.load('filename')
 
     NB. The ET.Element has to be monkeypatched. See `help(ElementalExpansion)`
@@ -60,8 +60,11 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     ############################# INIT #############################
     @classmethod
     def from_uniprot(cls, entry):
+        '''This requires a xml entry'''
         self=cls()
+        self.xml = entry
         self._parse_uniprot_xml(entry)
+        return self
 
     def write_uniprot(self, file=None):
         if not file:
@@ -547,14 +550,17 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                     coordinates = r.content
                 else:
                     coordinates = None
-                self.swissmodel.append(model = Structure(description='{template} (id:{seqid:.0}%)'.format(**model),
-                                       id=model['coordinate_id'],
-                                       chain='A',
-                                       url=model['url'],
-                                       x=int(model['from']),
-                                       y=int(model['to']),
-                                       coordinates=coordinates,
-                                       type='swissmodel'))
+                self.swissmodel.append(
+                                        Structure(description='{template} (id:{seqid:.0}%)'.format(**model),
+                                                   id=model['coordinate_id'],
+                                                   chain='A',
+                                                   url=model['url'],
+                                                   x=int(model['from']),
+                                                   y=int(model['to']),
+                                                   coordinates=coordinates,
+                                                   type='swissmodel'
+                                                 )
+                                       )
 
         self.log('Swissmodel has {0} models.'.format(len(self.swissmodel)))
         return self
@@ -575,8 +581,9 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                     for i in range(clean(model['x']),clean(model['y'])):
                         state[i]=True
             self.percent_modelled = sum(state)/len(self)
-        except:
-            self.percent_modelled = 0
+        except Exception as err:
+            warn(f'error arose in %modelled...{err}')
+            self.percent_modelled = -1
         return self.percent_modelled
 
     def parse_pdb_blast(self):
