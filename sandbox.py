@@ -1825,4 +1825,57 @@ def test_ProteinAnalyser():
 
 global_settings.error_tolerant = True
 
-ProteomeGatherer(skip=True, remake_pickles=True)
+#ProteomeGatherer(skip=True, remake_pickles=True)
+
+
+
+from protein.generate.uniprot_to_jsons import UniprotReader
+import os, json
+
+
+
+
+genes = '''AASS
+ALAS2
+CDK12
+DCLRE1A
+DPAGT1
+FAM83A
+FAM83B
+GALK
+GALT
+HAO1
+HCN4
+HDAC6
+JMJD1B
+JMJD2D
+KALRN
+KEAP1
+KLHL20
+LIMK1
+MLLT1
+MLLT3
+MTHFR
+NUDT7
+PARP14
+PHIP
+RAC1
+RECQL5
+RIPK2
+SETDB1
+SLC1A1
+STAG1
+TASK1
+TBXT
+TMEM16K
+WNK3
+
+'''.split()
+
+
+data = {}
+namedex = json.load(open('data/human_prot_namedex.json'))
+for gene in genes:
+    g = ProteinGatherer(uniprot=namedex[gene]).parse_uniprot()
+    data[gene] = {'name': g.gene_name, 'uniprot': g.uniprot, 'len': len(g), 'domains': g.features, 'disease': g.diseases}
+    print(g.gene_name,g.uniprot,len(g))
