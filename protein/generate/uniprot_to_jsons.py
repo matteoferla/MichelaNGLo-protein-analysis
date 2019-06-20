@@ -59,7 +59,8 @@ class UniprotReader:
             print('ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz')
             Protein.settings.retrieve_references(ask = True)
         count=0
-        namedex = {}
+        greater_namedex = {}
+        lesser_namedex = {}
         seqdex = {}
         genedex = {}
         for entry in cls(uniprot_master_file).iter_human():
@@ -69,20 +70,21 @@ class UniprotReader:
             prot = Protein.from_uniprot(entry)
             chosen_name = prot.accession_list[0] #ideally prot.uniprot_name or the first acc id. But for code usage going for gene name.
             ## fill namedex
-            namedex[prot.uniprot_name] = chosen_name
-            namedex[prot.gene_name] = chosen_name
-            namedex[prot.recommended_name] = chosen_name
+            greater_namedex[prot.uniprot_name] = chosen_name
+            greater_namedex[prot.recommended_name] = chosen_name
+            greater_namedex[prot.gene_name] = chosen_name
             for group in [prot.alt_gene_name_list, prot.alternative_fullname_list, prot.alternative_shortname_list]:
                 for name in group:
                     if re.match('[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+',name):
                         continue # no EC numbers!
-                    namedex[name] = chosen_name
+                    lesser_namedex[name] = chosen_name
             ## fill seqdex
             seqdex[chosen_name] = prot.sequence
             genedex[chosen_name] = prot.gene_name
             ## save
             prot.write_uniprot(os.path.join(Protein.settings.uniprot_folder, chosen_name+'_uniprot.xml'))
             # prot.
+        namedex = {**lesser_namedex, **greater_namedex}
         ## cleanup
         for k in ('\n      ', '\n     ', '\n    ', '\n   ', '', '\n', ' '):
             if k in namedex:
