@@ -190,7 +190,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         xml = self.xml_fetcher(mode)
         return self.xml_parser(mode, xml)
 
-
     def parse_uniprot(self):
         """
         This is an rewritten version that does not use ET -> dict.
@@ -439,11 +438,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         self.log('gNOMAD mutations: {0}'.format(len(self.gNOMAD)))
         return self
 
-
-
-
-
-
     def iter_allele(self, filter=True, consequence=None, split=True):
         """
         Generator that gives the allele...
@@ -499,9 +493,10 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                  'Swissmodel': self.parse_swissmodel,
                  'pLI': self.parse_pLI,
                  'gNOMAD': self.parse_gNOMAD,
-                 'parse_pdb_blast': self.parse_pdb_blast,
+                 'parse_pdb_blast': self.parse_pdb_blast
                  #'manual': self.add_manual_data,
-                 'Binding partners': self.fetch_binders}
+                 #'Binding partners': self.fetch_binders
+                }
         #prot.get_percent_modelled()
         #prot.parse_ExAC_type()
         #prot.dump()
@@ -537,7 +532,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             warn('Gene {} not found in ExAC table.'.format(self.gene_name))
         return self
 
-
     def parse_swissmodel(self):
         # entry: {"uniprot_seq_length": 246, "provider": "PDB", "seqid": "", "from": 3, "uniprot_ac": "P31946",
         # "uniprot_seq_md5": "c82f2efd57f939ee3c4e571708dd31a8", "url": "https://swissmodel.expasy.org/repository/uniprot/P31946.pdb?from=3&to=232&template=6byk&provider=pdb",
@@ -570,7 +564,10 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         """Returns the [0,1] fraction of the protein length that is modelled (repeats arent recounted)"""
 
         def clean(text):
-            return int(text.lstrip().replace('-', ' ').replace(',', ' ').split(' ')[0]) - 1
+            if isinstance(text, int):
+                return text
+            else:
+                return int(text.lstrip().replace('-', ' ').replace(',', ' ').split(' ')[0]) - 1
 
         try:
             if len(self) == 0:
@@ -578,7 +575,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             state = [False for i in range(len(self))]
             for dataset in (self.swissmodel,self.pdbs):
                 for model in dataset:
-                    for i in range(clean(model['x']),clean(model['y'])):
+                    for i in range(clean(model.x),clean(model.y)):
                         state[i]=True
             self.percent_modelled = sum(state)/len(self)
         except Exception as err:
@@ -594,8 +591,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             warn('No PDB blast data from {0} {1}?'.format(self.gene_name, self.uniprot))
         return self
 
-
-
     ####################### model checks.
     def augment_pdb_w_offset(self):
         # namedtuple('Structure', ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'extra'])
@@ -607,7 +602,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                 model.offset = int(detail['PDB_BEG']) - int(detail['SP_BEG'])
                 self.pdbs[i] = model # remnant from when it was a new namedtuple
         return self
-
 
     # pdb_chain_uniprot.tsv
     def lookup_pdb_chain_uniprot(self, pdb, chain):
@@ -648,6 +642,22 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             return smodels[0]
         else:
             return None
+
+    #@_failsafe
+    def get_PMT(self):
+        ## rearrange PTM in a file per gene.
+        assert self.uniprot, 'Uniprot Acc. required. Kind of.'
+        modified_residues = []
+        for f in os.listdir(self.settings.reference_folder):
+            if '_site_dataset' in f and '.gz' not in f:  # it's a Phosphosite plus entry.
+                with open(os.path.join(self.settings.reference_folder, f)) as fh:
+                    next(fh)  # date
+                    next(fh)  # licence
+                    next(fh)  # blankline
+                    for row in csv.DictReader(fh, delimiter='\t'):
+                        if row['ACC_ID'] == self.uniprot: ## this will not pick up mice!
+                            modified_residues.append(row["MOD_RSD"])
+        self.features['PSP_modified_residues'] = modified_residues ## list of str (e.g. 'K30-m2')
 
     @_failsafe
     def _test_failsafe(self):

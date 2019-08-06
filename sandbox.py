@@ -1815,67 +1815,48 @@ def test_ProteinAnalyser():
     print(p.get_structure_neighbours())
     print(p.get_superficiality())
 
-#p=ProteinGatherer(uniprot='Q6ZN55').parse_uniprot().parse_pdb_blast()
 
-#ProteomeGatherer(skip=True, remake_pickles=True)
+# p=ProteinGatherer(uniprot='Q6ZN55').parse_uniprot().parse_pdb_blast()
 
+# from protein.apriori_effect import WikiTable
+# print(WikiTable(WikiTable.grantham).ndata)
 
-#from protein.apriori_effect import WikiTable
-#print(WikiTable(WikiTable.grantham).ndata)
+def main():
+    ## make everything!
 
-global_settings.error_tolerant = True
+    global_settings.error_tolerant = True
 
-#ProteomeGatherer(skip=True, remake_pickles=True)
-
-
+    ProteomeGatherer(skip=True, remake_pickles=True)
 
 from protein.generate.uniprot_to_jsons import UniprotReader
 import os, json
+def mini_gene_data():
+    genes = '''DOCK180
+    DOCK2
+    DOCK3
+    DOCK4
+    DOCK5
+    DOCK6
+    DOCK7
+    DOCK8
+    DOCK9
+    DOCK10
+    DOCK11
+    '''.split()
 
 
+    data = {}
+    from pprint import PrettyPrinter
+    pprint = PrettyPrinter().pprint
+    namedex = json.load(open('data/human_prot_namedex.json'))
+    for uni in set(namedex.values()):
+        g = ProteinGatherer(uniprot=uni).parse_uniprot()
+        data[g.gene_name] = {'name': g.gene_name, 'uniprot': g.uniprot, 'len': len(g), 'domains': {k: g.features[k] for k in ('active site','modified residue','topological domain','domain','region of interest','transmembrane region') if k in g.features}, 'disease': g.diseases}
+        #print(g.gene_name,g.uniprot,len(g))
+    json.dump(data,open('map.json','w'))
 
+def make_pdb_dex():
+    pass
 
-genes = '''AASS
-ALAS2
-CDK12
-DCLRE1A
-DPAGT1
-FAM83A
-FAM83B
-GALK
-GALT
-HAO1
-HCN4
-HDAC6
-JMJD1B
-JMJD2D
-KALRN
-KEAP1
-KLHL20
-LIMK1
-MLLT1
-MLLT3
-MTHFR
-NUDT7
-PARP14
-PHIP
-RAC1
-RECQL5
-RIPK2
-SETDB1
-SLC1A1
-STAG1
-TASK1
-TBXT
-TMEM16K
-WNK3
-
-'''.split()
-
-
-data = {}
-namedex = json.load(open('data/human_prot_namedex.json'))
-for gene in genes:
-    g = ProteinGatherer(uniprot=namedex[gene]).parse_uniprot()
-    data[gene] = {'name': g.gene_name, 'uniprot': g.uniprot, 'len': len(g), 'domains': g.features, 'disease': g.diseases}
-    print(g.gene_name,g.uniprot,len(g))
+if __name__ == '__main__':
+    make_pdb_dex()

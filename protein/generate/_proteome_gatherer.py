@@ -73,10 +73,10 @@ class ProteomeGatherer:
             else:
                 print(prot.uniprot)
                 prot.parse_uniprot()
-                #prot.parse_all(mode='parallel')
+                prot.parse_all(mode='parallel')
                 prot.complete()
-                warn(f'lines silenced for now at {__name__} 77')
-                #prot.get_percent_modelled()
+                warn(f'lines silenced for now at {__name__} line 77')
+                prot.get_percent_modelled()
                 #prot.parse_ExAC_type()
                 prot.gdump()
 
