@@ -9,7 +9,7 @@ Variant.__doc__="""
 Stores the gNOMAD data for easy use by FeatureViewer and co. Can be converted to Mutation.
 """
 
-class Structure: #a C++ coder would hate this... Sturcture as in protein structure
+class Structure: #lolz. a C++ coder would hate this name. Sturcture as in "protein structure"
     """
     No longer a namedtuple.
     Stores the structural data for easy use by FeatureViewer and co. Can be converted to StructureAnalyser
@@ -31,6 +31,10 @@ class Structure: #a C++ coder would hate this... Sturcture as in protein structu
         self.offset = int(offset)
         self.extra = extra
         self.coordinates = coordinates
+
+    def to_dict(self):
+        return {'x': self.x, 'y': self.y, 'id': self.id, 'description': self.description}
+
 
 
 class ProteinCore:
