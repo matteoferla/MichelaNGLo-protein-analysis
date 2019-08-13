@@ -45,15 +45,20 @@ class ProteinCore:
 
 
     ############## elm
-    elmdata = []
-    with open(os.path.join(settings.data_folder, 'elm_classes.tsv')) as fh:
-        header = ("Accession", "ELMIdentifier", "FunctionalSiteName", "Description", "Regex", "Probability", "#Instances", "#Instances_in_PDB")
-        for line in fh:
-            if line[0] == '#':
-                continue
-            if "Accession" in line:
-                continue
-            elmdata.append(dict(zip(header, line.replace('"','').split('\t'))))
+    _elmdata = []
+
+    @property
+    def elmdata(self):
+        if not len(self._elmdata):
+            with open(os.path.join(self.settings.data_folder, 'elm_classes.tsv')) as fh:
+                header = ("Accession", "ELMIdentifier", "FunctionalSiteName", "Description", "Regex", "Probability", "#Instances", "#Instances_in_PDB")
+                for line in fh:
+                    if line[0] == '#':
+                        continue
+                    if "Accession" in line:
+                        continue
+                    self._elmdata.append(dict(zip(header, line.replace('"','').split('\t'))))
+            self.__class__._elmdata = self._elmdata ## change the class attribute too!
 
     def __init__(self, gene_name='', uniprot = '', uniprot_name = '', sequence='', **other):
         ### predeclaration (and cheatsheet)
