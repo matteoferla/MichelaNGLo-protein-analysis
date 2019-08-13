@@ -1856,7 +1856,13 @@ def mini_gene_data():
     json.dump(data,open('map.json','w'))
 
 def make_pdb_dex():
-    pass
+    #I need to make a uniprot to pdb dex.
+    from protein.generate.uniprot_to_jsons import UniprotReader
+    master_file = os.path.join(ProteinGatherer.settings.temp_folder, 'uniprot_sprot.xml')
+    UniprotReader.make_dictionary(uniprot_master_file=master_file, first_n_protein=0, chosen_attribute='uniprot')
 
 if __name__ == '__main__':
-    make_pdb_dex()
+    #make_pdb_dex()
+
+    uniprot = 'O33838'
+    print(ProteinGatherer(uniprot=uniprot).parse_uniprot().features)

@@ -57,10 +57,12 @@ class ProteinCore:
 
     def __init__(self, gene_name='', uniprot = '', uniprot_name = '', sequence='', **other):
         ### predeclaration (and cheatsheet)
+        self.organism = {'common': 'NA', 'scientific': 'NA', 'NCBI Taxonomy': 'NA', 'other': 'NA'} ##obs ignore for human purposes.
         self.gene_name = gene_name
         self.uniprot_name = uniprot_name ## S39AD_HUMAN
         #### uniprot derivved
         self.uniprot = uniprot ## uniprot accession
+        self.uniprot_dataset = '' ## Swiss-Prot good, TrEMBL bad.
         self.alt_gene_name_list = []
         self.accession_list = [] ## Q96H72 etc.
         self.sequence = sequence  ###called seq in early version causing eror.rs

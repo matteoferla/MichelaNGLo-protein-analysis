@@ -88,6 +88,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
 
     def xml_fetcher(self, mode):  # mode = uniprot or pfam
         file = os.path.join(self.settings.get_folder_of(mode), self.uniprot + '_' + mode + '.xml')
+        os.remove(file)
         if os.path.isfile(file):
             with open(file, 'r') as w:
                 xml = w.read()
@@ -96,7 +97,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             warn('Missing file {0}'.format(file))
             self._assert_fetchable(mode)
             if mode == 'uniprot':
-                requestURL = 'https://www.ebi.ac.uk/proteins/api/proteins?offset=0&size=100&accession={acc}&taxid=9606'.format(
+                requestURL = 'https://www.ebi.ac.uk/proteins/api/proteins?offset=0&size=100&accession={acc}'.format(  # &taxid=9606
                     acc=self.uniprot)
             elif mode == 'pfam':
                 requestURL = 'https://pfam.xfam.org/protein?output=xml&acc={acc}'.format(acc=self.uniprot)
@@ -488,7 +489,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         if not self.gene_name:
             self.parse_uniprot()
         ### fetch!
-        tasks = {'Uniprot': self.parse_uniprot, #done.
+        tasks = { #'Uniprot': self.parse_uniprot, #already done.
                  #'PFam': self.parse_pfam, #done.
                  'Swissmodel': self.parse_swissmodel,
                  'pLI': self.parse_pLI,

@@ -140,10 +140,28 @@ class _UniprotMixin:
         locadex=self._get_location(elem)
         if locadex:
             self.features[elem.attrib['type']].append(self._get_location(elem))
+        elif elem.has_attr('type', 'chain'):
+            pass
         else:
-            print('no location?')
-            print(elem.attrib)
+            ##print('no location?') TODO fix this!
+            ##print(elem.attrib)
+            pass
         return self
+
+    @_failsafe
+    def _parse_organism(self, elem):
+        for organism_el in list(elem):
+            for mode in ("scientific", "common"):
+                if 'type' in organism_el.attrib and organism_el.attrib['type'] == mode:
+                    self.organism[mode] = organism_el.text.rstrip().lstrip()
+                    break
+            else:
+                if 'type' in organism_el.attrib and organism_el.attrib['type'] == "NCBI Taxonomy":
+                    self.organism["NCBI Taxonomy"] = organism_el.attrib['id']
+                elif organism_el.text and organism_el.text.rstrip().lstrip():
+                    self.organism["other"] = organism_el.text.rstrip().lstrip()
+                else:
+                    pass #lineage.
 
     def _get_location(self, elem):
         location = elem.get_subtag('location')
@@ -165,9 +183,15 @@ class _UniprotMixin:
             x = start.attrib['position']
             y = end.attrib['position']
             return {'x': int(x), 'y': int(y), 'description': description, 'id': '{t}_{x}_{y}'.format(x=x, y=y, t=elem.attrib['type'].replace(' ', '').replace('-',''))}
+        elif end is not None and not end.has_attr('status'):
+            x = 1
+            y = end.attrib['position']
+            return {'x': int(x), 'y': int(y), 'description': description, 'id': '{t}_{x}_{y}'.format(x=x, y=y, t=elem.attrib['type'].replace(' ', '').replace('-',''))}
+        elif elem.has_attr('type', 'chain'):
+            return None #pointless chain.
         else:
-            print('Unexpected location entry')
-            print(elem.attrib, position, start, end)
+            ##print('Unexpected location entry') TODO fix this!
+            ##print(elem.attrib, position, start, end)
             return None
 
     def _parse_uniprot_xml(self, entry):
@@ -178,9 +202,12 @@ class _UniprotMixin:
         :param entry: the entry element of the XML parsed by Element Tree.
         :return:
         """
+        self.uniprot_dataset = entry.get_attr('dataset')
         for elem in entry:
             if elem.is_tag('accession'):
                 self.accession_list.append(elem.text.rstrip())
+            elif elem.is_tag('organism'):
+                self._parse_organism(elem)
             elif elem.is_tag('name'):
                 self.uniprot_name = elem.text.rstrip()
             elif elem.is_tag('sequence'):
@@ -203,4 +230,9 @@ class _UniprotMixin:
                 self.features[group][i]['type'] = group  ## in case of flattening.
                 if self.features[group][i]['description'] == '-':
                     self.features[group][i]['description'] = group
+        if self.uniprot == '':
+            if len(self.accession_list):
+                self.uniprot = self.accession_list[0]
+            else:
+                self.uniprot = self.uniprot_name
         return self

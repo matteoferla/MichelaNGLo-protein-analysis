@@ -30,6 +30,20 @@ class UniprotReader:
                         yield elem
                     elem.clear()
 
+    def iter_all(self, dataset=None):
+        """
+        dataset = Swiss-Prot is better than TrEMBL
+        Interates across a LARGE Uniprot XML file and returns entries regardless of humanity.
+        :return: ET.Element()
+        """
+        for event, elem in ET.iterparse(self.file, events=('end',)):
+            if elem is not None and isinstance(elem, ET.Element):
+                if elem.ns_strip() == 'entry':
+                    if dataset and dataset != elem.get_attr('dataset'):
+                        continue
+                    yield elem
+                    elem.clear()
+
     def shrink(self, outfile='human_proteome.xml'):
         """
         Make a smaller XML file, but with only the human proteome.
@@ -93,3 +107,78 @@ class UniprotReader:
         #json.dump(genedex, open(os.path.join(Protein.settings.temp_folder, 'human_prot_genedex.json'), 'w'))  ## uniprot to name. not needed.
         #json.dump(seqdex, open(os.path.join(Protein.settings.temp_folder, 'human_prot_seqdex.json'), 'w'))    ## not needed.
         open(os.path.join(Protein.settings.temp_folder, 'human.fa'), 'w').writelines(['>{i}\n{s}\n\n'.format(s=seqdex[k], i=k) for k in seqdex])
+
+
+    @classmethod
+    def make_dictionary(cls, uniprot_master_file, first_n_protein=0, chosen_attribute='uniprot'):
+        """
+        THIS IS FOR MICHELANGLO
+        :param uniprot_master_file:
+        :param first_n_protein: set to zero for all, to interger to get the first n.
+        :return:
+        """
+        if not os.path.isfile(uniprot_master_file):
+            print('ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz')
+            Protein.settings.retrieve_references(ask = True)
+        count=0
+        from collections import defaultdict
+        uniprot_pdbdex = defaultdict(list)
+        uniprot_datasetdex = defaultdict(dict)
+        organism_greater_namedex = defaultdict(dict)
+        organism_lesser_namedex = defaultdict(dict)
+        organismdex = {}
+        seqdex = {}
+        genedex = {}
+        for entry in cls(uniprot_master_file).iter_all():
+            count+=1
+            if count == first_n_protein:
+                break
+            prot = Protein.from_uniprot(entry)
+            chosen_name = getattr(prot, chosen_attribute)
+            # update the organism dex
+            org = prot.organism['NCBI Taxonomy']
+            if not org in organismdex:
+                for k in prot.organism:
+                    organismdex[prot.organism[k]] = org
+            ## fill namedex
+            if prot.uniprot in uniprot_datasetdex:
+                print('Repeated uniprot!', prot.uniprot)
+                continue
+            uniprot_datasetdex[prot.uniprot] = prot.uniprot_dataset
+            uniprot_pdbdex[prot.uniprot].extend([p.id for p in prot.pdbs])
+            if prot.gene_name and prot.gene_name in organism_greater_namedex[org]:
+                if prot.organism['scientific'] == 'Homo sapiens':
+                    print('#'*20)
+                    print('CLASH!!!!!', prot.gene_name, prot.uniprot, prot.organism['scientific'], prot.recommended_name, uniprot_datasetdex[prot.uniprot], uniprot_datasetdex[organism_greater_namedex[org][prot.gene_name]])
+                if prot.uniprot_dataset == 'TrEMBL' and uniprot_datasetdex[organism_greater_namedex[org][prot.gene_name]] == 'Swiss-Prot':
+                    continue
+            if prot.recommended_name and prot.recommended_name in organism_greater_namedex[org]:
+                if prot.organism['scientific'] == 'Homo sapiens':
+                    print('#' * 20)
+                    print('CLASH!!!!!', prot.gene_name, prot.uniprot, prot.recommended_name,
+                      uniprot_datasetdex[prot.uniprot],
+                      uniprot_datasetdex[organism_greater_namedex[org][prot.recommended_name]])
+                if prot.uniprot_dataset == 'TrEMBL' and uniprot_datasetdex[organism_greater_namedex[org][prot.recommended_name]] == 'Swiss-Prot':
+                    continue
+            organism_greater_namedex[org][prot.uniprot_name] = chosen_name
+            organism_greater_namedex[org][prot.recommended_name] = chosen_name
+            organism_greater_namedex[org][prot.gene_name] = chosen_name
+            for group in [prot.alt_gene_name_list, prot.alternative_fullname_list, prot.alternative_shortname_list]:
+                for name in group:
+                    if re.match('[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+',name):
+                        continue # no EC numbers!
+                    organism_lesser_namedex[org][name] = chosen_name
+        for org in organism_greater_namedex:
+            namedex = {**organism_lesser_namedex[org], **organism_greater_namedex[org]}
+            ## cleanup
+            for k in ('\n      ', '\n     ', '\n    ', '\n   ', '', '\n', ' '):
+                if k in namedex:
+                    del namedex[k]
+            #namedex = {k.lower(): namedex[k] for k in namedex}
+            fn = os.path.join(Protein.settings.data_folder, f'taxid{org}-names2{chosen_attribute}.json')
+            json.dump(namedex, open(fn, 'w'))  ## name to pdbs
+        fn = os.path.join(Protein.settings.data_folder, f'organism.json')
+        json.dump(organismdex, open(fn, 'w'))  ## organism to taxid
+        ## lighten
+        fn = os.path.join(Protein.settings.data_folder, 'uniprot2pdb.json')
+        json.dump({k: uniprot_pdbdex[k] for k in uniprot_pdbdex if uniprot_pdbdex[k]}, open(fn, 'w'))

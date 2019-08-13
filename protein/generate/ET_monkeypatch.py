@@ -63,7 +63,15 @@ class NewElement(ET.Element):
                 return True
             elif self.attrib[key] == value:
                 return True
+            elif isinstance(self.attrib[key], list) and value in self.attrib[key]:
+                return True
         return False
+
+    def get_attr(self, key):
+        if key in self.attrib:
+                return self.attrib[key]
+        else:
+            return ''
 
     def has_text(self):
         if not self.text:
