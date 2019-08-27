@@ -14,15 +14,15 @@ class _UniprotMixin:
                 self.recommended_name = name_el.text.rstrip()
             elif name_el.is_tag('recommendedName'):
                 for subname_el in name_el:
-                    if subname_el.is_tag('fullName'):
+                    if subname_el.is_tag('fullName') and subname_el.text:
                         self.recommended_name = subname_el.text.rstrip()
-                    else:
+                    elif subname_el.text:
                         self.alternative_shortname_list.append(subname_el.text.rstrip())
             else:
                 for subname_el in name_el:
-                    if subname_el.is_tag('fullName'):
+                    if subname_el.is_tag('fullName') and subname_el.text:
                         self.alternative_fullname_list.append(subname_el.text.rstrip())
-                    else:
+                    elif subname_el.text:
                         self.alternative_shortname_list.append(subname_el.text.rstrip())
 
     @_failsafe
@@ -152,7 +152,7 @@ class _UniprotMixin:
     def _parse_organism(self, elem):
         for organism_el in list(elem):
             for mode in ("scientific", "common"):
-                if 'type' in organism_el.attrib and organism_el.attrib['type'] == mode:
+                if 'type' in organism_el.attrib and organism_el.attrib['type'] == mode and organism_el.text:
                     self.organism[mode] = organism_el.text.rstrip().lstrip()
                     break
             else:
@@ -204,13 +204,13 @@ class _UniprotMixin:
         """
         self.uniprot_dataset = entry.get_attr('dataset')
         for elem in entry:
-            if elem.is_tag('accession'):
+            if elem.is_tag('accession') and elem.text:
                 self.accession_list.append(elem.text.rstrip())
             elif elem.is_tag('organism'):
                 self._parse_organism(elem)
-            elif elem.is_tag('name'):
+            elif elem.is_tag('name') and elem.text:
                 self.uniprot_name = elem.text.rstrip()
-            elif elem.is_tag('sequence'):
+            elif elem.is_tag('sequence') and elem.text:
                 self.sequence = elem.text.rstrip()
             elif elem.is_tag('protein'):
                 self._parse_protein_element(elem)

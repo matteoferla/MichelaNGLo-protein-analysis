@@ -31,7 +31,7 @@ class ProteomeGatherer:
         :param skip: boolean, if true it runs parse_proteome
         """
         ################ FETCH ALL RAW FILES #################################################
-        ProteinGatherer.settings.verbose = True
+        ProteinGatherer.prosettings.verbose = True
         announce('Retrieving references')
         if not skip:
             ProteinGatherer.settings.retrieve_references(ask=False)
