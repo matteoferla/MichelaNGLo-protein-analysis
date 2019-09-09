@@ -162,9 +162,14 @@ class ProteinCore:
             self.__class__._elmdata = self._elmdata ## change the class attribute too!
             return self._elmdata
 
-    def __init__(self, gene_name='', uniprot = '', uniprot_name = '', sequence='', **other):
+    def __init__(self, gene_name='', uniprot = '', uniprot_name = '', sequence='', organism = None, taxid=None, **other):
         ### predeclaration (and cheatsheet)
-        self.organism = {'common': 'NA', 'scientific': 'NA', 'NCBI Taxonomy': 'NA', 'other': 'NA'} ##obs? ignore for human purposes.
+        if organism: # dictionary with keys common scientific and NCBI Taxonomy
+            self.organism = organism
+        else:
+            self.organism = {'common': 'NA', 'scientific': 'NA', 'NCBI Taxonomy': 'NA', 'other': 'NA'} ##obs? ignore for human purposes.
+        if taxid:
+            self.organism['NCBI Taxonomy'] = taxid
         self.gene_name = gene_name
         self.uniprot_name = uniprot_name ## S39AD_HUMAN
         #### uniprot derivved
