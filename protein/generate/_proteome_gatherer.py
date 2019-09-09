@@ -1,5 +1,7 @@
 __doc__ = """
 Generates the data to be used.
+
+However, it repeats itself. The messier uniprot_to_json is basically its successor...
 """
 
 from pprint import PrettyPrinter
@@ -8,7 +10,7 @@ pprint = PrettyPrinter().pprint
 import os, json
 from warnings import warn
 from ._protein_gatherer import ProteinGatherer
-from .uniprot_to_jsons import UniprotReader
+from ._proteome_gatherer2 import UniprotReader
 from .PDB_blast import Blaster
 import random
 
@@ -65,7 +67,7 @@ class ProteomeGatherer:
         ProteinGatherer.settings.missing_attribute_tolerant = False
         ProteinGatherer.settings.verbose = True
         uniprot_ids = list(set(json.load(open(os.path.join(ProteinGatherer.settings.data_folder,'human_prot_namedex.json'))).values()))
-        random.shuffle(uniprot_ids)
+        random.shuffle(uniprot_ids)   ## debug...
         for acc in uniprot_ids:
             prot = ProteinGatherer(uniprot=acc)
             if not remake_pickles:

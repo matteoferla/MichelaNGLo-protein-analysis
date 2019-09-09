@@ -42,7 +42,7 @@ class _UniprotMixin:
                     model = Structure(description=elem.attrib['id'],
                                        id=elem.attrib['id']+'_'+chainid,
                                        chain=chainid,
-                                       url=elem.attrib['id'],
+                                       code=elem.attrib['id'],
                                        x=int(loca[0].split(',')[0]),
                                        y=int(loca[1].split(',')[0]),
                                        type='rcsb')

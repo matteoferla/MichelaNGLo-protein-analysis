@@ -539,19 +539,20 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         models=json.load(self.settings.open('swissmodel'))['index']
         for model in models:
             if self.uniprot == model['uniprot_ac']:
-                r = requests.get(model['url'])
-                if r.status_code == 200:
-                    coordinates = r.content
-                else:
-                    coordinates = None
+                if model['provider'] == 'PDB':
+                    continue
+                if not model['seqid']:
+                    warn('Odd entry')
+                    print(model)
+                    model['seqid'] = 0
                 self.swissmodel.append(
-                                        Structure(description='{template} (id:{seqid:.0}%)'.format(**model),
+                                        Structure(description='{template} (identity:{seqid:.0f}%)'.format(**model),
                                                    id=model['coordinate_id'],
                                                    chain='A',
-                                                   url=model['url'],
+                                                   code=model['coordinate_id'],
+                                                   url=model['url'], ##is this wise? this url is junk
                                                    x=int(model['from']),
                                                    y=int(model['to']),
-                                                   coordinates=coordinates,
                                                    type='swissmodel'
                                                  )
                                        )
@@ -592,11 +593,30 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         return self
 
     ####################### model checks.
+    def get_offsets(self):
+        for m in self.pdbs:
+            m.sifts()
+        return self
+
+    def get_resolutions(self):
+        for m in self.pdbs:
+            m.lookup_resolution()
+        return self
+
+
     def augment_pdb_w_offset(self):
+        """
+        SIFTS data. for PDBe query see elsewhere.
+        There are four start/stop pairs that need to be compared to get a good idea of a protein.
+        For a lengthy discussion see https://blog.matteoferla.com/2019/09/pdb-numbering-rollercoaster.html
+
+        :return:
+        """
+        warn('THIS METHOD IS DEPRACTED USE THE METHOD OF STRUCTURE> get_offsets')
         # namedtuple('Structure', ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'extra'])
         for i in range(len(self.pdbs)):
             model = self.pdbs[i]
-            details = self.lookup_pdb_chain_uniprot(model.url,model.chain)
+            details = self.lookup_pdb_chain_uniprot(model.url, model.chain)
             detail = details[0] #offset should be the same for all.. check_discrepancy_in_pdb_chain_uniprot() not needed
             if detail['PDB_BEG'] != detail['SP_BEG'] or detail['PDB_END'] != detail['SP_END']:
                 model.offset = int(detail['PDB_BEG']) - int(detail['SP_BEG'])
@@ -605,6 +625,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
 
     # pdb_chain_uniprot.tsv
     def lookup_pdb_chain_uniprot(self, pdb, chain):
+        warn('THIS METHOD IS DEPRACTED USE THE METHOD OF STRUCTURE>')
         details = []
         headers = 'PDB     CHAIN   SP_PRIMARY      RES_BEG RES_END PDB_BEG PDB_END SP_BEG  SP_END'.split('\t')
         with self.settings.open('pdb_chain_uniprot') as fh:
@@ -614,6 +635,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         return details
 
     def check_discrepancy_in_pdb_chain_uniprot(self, details):
+        warn('THIS METHOD IS DEPRACTED USE THE METHOD OF STRUCTURE>')
         for detail in details:
             if detail['PDB_BEG'] != detail['SP_BEG'] or detail['PDB_END'] != detail['SP_END']:
                 print('Sequence discrepancy.')
@@ -622,11 +644,8 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
 
     def get_structures(self):
         for model in self.pdbs:
-            r = requests.get(f'https://files.rcsb.org/download/{model.url}.pdb')
-            if r.status_code == 200:
-                model.coordinates = r.content
-            else:
-                warn(f'Model {model.url} of {self.gene_name} failed.')
+            model.get_coordinates()
+        return self
 
     # figure out which is best model
     def get_best_model(self):

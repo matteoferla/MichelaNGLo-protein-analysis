@@ -8,15 +8,14 @@ import os, json, re
 from .ET_monkeypatch import ET
 from ._protein_gatherer import ProteinGatherer as Protein
 
+from collections import defaultdict
+
 ##### Uniprot reader
 class UniprotReader:
     """
     see generator iter_human
     NB. The ET.Element has been expanded. See `help(ElementalExpansion)`
     """
-
-    def __init__(self, file):
-        self.file = file
 
     def iter_human(self):
         """
@@ -62,15 +61,16 @@ class UniprotReader:
         return [Protein(entry) for entry in self.iter_human()]
 
     @classmethod
-    def convert(cls, uniprot_master_file, first_n_protein=0):
+    def convert(cls, uniprot_master_file=None, first_n_protein=0):
         """
-
+        DO NOT USE!!!
         :param uniprot_master_file:
         :param first_n_protein: set to zero for all, to interger to get the first n.
         :return:
         """
-        if not os.path.isfile(uniprot_master_file):
-            print('ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz')
+        raise DeprecationWarning('DO NOT USE!')
+        if uniprot_master_file is None:
+            uniprot_master_file = os.path.join(Protein.settings.reference_folder, 'uniprot_sprot.xml')
             Protein.settings.retrieve_references(ask = True)
         count=0
         greater_namedex = {}
@@ -108,32 +108,38 @@ class UniprotReader:
         #json.dump(seqdex, open(os.path.join(Protein.settings.temp_folder, 'human_prot_seqdex.json'), 'w'))    ## not needed.
         open(os.path.join(Protein.settings.temp_folder, 'human.fa'), 'w').writelines(['>{i}\n{s}\n\n'.format(s=seqdex[k], i=k) for k in seqdex])
 
-
-    @classmethod
-    def make_dictionary(cls, uniprot_master_file, first_n_protein=0, chosen_attribute='uniprot'):
+    def __init__(self, uniprot_master_file=None, first_n_protein=0, chosen_attribute='uniprot'):
         """
         THIS IS FOR MICHELANGLO
         :param uniprot_master_file:
         :param first_n_protein: set to zero for all, to interger to get the first n.
         :return:
         """
-        if not os.path.isfile(uniprot_master_file):
-            print('ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz')
-            Protein.settings.retrieve_references(ask = True)
+        if uniprot_master_file is None:
+            uniprot_master_file = os.path.join(Protein.settings.reference_folder, 'uniprot_sprot.xml')
+            Protein.settings.retrieve_references(ask=False)
+        self.file = uniprot_master_file
         count=0
-        from collections import defaultdict
         uniprot_pdbdex = defaultdict(list)
         uniprot_datasetdex = defaultdict(dict)
         organism_greater_namedex = defaultdict(dict)
         organism_lesser_namedex = defaultdict(dict)
+        uniprot_namedex = {}
+        uniprot_speciesdex = {}
         organismdex = {}
         seqdex = {}
         genedex = {}
-        for entry in cls(uniprot_master_file).iter_all():
+        for entry in self.iter_all():
+            # debugging overrider....
             count+=1
             if count == first_n_protein:
                 break
+            ### parser...
             prot = Protein.from_uniprot(entry)
+            if prot.organism['common'] == 'Human':
+                prot.parse_swissmodel().get_offsets().get_resolutions().parse_gNOMAD()
+            prot.dump()  # gdump??
+            ### dict
             chosen_name = getattr(prot, chosen_attribute)
             # update the organism dex
             org = prot.organism['NCBI Taxonomy']
@@ -144,6 +150,7 @@ class UniprotReader:
             if prot.uniprot in uniprot_datasetdex:
                 print('Repeated uniprot!', prot.uniprot)
                 continue
+            ## make dictionaries...
             uniprot_datasetdex[prot.uniprot] = prot.uniprot_dataset
             uniprot_pdbdex[prot.uniprot].extend([p.id for p in prot.pdbs])
             if prot.gene_name and prot.gene_name in organism_greater_namedex[org]:
@@ -163,11 +170,14 @@ class UniprotReader:
             organism_greater_namedex[org][prot.uniprot_name] = chosen_name
             organism_greater_namedex[org][prot.recommended_name] = chosen_name
             organism_greater_namedex[org][prot.gene_name] = chosen_name
+            uniprot_namedex[prot.uniprot] = prot.recommended_name
+            uniprot_speciesdex[prot.uniprot] = org
             for group in [prot.alt_gene_name_list, prot.alternative_fullname_list, prot.alternative_shortname_list]:
                 for name in group:
                     if re.match('[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+',name):
                         continue # no EC numbers!
                     organism_lesser_namedex[org][name] = chosen_name
+        ## final touches to the whole sets...
         for org in organism_greater_namedex:
             namedex = {**organism_lesser_namedex[org], **organism_greater_namedex[org]}
             ## cleanup
@@ -175,10 +185,13 @@ class UniprotReader:
                 if k in namedex:
                     del namedex[k]
             #namedex = {k.lower(): namedex[k] for k in namedex}
-            fn = os.path.join(Protein.settings.data_folder, f'taxid{org}-names2{chosen_attribute}.json')
+            fn = os.path.join(Protein.settings.dictionary_folder, f'taxid{org}-names2{chosen_attribute}.json')
             json.dump(namedex, open(fn, 'w'))  ## name to pdbs
-        fn = os.path.join(Protein.settings.data_folder, f'organism.json')
+        fn = os.path.join(Protein.settings.dictionary_folder, f'organism.json')
         json.dump(organismdex, open(fn, 'w'))  ## organism to taxid
         ## lighten
-        fn = os.path.join(Protein.settings.data_folder, 'uniprot2pdb.json')
-        json.dump({k: uniprot_pdbdex[k] for k in uniprot_pdbdex if uniprot_pdbdex[k]}, open(fn, 'w'))
+        for dex, fn in ((uniprot_pdbdex, 'uniprot2pdb.json'),
+                        (uniprot_namedex, 'uniprot2name.json'),
+                        (uniprot_speciesdex, 'uniprot2species.json')):
+            fp = os.path.join(Protein.settings.dictionary_folder, fn)
+            json.dump({k: dex[k] for k in dex if dex[k]}, open(fp, 'w'))

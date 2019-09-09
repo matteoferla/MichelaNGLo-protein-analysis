@@ -16,6 +16,7 @@ The `_UniprotMixin` requires Element-tree to be monkeypatched, which is done in 
 The where-is-what logistics and other settings is stored in `Protein.settings`, which is an instance of `protein.settings_handler.GlobalSettings()`.
 
     >>> from protein import Protein
+    >>> Protein.settings.init('temp_just_for_today')  # create the folders.
     >>> Protein.settings.verbose = True
     >>> Protein.settings.missing_attribute_tolerant = True
     >>> Protein(uniprot = 'Q9NWZ3').foo
@@ -26,6 +27,9 @@ The where-is-what logistics and other settings is stored in `Protein.settings`, 
     >>> Protein.settings.data_folder = 'new_location' ## all subfolders will be created too.
 
 For where the error tolerance gets applied see the mixin `protein._protein_base_mixin._BaseMixin`
+
+The settings does not create on import the folders, but when the `.init(data_folder='data')` method is called or any operations are performed.
+To change the folder of `data` midway use `.data_folder = xxx`, don't reinitialise.
 
 This script used to be called `Variant` and generated static html pages (_cf._ HIFC2-Tracker_variant_classifier repo). It still can (maybe).
 The pages folder is `.page_folder` and `.wipe_html()` clears them.
@@ -42,6 +46,7 @@ At some point I started writing `settings.retrieve_references()` but stopped as 
 
 
 NB. The script without the data will fetch off the web the Uniprot (only `.parse_uniprot()` will work without screaming).
+
 
 #### Current requirements that are implemented
 

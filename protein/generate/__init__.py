@@ -2,6 +2,7 @@ from ._protein_gatherer import ProteinGatherer
 from ._proteome_gatherer import ProteomeGatherer
 
 ### Some reference files have to be fetched manually...
+### this is for humans.
 refs = (
     'ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/ExAC.r1.sites.vep.vcf.gz',
     'http://geneontology.org/gene-associations/goa_human.gaf.gz',

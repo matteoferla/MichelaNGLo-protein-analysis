@@ -4,6 +4,8 @@ from protein.generate import ProteinGatherer, ProteomeGatherer
 from protein.protein_analysis import StructureAnalyser
 
 
+
+
 def test_ProteinAnalyser():
     p = ProteinAnalyser(uniprot = 'O75015').gload()
     print(p)
@@ -1828,7 +1830,7 @@ def main():
 
     ProteomeGatherer(skip=True, remake_pickles=True)
 
-from protein.generate.uniprot_to_jsons import UniprotReader
+from protein.generate._proteome_gatherer2 import UniprotReader
 import os, json
 def mini_gene_data():
     genes = '''DOCK180
@@ -1857,12 +1859,25 @@ def mini_gene_data():
 
 def make_pdb_dex():
     #I need to make a uniprot to pdb dex.
-    from protein.generate.uniprot_to_jsons import UniprotReader
+    from protein.generate._proteome_gatherer2 import UniprotReader
     master_file = os.path.join(ProteinGatherer.settings.temp_folder, 'uniprot_sprot.xml')
     UniprotReader.make_dictionary(uniprot_master_file=master_file, first_n_protein=0, chosen_attribute='uniprot')
 
 if __name__ == '__main__':
+    global_settings.verbose = True
+    global_settings.init(data_folder='../test')\
+    #.retrieve_references(ask=False, refresh=False)
+    UniprotReader()
+
+    #global_settings.init()
+
     #make_pdb_dex()
 
-    uniprot = 'O33838'
-    print(ProteinGatherer(uniprot=uniprot).parse_uniprot().features)
+    uniprot = 'Q00341'
+    p = ProteinGatherer(uniprot=uniprot).parse_uniprot()
+    print(*p.pdbs)
+    print(*p.swissmodel)
+    print(p.features)
+
+
+    # fetch_binders is too slow. Pre-split the data.
