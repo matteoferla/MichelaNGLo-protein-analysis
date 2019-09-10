@@ -8,6 +8,8 @@ pprint = PrettyPrinter().pprint
 
 from collections import defaultdict
 
+from warnings import warn
+
 
 class gNomadVariant:
     def __init__(self, symbol, identifier, from_residue, residue_index, to_residue, impact):
@@ -58,7 +60,7 @@ class gNomadVariant:
 
 class gNOMAD:
     def __init__(self):
-        self.namedex = json.load(open(os.path.join(global_settings.data_folder,'human_prot_namedex.json')))
+        self.namedex = json.load(open(os.path.join(global_settings.dictionary_folder,'taxid9606-names2uniprot.json')))
         self.data = defaultdict(list)
         self.masterfile = os.path.join(global_settings.reference_folder,'gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz')
         with gzip.open(self.masterfile, 'rt') as f:
@@ -68,6 +70,9 @@ class gNOMAD:
                     if variant and variant.symbol in self.namedex:
                         uniprot = self.namedex[variant.symbol]
                         self.data[uniprot].append(variant)
+                    else:
+                        if variant:
+                            warn(f'This line has a mystery gene {variant.symbol}!')
 
 
     def write(self,folder):

@@ -211,7 +211,7 @@ class _UniprotMixin:
             elif elem.is_tag('name') and elem.text:
                 self.uniprot_name = elem.text.rstrip()
             elif elem.is_tag('sequence') and elem.text:
-                self.sequence = elem.text.rstrip()
+                self.sequence = elem.text.rstrip().replace(' ','')
             elif elem.is_tag('protein'):
                 self._parse_protein_element(elem)
             elif elem.is_tag('dbReference'):

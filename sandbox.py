@@ -3,7 +3,7 @@ from protein.settings_handler import global_settings
 from protein.generate import ProteinGatherer, ProteomeGatherer
 from protein.protein_analysis import StructureAnalyser
 
-
+import pickle
 
 
 def test_ProteinAnalyser():
@@ -1863,21 +1863,26 @@ def make_pdb_dex():
     master_file = os.path.join(ProteinGatherer.settings.temp_folder, 'uniprot_sprot.xml')
     UniprotReader.make_dictionary(uniprot_master_file=master_file, first_n_protein=0, chosen_attribute='uniprot')
 
+def iterate_taxon(taxid):
+    path = os.path.join(global_settings.pickle_folder,f'taxid{taxid}')
+    for pf in os.listdir(path):
+        protein = ProteinGatherer().load(file=os.path.join(path, pf))
+        protein.get_offsets().parse_gNOMAD().compute_params()
+        protein.dump()
+
+
+
 if __name__ == '__main__':
     global_settings.verbose = True
-    global_settings.init(data_folder='../test')\
-    #.retrieve_references(ask=False, refresh=False)
-    UniprotReader()
+    global_settings.init(data_folder='../test').retrieve_references(ask=False, refresh=False)
+    #UniprotReader()
 
     #global_settings.init()
 
     #make_pdb_dex()
+    iterate_taxon('9606')
 
-    uniprot = 'Q00341'
-    p = ProteinGatherer(uniprot=uniprot).parse_uniprot()
-    print(*p.pdbs)
-    print(*p.swissmodel)
-    print(p.features)
+    #p = ProteinGatherer(taxid='9606', uniprot='Q9BZ29').load().get_offsets()
 
 
-    # fetch_binders is too slow. Pre-split the data.
+    # fetch_binders is too slow. Pre-split the data like for gnomad.

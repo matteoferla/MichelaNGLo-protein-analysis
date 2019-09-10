@@ -8,6 +8,8 @@ import os, json, re
 from .ET_monkeypatch import ET
 from ._protein_gatherer import ProteinGatherer as Protein
 
+from protein.generate.split_gNOMAD import gNOMAD
+
 from collections import defaultdict
 
 ##### Uniprot reader
@@ -118,6 +120,8 @@ class UniprotReader:
         if uniprot_master_file is None:
             uniprot_master_file = os.path.join(Protein.settings.reference_folder, 'uniprot_sprot.xml')
             Protein.settings.retrieve_references(ask=False)
+            if not os.path.exists(os.path.join(Protein.settings.data_folder, 'gNOMAD')):
+                gNOMAD().write('gNOMAD')
         self.file = uniprot_master_file
         count=0
         uniprot_pdbdex = defaultdict(list)

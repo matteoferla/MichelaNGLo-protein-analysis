@@ -46,7 +46,8 @@ class GlobalSettings(metaclass=Singleton):
                  'ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/functional_gene_constraint/fordist_cleaned_exac_r03_march16_z_pli_rec_null_data.txt',
                  'ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/flatfiles/tsv/pdb_chain_uniprot.tsv.gz',
                  'ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/resolu.idx',
-                 'https://swissmodel.expasy.org/repository/download/core_species/9606_meta.tar.gz')
+                 'https://swissmodel.expasy.org/repository/download/core_species/9606_meta.tar.gz',
+                 'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/genomes/gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz')
 
     # getter of data_folder
     def _get_datafolder(self):
@@ -158,7 +159,7 @@ class GlobalSettings(metaclass=Singleton):
                 tar.extractall(path=unfile)
                 tar.close()
             elif self.verbose: print('{0} file is already decompressed'.format(file))
-        elif '.gz' in file:
+        elif '.gz' in file:  #ignore the .bgz of gnomad. it is too big.
             if not os.path.isfile(unfile):
                 if self.verbose:
                     print('{0} file is being extracted to {1}'.format(file, unfile))

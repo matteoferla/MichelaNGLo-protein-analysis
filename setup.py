@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="protein",
-    version="0.0.2",
+    version="0.3.0",
     author="Matteo Ferla",
     author_email="matteo@well.ox.ac.uk",
     description="protein module for VENUS",

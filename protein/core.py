@@ -33,8 +33,8 @@ class Structure:
         self.x = int(x)  # resi in the whole uniprot protein
         self.y = int(y)  # end resi in the whole uniprot protein
         self.offset = int(offset) # offset is the number *subtracted* from the PDB index to make it match the position in Uniprot.
-        self.pdb_start = None
-        self.pdb_end = None
+        self.pdb_start = None  # no longer used. TO be deleted.
+        self.pdb_end = None   # ditto.
         self.resolution = 0
         self.code = code
         self.chain_definitions = None #filled by SIFTS
@@ -90,7 +90,7 @@ class Structure:
             return self
         if detail['PDB_BEG'] == 'None':
             # assuming 1 is the start, which is pretty likely.
-            b = int(detail['SP_BEG'])
+            b = int(detail['RES_BEG'])
             if b != 1:
                 warn('SP_BEG is not 1, yet PDB_BEG is without a crystallised start')
         else:
@@ -98,7 +98,7 @@ class Structure:
             if r is None:
                 return self
             b = int(r.group(1))
-        self.offset = b - int(detail['SP_BEG'])
+        self.offset = int(detail['SP_BEG']) - b
         self.chain_definitions = [{'chain': d['CHAIN'],
                                    'uniprot': d['SP_PRIMARY'],
                                    'range': f'{d["SP_BEG"]}-{d["SP_END"]}',
@@ -181,6 +181,7 @@ class ProteinCore:
         self.recommended_name = '' #Zinc transporter ZIP13
         self.alternative_fullname_list = []
         self.alternative_shortname_list = []
+        self.properties={}
         self.features={}  #see _parse_protein_feature. Dictionary of key: type of feature, value = list of dict with the FeatureViewer format (x,y, id, description)
         self.partners ={'interactant': [],  #from uniprot
                         'BioGRID': [],  #from biogrid downlaoad
@@ -290,22 +291,18 @@ class ProteinCore:
     #decorator /fake @classmethod
     def _ready_load(fun):
         """
-        Prepare loading for both load and gload. Deals with the fact that load can be used as a class method or a bound method.
+        Prepare loading for both load and gload.
+        Formerly allowed it to run as a class method, code not fixed.
         :return:
         """
-        def loader(clelf,file=None): # clelf made-up portmanteau of cls and self, non PEP
-            if isinstance(clelf, type):  # clelf is a class
-                self = clelf.__new__(clelf)
-                assert file, 'file is mandatory for `Protein.load()` as a class method. optional as bound method.'
-            else:
-                self = clelf
-                if not file:
-                    path = self._get_species_folder()
-                    if fun.__name__ == 'load':
-                        extension = '.p'
-                    else:
-                        extension = '.pgz'
-                    file = os.path.join(path, self.uniprot+extension)
+        def loader(self, file=None):
+            if not file:
+                path = self._get_species_folder()
+                if fun.__name__ == 'load':
+                    extension = '.p'
+                else:
+                    extension = '.pgz'
+                file = os.path.join(path, self.uniprot+extension)
             fun(self, file)
             return self
         return loader

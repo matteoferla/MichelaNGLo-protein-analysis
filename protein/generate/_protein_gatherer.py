@@ -24,6 +24,7 @@ from ._protein_uniprot_mixin import _UniprotMixin
 from ._protein_base_mixin import _BaseMixin
 from ._protein_disused_mixin import _DisusedMixin
 from ..core import ProteinCore, Variant, Structure
+from Bio.SeqUtils import ProtParam, ProtParamData
 
 class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     """
@@ -434,7 +435,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                 self.gNOMAD.append(variant)
         else:
             self.gNOMAD = []
-            warn('No gNOMAD data from {0} {1}?'.format(self.gene_name, self.uniprot))
+            warn('No gNOMAD data from {0} {1}? Have your run protein.generate.split_gNOMAD?'.format(self.gene_name, self.uniprot))
         self.log('gNOMAD mutations: {0}'.format(len(self.gNOMAD)))
         return self
 
@@ -681,3 +682,16 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     @_failsafe
     def _test_failsafe(self):
         raise ValueError('Will failsafe catch it? ({})'.format(self.settings.error_tollerant))
+
+    def compute_params(self):
+        self.sequence = self.sequence.replace(' ', '').replace('X', '')
+        p = ProtParam.ProteinAnalysis(self.sequence)
+        self.properties = {}
+        self.properties['kd'] = p.protein_scale(ProtParamData.kd, window=9, edge=.4) # Kyte & Doolittle index of hydrophobicity J. Mol. Biol. 157:105-132(1982).
+        self.properties['Flex'] = p.protein_scale(ProtParamData.Flex, window=9, edge=.4) # Flexibility Normalized flexibility parameters (B-values), average Vihinen M., Torkkila E., Riikonen P. Proteins. 19(2):141-9(1994).
+        self.properties['hw'] = p.protein_scale(ProtParamData.hw, window=9, edge=.4) # Hydrophilicity Hopp & Wood Proc. Natl. Acad. Sci. U.S.A. 78:3824-3828(1981)
+        self.properties['em'] = p.protein_scale(ProtParamData.em, window=9, edge=.4) # Surface accessibility Vergoten G & Theophanides T, Biomolecular Structure and Dynamics, pg.138 (1997).
+        self.properties['ja'] = p.protein_scale(ProtParamData.ja, window=9, edge=.4) # Janin Interior to surface transfer energy scale
+        #DIWV requires a mod.
+        return self
+
