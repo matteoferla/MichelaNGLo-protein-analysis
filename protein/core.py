@@ -5,6 +5,7 @@ from collections import namedtuple
 import gzip, requests
 
 from warnings import warn
+from .metadata_from_PDBe import PDBMeta
 
 Variant = namedtuple('Variant', ['id', 'x', 'y', 'impact', 'description'])
 Variant.__doc__="""
@@ -72,7 +73,7 @@ class Structure:
             warn(f'Model {self.code} failed.')
         return self.coordinates
 
-    def sifts(self):
+    def lookup_sifts(self):
         """
         SIFTS data. for PDBe query see elsewhere.
         There are four start/stop pairs that need to be compared to get a good idea of a protein.
@@ -81,7 +82,7 @@ class Structure:
         """
         if self.type != 'rcsb':
             return self
-        details = self.lookup_sifts()
+        details = self._get_sifts()
         ## get matching chain.
         try:
             detail = next(filter(lambda x: self.chain == x['CHAIN'], details))
@@ -106,7 +107,7 @@ class Structure:
                                    'description': None} for d in details]
         return self
 
-    def lookup_sifts(self, all_chains=True): #formerly called .lookup_pdb_chain_uniprot
+    def _get_sifts(self, all_chains=True): #formerly called .lookup_pdb_chain_uniprot
         details = []
         headers = 'PDB     CHAIN   SP_PRIMARY      RES_BEG RES_END PDB_BEG PDB_END SP_BEG  SP_END'.split()
         with self.settings.open('pdb_chain_uniprot') as fh:
@@ -130,6 +131,11 @@ class Structure:
             else:
                 warn(f'No resolution info for {self.code}')
         return self
+
+    def lookup_ligand(self):
+        warn('TEMP! Returns the data... not self')
+        return PDBMeta(self.code+'_'+self.chain).data
+
 
 
 

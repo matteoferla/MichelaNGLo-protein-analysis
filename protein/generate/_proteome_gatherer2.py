@@ -142,6 +142,7 @@ class UniprotReader:
             prot = Protein.from_uniprot(entry)
             if prot.organism['common'] == 'Human':
                 prot.parse_swissmodel().get_offsets().get_resolutions().parse_gNOMAD()
+            prot.compute_params()
             prot.dump()  # gdump??
             ### dict
             chosen_name = getattr(prot, chosen_attribute)

@@ -1867,22 +1867,24 @@ def iterate_taxon(taxid):
     path = os.path.join(global_settings.pickle_folder,f'taxid{taxid}')
     for pf in os.listdir(path):
         protein = ProteinGatherer().load(file=os.path.join(path, pf))
-        protein.get_offsets().parse_gNOMAD().compute_params()
-        protein.dump()
+        #protein.get_offsets().parse_gNOMAD().compute_params()
+        #protein.dump()
 
 
 
 if __name__ == '__main__':
     global_settings.verbose = True
-    global_settings.init(data_folder='../test').retrieve_references(ask=False, refresh=False)
+    global_settings.init(data_folder='../protein-data').retrieve_references(ask=False, refresh=False)
     #UniprotReader()
 
     #global_settings.init()
 
     #make_pdb_dex()
-    iterate_taxon('9606')
+    #iterate_taxon('9606')
 
-    #p = ProteinGatherer(taxid='9606', uniprot='Q9BZ29').load().get_offsets()
+    p = ProteinGatherer(taxid='9606', uniprot='Q9BZ29').load()
+    for s in p.pdbs:
+        s.lookup_ligand()
 
 
     # fetch_binders is too slow. Pre-split the data like for gnomad.

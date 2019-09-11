@@ -596,7 +596,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     ####################### model checks.
     def get_offsets(self):
         for m in self.pdbs:
-            m.sifts()
+            m.lookup_sifts()
         return self
 
     def get_resolutions(self):
