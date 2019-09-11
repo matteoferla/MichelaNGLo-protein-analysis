@@ -1874,7 +1874,8 @@ def iterate_taxon(taxid):
 
 if __name__ == '__main__':
     global_settings.verbose = True
-    global_settings.init(data_folder='../protein-data').retrieve_references(ask=False, refresh=False)
+    global_settings.init(data_folder='../protein-data')\
+        #.retrieve_references(ask=False, refresh=False)
     #UniprotReader()
 
     #global_settings.init()
@@ -1882,9 +1883,11 @@ if __name__ == '__main__':
     #make_pdb_dex()
     #iterate_taxon('9606')
 
-    p = ProteinGatherer(taxid='9606', uniprot='Q9BZ29').load()
-    for s in p.pdbs:
-        s.lookup_ligand()
+    p = ProteinAnalyser(taxid='9606', uniprot='Q9BZ29').load()
+    p.mutation = 'P23W'
+    print(p.check_mutation())
+    print(p.mutation_discrepancy())
+    print(p.predict_effect())
 
 
     # fetch_binders is too slow. Pre-split the data like for gnomad.

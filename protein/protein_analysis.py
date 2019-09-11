@@ -45,7 +45,7 @@ class ProteinAnalyser(ProteinCore):
 
     mutation = property(lambda self:  self._mutation, _set_mutation)
 
-    # decorator
+    # decorator no longer used.
     def _sanitise_position(fun):
         """
         Decorator that makes sure that position is a number. It is a bit unnecassary for a one job task...
@@ -147,7 +147,8 @@ class ProteinAnalyser(ProteinCore):
         neighbours = self._neighbours(midresidue=self.sequence[position - 1], position=position, span=10, marker='')
         mut_neighbours = self._neighbours(midresidue=self.mutation.to_residue, position=position, span=10, marker='')
         results = []
-        for r in self.elmdata:
+        elm = self.elmdata
+        for r in elm:
             w = self._rex_elm(neighbours, r['Regex'])
             m = self._rex_elm(mut_neighbours, r['Regex'])
             if w != False or m != False:
@@ -173,36 +174,35 @@ class ProteinAnalyser(ProteinCore):
 
     ##################### Position queries.
 
-    @_sanitise_position
     def get_features_at_position(self, position=None):
         """
         :param position: mutation, str or position
         :return: list of gNOMAD mutations, which are dictionary e.g. {'id': 'gNOMAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
         """
+        position = position if position is not None else self.mutation.residue_index
         return self.get_features_near_position(position, wobble=0)
 
-    @_sanitise_position
     def get_features_near_position(self, position=None, wobble=10):
+        position = position if position is not None else self.mutation.residue_index
         valid = [{**f, 'type': g} for g in self.features for f in self.features[g] if f['x'] - wobble < position < f['y'] + wobble]
         svalid = sorted(valid, key=lambda v: int(v['y']) - int(v['x']))
         return svalid
 
-    @_sanitise_position
     def get_gNOMAD_near_position(self, position=None, wobble=5):
         """
         :param position: mutation, str or position
         :param wobble: int, number of residues before and after.
         :return: list of gNOMAD mutations, which are dictionary e.g. {'id': 'gNOMAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
         """
-
-        valid = [g for g in self.gNOMAD if g['x'] - wobble < position < g['y'] + wobble]
-        svalid = sorted(valid, key=lambda v: int(v['y']) - int(v['x']))
+        position = position if position is not None else self.mutation.residue_index
+        valid = [g for g in self.gNOMAD if g.x - wobble < position < g.y + wobble]
+        svalid = sorted(valid, key=lambda v: v.y - v.x)
         return svalid
 
     #### THE FUTURE
 
-    @_sanitise_position
     def analyse_structure(self, position=None):
+        position = position if position is not None else self.mutation.residue_index
         structures = self._get_structures_with_position(position)
         if not structures:
             return self
