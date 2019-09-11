@@ -150,24 +150,6 @@ class ProteinCore:
     settings = global_settings
     version = 1.0 #this is for pickled file migration/maintenance.
 
-
-    ############## elm
-    _elmdata = []
-
-    @property
-    def elmdata(self):
-        if not len(self._elmdata):
-            with open(os.path.join(self.settings.data_folder, 'elm_classes.tsv')) as fh:
-                header = ("Accession", "ELMIdentifier", "FunctionalSiteName", "Description", "Regex", "Probability", "#Instances", "#Instances_in_PDB")
-                for line in fh:
-                    if line[0] == '#':
-                        continue
-                    if "Accession" in line:
-                        continue
-                    self._elmdata.append(dict(zip(header, line.replace('"','').split('\t'))))
-            self.__class__._elmdata = self._elmdata ## change the class attribute too!
-            return self._elmdata
-
     def __init__(self, gene_name='', uniprot = '', uniprot_name = '', sequence='', organism = None, taxid=None, **other):
         ### predeclaration (and cheatsheet)
         if organism: # dictionary with keys common scientific and NCBI Taxonomy

@@ -3,20 +3,47 @@ The class ProteinAnalyser builds upon the ProteinLite core and expands it with
 """
 
 from .core import ProteinCore
+from .mutation import Mutation
 import re
 from Bio.PDB import PDBParser
 from Bio.PDB.HSExposure import HSExposureCB
-import io
+import io, os
 
 class ProteinAnalyser(ProteinCore):
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
         ### other ###
-        self.user_text = ''
+        self.structure = None
         ### mutation ###
-        self.mutation = None
+        self._mutation = None
         ## structure
         self.model = None #Structural instance
+
+    ############## elm
+    _elmdata = []
+
+    @property
+    def elmdata(self):
+        if not len(self._elmdata):
+            with open(os.path.join(self.settings.reference_folder, 'elm_classes.tsv')) as fh:
+                header = ("Accession", "ELMIdentifier", "FunctionalSiteName", "Description", "Regex", "Probability",
+                          "#Instances", "#Instances_in_PDB")
+                for line in fh:
+                    if line[0] == '#':
+                        continue
+                    if "Accession" in line:
+                        continue
+                    self._elmdata.append(dict(zip(header, line.replace('"', '').split('\t'))))
+            self.__class__._elmdata = self._elmdata  ## change the class attribute too!
+            return self._elmdata
+
+    def _set_mutation(self, mutation):
+        if isinstance(mutation, str):
+            self._mutation = Mutation(mutation)
+        else:
+            self._mutation = mutation
+
+    mutation = property(lambda self:  self._mutation, _set_mutation)
 
     # decorator
     def _sanitise_position(fun):
@@ -70,40 +97,38 @@ class ProteinAnalyser(ProteinCore):
         return neighbours
 
     ################### mutant related
-    def predict_effect(self, mutation=None):
-        if mutation:
-            if self.check_mutation(mutation):
-                self.mutation = mutation
-            else:
-                raise ValueError(self.mutation_discrepancy(mutation))
+    def predict_effect(self):
         assert self.mutation, 'No mutation specified.'
+        if self.mutation:
+            if not self.check_mutation():
+                raise ValueError(self.mutation_discrepancy())
         self.check_elm()
         self.get_features_at_position()
 
-    def check_mutation(self, mutation):
-        if len(self.sequence) > mutation.residue_index and self.sequence[mutation.residue_index - 1] == mutation.from_residue:
+    def check_mutation(self):
+        if len(self.sequence) > self.mutation.residue_index and self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue:
             return True
         else:
             return False  # call mutation_discrepancy to see why.
 
-    def mutation_discrepancy(self, mutation):
+    def mutation_discrepancy(self):
         # returns a string explaining the `check_mutation` discrepancy error
         neighbours = ''
-        if len(self.sequence) < mutation.residue_index:
+        if len(self.sequence) < self.mutation.residue_index:
             return 'Uniprot {g} is {l} amino acids long, while user claimed a mutation at {i}.'.format(
                 g=self.uniprot,
-                i=mutation.residue_index,
+                i=self.mutation.residue_index,
                 l=len(self.sequence)
             )
         else:
-            neighbours = self._neighbours(midresidue=self.sequence[mutation.residue_index - 1],
-                                          position=mutation.residue_index,
+            neighbours = self._neighbours(midresidue=self.sequence[self.mutation.residue_index - 1],
+                                          position=self.mutation.residue_index,
                                           marker='*')
             return 'Residue {i} is {n} in Uniprot {g}, while user claimed it was {f}. (neighbouring residues: {s}'.format(
-                i=mutation.residue_index,
-                n=self.sequence[mutation.residue_index - 1],
+                i=self.mutation.residue_index,
+                n=self.sequence[self.mutation.residue_index - 1],
                 g=self.uniprot,
-                f=mutation.from_residue,
+                f=self.mutation.from_residue,
                 s=neighbours
             )
 
@@ -116,9 +141,7 @@ class ProteinAnalyser(ProteinCore):
         else:
             return False
 
-    def check_elm(self, mutation=None):
-        if mutation:
-            self.mutation = mutation
+    def check_elm(self):
         assert self.sequence, 'No sequence defined.'
         position = self.mutation.residue_index
         neighbours = self._neighbours(midresidue=self.sequence[position - 1], position=position, span=10, marker='')
