@@ -1888,6 +1888,8 @@ if __name__ == '__main__':
     print(p.check_mutation())
     print(p.mutation_discrepancy())
     print(p.predict_effect())
+    print(p.elmdata)
+    print(p._elmdata)
 
 
     # fetch_binders is too slow. Pre-split the data like for gnomad.

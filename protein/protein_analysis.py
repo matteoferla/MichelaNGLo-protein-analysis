@@ -24,6 +24,7 @@ class ProteinAnalyser(ProteinCore):
 
     @property
     def elmdata(self):
+        ### load only when needed basically...
         if not len(self._elmdata):
             with open(os.path.join(self.settings.reference_folder, 'elm_classes.tsv')) as fh:
                 header = ("Accession", "ELMIdentifier", "FunctionalSiteName", "Description", "Regex", "Probability",
@@ -35,7 +36,7 @@ class ProteinAnalyser(ProteinCore):
                         continue
                     self._elmdata.append(dict(zip(header, line.replace('"', '').split('\t'))))
             self.__class__._elmdata = self._elmdata  ## change the class attribute too!
-            return self._elmdata
+        return self._elmdata
 
     def _set_mutation(self, mutation):
         if isinstance(mutation, str):
