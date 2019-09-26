@@ -92,6 +92,14 @@ class _UniprotMixin:
                     if min:
                         disease['MIM'] = mim.attrib['id']
                     self.diseases.append(disease)
+        elif elem.has_attr('type','alternative products'):
+            pass
+            # The XML comment type does not contain the data, feature does kind of.
+            #if 'isoform' not in self.features:
+            #    self.features['isoform'] = []
+            #for subelem in elem:
+            #    if subelem.is_tag('isoform'):
+            #        self.features['isoform'].append(self._get_location(subelem))
 
     @_failsafe
     def _parse_protein_feature(self,elem):

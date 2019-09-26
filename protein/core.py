@@ -78,8 +78,22 @@ class Structure:
         SIFTS data. for PDBe query see elsewhere.
         There are four start/stop pairs that need to be compared to get a good idea of a protein.
         For a lengthy discussion see https://blog.matteoferla.com/2019/09/pdb-numbering-rollercoaster.html
+        Also for a good list of corner case models see https://proteopedia.org/wiki/index.php/Unusual_sequence_numbering
         :return: self
         """
+        def get_offset(detail):
+            if detail['PDB_BEG'] == 'None':
+                # assuming 1 is the start, which is pretty likely.
+                b = int(detail['RES_BEG'])
+                if b != 1:
+                    warn('SP_BEG is not 1, yet PDB_BEG is without a crystallised start')
+            else:
+                r = re.search('(-?\d+)', detail['PDB_BEG'])
+                if r is None:
+                    return self
+                b = int(r.group(1))
+            return int(detail['SP_BEG']) - b
+
         if self.type != 'rcsb':
             return self
         details = self._get_sifts()
@@ -89,19 +103,12 @@ class Structure:
         except StopIteration:
             warn(f'{self.code} {self.chain} not in {details}')
             return self
-        if detail['PDB_BEG'] == 'None':
-            # assuming 1 is the start, which is pretty likely.
-            b = int(detail['RES_BEG'])
-            if b != 1:
-                warn('SP_BEG is not 1, yet PDB_BEG is without a crystallised start')
-        else:
-            r = re.search('(-?\d+)', detail['PDB_BEG'])
-            if r is None:
-                return self
-            b = int(r.group(1))
-        self.offset = int(detail['SP_BEG']) - b
+        self.offset = get_offset(detail)
         self.chain_definitions = [{'chain': d['CHAIN'],
                                    'uniprot': d['SP_PRIMARY'],
+                                   'x': int(d["SP_BEG"]),
+                                   'y': int(d["SP_END"]),
+                                   'offset': get_offset(d),
                                    'range': f'{d["SP_BEG"]}-{d["SP_END"]}',
                                    'name': None,
                                    'description': None} for d in details]

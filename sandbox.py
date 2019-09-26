@@ -1,4 +1,4 @@
-from protein import ProteinAnalyser, ProteinCore, Mutation
+from protein import ProteinAnalyser, ProteinCore, Mutation, Structure
 from protein.settings_handler import global_settings
 from protein.generate import ProteinGatherer, ProteomeGatherer
 from protein.protein_analysis import StructureAnalyser
@@ -1866,15 +1866,18 @@ def make_pdb_dex():
 def iterate_taxon(taxid):
     path = os.path.join(global_settings.pickle_folder,f'taxid{taxid}')
     for pf in os.listdir(path):
-        protein = ProteinGatherer().load(file=os.path.join(path, pf))
+        protein = ProteinCore().load(file=os.path.join(path, pf))
+        for p in protein.pdbs:
+            p.lookup_sifts()
+        protein.dump()
         #protein.get_offsets().parse_gNOMAD().compute_params()
         #protein.dump()
 
 
 
-if __name__ == '__main__':
-    global_settings.verbose = True
-    global_settings.init(data_folder='../protein-data')\
+if __name__ == '__main__' and 1==0:
+    global_settings.verbose = False
+    global_settings.init(data_folder='../protein-data')
         #.retrieve_references(ask=False, refresh=False)
     #UniprotReader()
 
@@ -1891,5 +1894,17 @@ if __name__ == '__main__':
     print(p.elmdata)
     print(p._elmdata)
 
-
     # fetch_binders is too slow. Pre-split the data like for gnomad.
+
+if __name__ == '__main__':
+    global_settings.verbose = False
+    global_settings.init(data_folder='../protein-data')
+
+if 1 == 0:
+    s = Structure(id='2WM9', description='', x=-1, y=-1, code='2WM9').lookup_sifts()
+
+if __name__ == '__main__':
+    #iterate_taxon('9606')
+    p = ProteinAnalyser(taxid='9606', uniprot='Q9BZ29').load()
+    print(p.gene_name)
+    print(p.features['splice variant'])
