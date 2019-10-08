@@ -63,19 +63,28 @@ class gNOMAD:
         self.namedex = json.load(open(os.path.join(global_settings.dictionary_folder,'taxid9606-names2uniprot.json')))
         self.data = defaultdict(list)
         self.masterfile = os.path.join(global_settings.reference_folder,'gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz')
-        with gzip.open(self.masterfile, 'rt') as f:
-            for line in f:
-                if line[0] != '#':
-                    variant = gNomadVariant.from_line(line)
-                    if variant and variant.symbol in self.namedex:
-                        uniprot = self.namedex[variant.symbol]
-                        self.data[uniprot].append(variant)
+        self.exomasterfile = os.path.join(global_settings.reference_folder,'gnomad.exomes.r2.1.1.sites.vcf.bgz')
+        for masterfile in (self.masterfile, self.exomasterfile):
+            with gzip.open(masterfile, 'rt') as f:
+                for line in f:
+                    if line[0] != '#':
+                        variant = gNomadVariant.from_line(line)
+                        if variant and variant.symbol in self.namedex:
+                            uniprot = self.namedex[variant.symbol]
+                            if uniprot == 'Q8N300':
+                                print(variant.to_dict())
+                            if variant.id in [v.id for v in self.data[uniprot]]:
+                                continue #dejavu
+                            else:
+                                self.data[uniprot].append(variant)
+                        else:
+                            if variant:
+                                warn(f'This line has a mystery gene {variant.symbol}!')
                     else:
-                        if variant:
-                            warn(f'This line has a mystery gene {variant.symbol}!')
+                        print(line)
 
 
-    def write(self,folder):
+    def write(self,folder='gNOMAD'):
         full=os.path.join(global_settings.temp_folder,folder)
         if not os.path.exists(full):
             os.mkdir(full)

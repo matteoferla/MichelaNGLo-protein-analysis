@@ -47,7 +47,8 @@ class GlobalSettings(metaclass=Singleton):
                  'ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/flatfiles/tsv/pdb_chain_uniprot.tsv.gz',
                  'ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/resolu.idx',
                  'https://swissmodel.expasy.org/repository/download/core_species/9606_meta.tar.gz',
-                 'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/genomes/gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz')
+                 'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/genomes/gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz',
+                 'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/exomes/gnomad.exomes.r2.1.1.sites.vcf.bgz')
 
     # getter of data_folder
     def _get_datafolder(self):
