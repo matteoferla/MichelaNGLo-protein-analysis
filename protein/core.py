@@ -64,14 +64,30 @@ class Structure:
             r = requests.get(self.url)
         elif self.type == 'local':
             self.coordinates = open(self.url).read()
+            return self.coordinates
         else:
             warn(f'Model type {self.type}  for {self.id} could not be recognised.')
-            return self
+            return None
         if r.status_code == 200:
-            self.coordinates = r.content
+            self.coordinates = r.text
         else:
             warn(f'Model {self.code} failed.')
         return self.coordinates
+
+    def includes(self, position, offset=0):
+        """
+        Generally there should not be an offset as x and y are from Uniprot data so they are already fixed!
+        :param position:
+        :param offset:
+        :return:
+        """
+        if self.x + offset > position:
+            return False
+        elif self.y + offset < position:
+            return False
+        else:
+            return True
+
 
     def lookup_sifts(self):
         """
@@ -166,9 +182,9 @@ class ProteinCore:
         if taxid:
             self.organism['NCBI Taxonomy'] = taxid
         self.gene_name = gene_name
-        self.uniprot_name = uniprot_name ## S39AD_HUMAN
+        self.uniprot_name = uniprot_name.strip() ## S39AD_HUMAN
         #### uniprot derivved
-        self.uniprot = uniprot ## uniprot accession
+        self.uniprot = uniprot.strip() ## uniprot accession
         self.uniprot_dataset = '' ## Swiss-Prot good, TrEMBL bad.
         self.alt_gene_name_list = []
         self.accession_list = [] ## Q96H72 etc.
@@ -277,7 +293,7 @@ class ProteinCore:
 
     def get_species_for_uniprot(self):
         warn('You have triggered a fallback. If you know your filepath to load use it.')
-        uniprot2species = json.load(os.path.join(self.settings.dictionary_folder, 'uniprot2species.json'))
+        uniprot2species = json.load(open(os.path.join(self.settings.dictionary_folder, 'uniprot2species.json')))
         if self.uniprot in uniprot2species.keys():
             return uniprot2species[self.uniprot]
         else:

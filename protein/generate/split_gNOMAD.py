@@ -33,27 +33,34 @@ class gNomadVariant:
             vep_id = 'vep'
         else:
             raise ValueError('Not a VEP.')
-        csq = dict(zip(
-            'Allele|Consequence|IMPACT|SYMBOL|Gene|Feature_type|Feature|BIOTYPE|EXON|INTRON|HGVSc|HGVSp|cDNA_position|CDS_position|Protein_position|Amino_acids|Codons|Existing_variation|ALLELE_NUM|DISTANCE|STRAND|FLAGS|VARIANT_CLASS|MINIMISED|SYMBOL_SOURCE|HGNC_ID|CANONICAL|TSL|APPRIS|CCDS|ENSP|SWISSPROT|TREMBL|UNIPARC|GENE_PHENO|SIFT|PolyPhen|DOMAINS|HGVS_OFFSET|GMAF|AFR_MAF|AMR_MAF|EAS_MAF|EUR_MAF|SAS_MAF|AA_MAF|EA_MAF|ExAC_MAF|ExAC_Adj_MAF|ExAC_AFR_MAF|ExAC_AMR_MAF|ExAC_EAS_MAF|ExAC_FIN_MAF|ExAC_NFE_MAF|ExAC_OTH_MAF|ExAC_SAS_MAF|CLIN_SIG|SOMATIC|PHENO|PUBMED|MOTIF_NAME|MOTIF_POS|HIGH_INF_POS|MOTIF_SCORE_CHANGE|LoF|LoF_filter|LoF_flags|LoF_info|context|ancestral'.split(
-                '|'), info[vep_id].split('|')))
+        veps = info[vep_id].split(',')
         del info[vep_id]
-        return {**data, **info, **csq}
+        get_csq = lambda entry: dict(zip(
+                'Allele|Consequence|IMPACT|SYMBOL|Gene|Feature_type|Feature|BIOTYPE|EXON|INTRON|HGVSc|HGVSp|cDNA_position|CDS_position|Protein_position|Amino_acids|Codons|Existing_variation|ALLELE_NUM|DISTANCE|STRAND|FLAGS|VARIANT_CLASS|MINIMISED|SYMBOL_SOURCE|HGNC_ID|CANONICAL|TSL|APPRIS|CCDS|ENSP|SWISSPROT|TREMBL|UNIPARC|GENE_PHENO|SIFT|PolyPhen|DOMAINS|HGVS_OFFSET|GMAF|AFR_MAF|AMR_MAF|EAS_MAF|EUR_MAF|SAS_MAF|AA_MAF|EA_MAF|ExAC_MAF|ExAC_Adj_MAF|ExAC_AFR_MAF|ExAC_AMR_MAF|ExAC_EAS_MAF|ExAC_FIN_MAF|ExAC_NFE_MAF|ExAC_OTH_MAF|ExAC_SAS_MAF|CLIN_SIG|SOMATIC|PHENO|PUBMED|MOTIF_NAME|MOTIF_POS|HIGH_INF_POS|MOTIF_SCORE_CHANGE|LoF|LoF_filter|LoF_flags|LoF_info|context|ancestral'.split(
+                    '|'), entry.split('|')))
+        return [{**data, **info, **get_csq(entry)} for entry in veps]
 
     def to_dict(self):
         return self.__dict__
 
     @classmethod
     def from_line(cls, line):
-        data = cls.parse_line(line)
-        if data['Consequence'] in ('missense_variant', 'stop_gained', 'stop_lost', 'frameshift_variant'):
-            return cls(symbol=data['SYMBOL'],
-                       identifier=data['ID'],
-                       from_residue=data['Amino_acids'].split('/')[0],
-                       residue_index=data['Protein_position'],
-                       to_residue=data['Amino_acids'].split('/')[1],
-                       impact=data['IMPACT'])
-        else:
-            return None
+        multidata = cls.parse_line(line)
+        variant = []
+        for data in multidata:
+            if data['Consequence'] in ('missense_variant', 'stop_gained', 'stop_lost', 'frameshift_variant'):
+                if not data['Amino_acids'].strip():
+                    continue
+                if data['CANONICAL'] == 'YES' and data['FILTER'] == 'PASS':
+                    variant.append(cls(symbol=data['SYMBOL'],
+                                   identifier=data['ID'],
+                                   from_residue=data['Amino_acids'].split('/')[0],
+                                   residue_index=data['Protein_position'],
+                                   to_residue=data['Amino_acids'].split('/')[1] if '/' in data['Amino_acids'] else 'X',
+                                   impact=data['IMPACT']))
+            else:
+                pass
+        return variant
 
 
 
@@ -68,18 +75,18 @@ class gNOMAD:
             with gzip.open(masterfile, 'rt') as f:
                 for line in f:
                     if line[0] != '#':
-                        variant = gNomadVariant.from_line(line)
-                        if variant and variant.symbol in self.namedex:
-                            uniprot = self.namedex[variant.symbol]
-                            if uniprot == 'Q8N300':
-                                print(variant.to_dict())
-                            if variant.id in [v.id for v in self.data[uniprot]]:
-                                continue #dejavu
+                        for variant in gNomadVariant.from_line(line):
+                            if variant and variant.symbol in self.namedex:
+                                uniprot = self.namedex[variant.symbol]
+                                if uniprot == 'Q8N300': #an overlapping gene.
+                                    print(variant.to_dict())
+                                if variant.id in [v.id for v in self.data[uniprot]]:
+                                    continue #dejavu
+                                else:
+                                    self.data[uniprot].append(variant)
                             else:
-                                self.data[uniprot].append(variant)
-                        else:
-                            if variant:
-                                warn(f'This line has a mystery gene {variant.symbol}!')
+                                if variant:
+                                    warn(f'This line has a mystery gene {variant.symbol}!')
                     else:
                         print(line)
 

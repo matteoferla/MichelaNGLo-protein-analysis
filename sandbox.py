@@ -7,17 +7,15 @@ import pickle
 
 
 def test_ProteinAnalyser():
-    p = ProteinAnalyser(uniprot = 'O75015').gload()
+    p = ProteinAnalyser(uniprot = ' Q86V25').load()
     print(p)
-    #p.mutation = Mutation('p.I124P')
-
-    structure = '''HEADER xxxxx       
-    END                                                                             
-    '''
-    p = StructureAnalyser(121, structure, 'A','hello')
-
-    print(p.get_structure_neighbours())
-    print(p.get_superficiality())
+    p.mutation = Mutation('p.N127W')
+    print(p.get_features_near_position())
+    print(p.get_gNOMAD_near_position())
+    s = p.get_best_model()
+    p2 = StructureAnalyser(121, s.get_coordinates(), s.chain, s.code)
+    print(p2.get_structure_neighbours())
+    print(p2.get_superficiality())
 
 
 # p=ProteinGatherer(uniprot='Q6ZN55').parse_uniprot().parse_pdb_blast()
@@ -68,13 +66,15 @@ def make_pdb_dex():
 def iterate_taxon(taxid):
     path = os.path.join(global_settings.pickle_folder,f'taxid{taxid}')
     for pf in os.listdir(path):
-        protein = ProteinCore().load(file=os.path.join(path, pf))
-        for p in protein.pdbs:
-            p.lookup_sifts()
-        protein.dump()
-        #protein.get_offsets().parse_gNOMAD().compute_params()
-        #protein.dump()
-
+        try:
+            protein = ProteinGatherer().load(file=os.path.join(path, pf))
+            protein.gNOMAD = []
+            protein.parse_gNOMAD()
+            protein.dump()
+            #protein.get_offsets().parse_gNOMAD().compute_params()
+            #protein.dump()
+        except:
+            pass
 
 
 if __name__ == '__main__' and 1==0:
@@ -99,21 +99,14 @@ if __name__ == '__main__' and 1==0:
     # fetch_binders is too slow. Pre-split the data like for gnomad.
 
 if __name__ == '__main__':
-    global_settings.verbose = True
+    global_settings.verbose = False
     global_settings.init(data_folder='../protein-data')
 
 if 1 == 0:
     s = Structure(id='2WM9', description='', x=-1, y=-1, code='2WM9').lookup_sifts()
 
+    iterate_taxon('9606')
+
 if __name__ == '__main__':
-    #iterate_taxon('9606')
-    global_settings.retrieve_references(ask=False)
-    from protein.generate.split_gNOMAD import gNOMAD
-    gNOMAD().write()
-    p = ProteinGatherer(taxid='9606', uniprot='Q8N300').load()
-    print(p.gene_name)
-    print(p.gNOMAD)
-    p.gNOMAD = []
-    p.parse_gNOMAD()
-    print(p.gNOMAD)
+    test_ProteinAnalyser()
 

@@ -99,12 +99,18 @@ class ProteinAnalyser(ProteinCore):
 
     ################### mutant related
     def predict_effect(self):
+        """
+        main entry point for analyses.
+        Do note that there is another class called StructureAnalyser which deals with the model specific details.
+        :return:
+        """
         assert self.mutation, 'No mutation specified.'
         if self.mutation:
             if not self.check_mutation():
                 raise ValueError(self.mutation_discrepancy())
         self.check_elm()
-        self.get_features_at_position()
+        affected = {}
+        affected['features'] = self.get_features_at_position()
 
     def check_mutation(self):
         if len(self.sequence) > self.mutation.residue_index and self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue:
@@ -200,6 +206,31 @@ class ProteinAnalyser(ProteinCore):
         svalid = sorted(valid, key=lambda v: v.y - v.x)
         return svalid
 
+    def get_best_model(self):
+        """
+        This currently just gets the first PDB. It ought to check what is the best.
+        :return:
+        """
+        def _get_best_model_within(l):
+            if l:
+                good = []
+                for model in l:
+                    if model.includes(self.mutation.residue_index):
+                        good.append(model)
+                if good:
+                    good.sort(key=lambda x: x.resolution)
+                    return good[0]
+                else:
+                    return None
+            else:
+                return None
+
+        pdb = _get_best_model_within(self.pdbs)
+        if not pdb:
+            return _get_best_model_within(self.swissmodel)
+        else:
+            return pdb
+
     #### THE FUTURE
 
     def analyse_structure(self, position=None):
@@ -229,6 +260,9 @@ class ProteinAnalyser(ProteinCore):
     # disorder
 
 class StructureAnalyser:
+    """
+    Structure is a former namedtuple and is in core.py
+    """
 
     def __init__(self, position, structure, chain, code):
         self.position = position
