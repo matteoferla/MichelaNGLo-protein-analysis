@@ -3,7 +3,6 @@ from rdkit.Chem import AllChem, rdFMCS, rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
 
 #found randomly online: https://binfalse.de/software/parseable-biodata/amino-acids/
-# the histidine was changed to wiki version as it failed.
 table = r'''Alanine Ala     A       C3H7NO2 O=C(O)C(N)C     nonpolar        neutral 1.8     nonessential    6.01    2.35    9.87
 Arginine        Arg     R       C6H14N4O2       O=C(O)C(N)CCC/N=C(\N)N  polar   positive        −4.5    essential       10.76   1.82    8.99
 Asparagine      Asn     N       C4H8N2O3        O=C(N)C[C@H](N)C(=O)O   polar   neutral −3.5    nonessential    5.41    2.14    8.72
@@ -38,7 +37,8 @@ for ab in aminoacids:
         common = Chem.MolFromSmarts(res.smartsString)
         drawer = rdMolDraw2D.MolDraw2DSVG(400,200)
         rdDepictor.Compute2DCoords(mols[0])
-        drawer.DrawMolecule(mols[0], highlightAtoms=mols[0].GetSubstructMatch(common))
+        inv = [i for i in range(mols[0].GetNumAtoms()) if i not in mols[0].GetSubstructMatch(common)]
+        drawer.DrawMolecule(mols[0], highlightAtoms=inv)
         drawer.FinishDrawing()
         svg = drawer.GetDrawingText()
         open(f'/home/matteo/Desktop/aa/{ab}{ad}.svg','w').write(svg)
