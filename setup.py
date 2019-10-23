@@ -6,10 +6,10 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="protein",
-    version="0.3.0",
+    version="0.4.0",
     author="Matteo Ferla",
     author_email="matteo@well.ox.ac.uk",
-    description="protein module for VENUS",
+    description="protein module for Michelanglo",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/matteoferla/protein-module-for-VENUS",

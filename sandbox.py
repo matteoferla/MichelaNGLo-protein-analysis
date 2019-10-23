@@ -10,11 +10,10 @@ def test_ProteinAnalyser():
     p = ProteinAnalyser(uniprot = ' Q86V25').load()
     print(p)
     p.mutation = Mutation('p.N127W')
+    p.analyse_structure()
     print(p.get_features_near_position())
     print(p.get_gNOMAD_near_position())
-    s = p.get_best_model()
-    p2 = StructureAnalyser(121, s.get_coordinates(), s.chain, s.code)
-    print(p2.get_structure_neighbours())
+    print(p.model.get_structure_neighbours())
     print(p2.get_superficiality())
 
 

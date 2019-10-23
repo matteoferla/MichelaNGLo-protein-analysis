@@ -13,11 +13,10 @@ class ProteinAnalyser(ProteinCore):
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
         ### other ###
-        self.structure = None
         ### mutation ###
         self._mutation = None
         ## structure
-        self.model = None #Structural instance
+        self.structure = None #StructureAnalyser instance
 
     ############## elm
     _elmdata = []
@@ -111,6 +110,7 @@ class ProteinAnalyser(ProteinCore):
         self.check_elm()
         affected = {}
         affected['features'] = self.get_features_at_position()
+        #self.analyse_structure()
 
     def check_mutation(self):
         if len(self.sequence) > self.mutation.residue_index and self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue:
@@ -206,6 +206,16 @@ class ProteinAnalyser(ProteinCore):
         svalid = sorted(valid, key=lambda v: v.y - v.x)
         return svalid
 
+
+    def _get_structures_with_position(self, position):
+        """
+        Fetches structures that exists at a given position.
+        :param position: mutation, str or position
+        :return: list of self.pdbs+self.swissmodel+self.pdb_matches...
+        """
+        raise DeprecationWarning
+        return [pdb for pdb in self.pdbs + self.swissmodel + self.pdb_matches if int(pdb['x']) < position < int(pdb['y'])]
+
     def get_best_model(self):
         """
         This currently just gets the first PDB. It ought to check what is the best.
@@ -233,27 +243,11 @@ class ProteinAnalyser(ProteinCore):
 
     #### THE FUTURE
 
-    def analyse_structure(self, position=None):
-        position = position if position is not None else self.mutation.residue_index
-        structures = self._get_structures_with_position(position)
-        if not structures:
+    def analyse_structure(self):
+        structure = self.get_best_model()
+        if not structure:
             return self
-        self.structure_code = structures[0]['id']
-        self.model = StructureAnalyser(position, structure=self.get_structure(self, structures[0]['id']), chain=structures[0]['chain'], code=structures[0]['id'])
-        self._get_structure_neighbours(self.structure, position)
-
-
-    def _get_structures_with_position(self, position):
-        """
-        Fetches structures that exists at a given position.
-        :param position: mutation, str or position
-        :return: list of self.pdbs+self.swissmodel+self.pdb_matches...
-        """
-        return [pdb for pdb in self.pdbs + self.swissmodel + self.pdb_matches if int(pdb['x']) < position < int(pdb['y'])]
-
-
-    def get_structure(self, code):  #a function to fetch pdb?
-        pass
+        self.structure = StructureAnalyser(structure, self.mutation)
 
 
     # conservation score
@@ -261,14 +255,19 @@ class ProteinAnalyser(ProteinCore):
 
 class StructureAnalyser:
     """
-    Structure is a former namedtuple and is in core.py
-    """
 
-    def __init__(self, position, structure, chain, code):
-        self.position = position
-        self.structure = PDBParser().get_structure('model', io.StringIO(structure))
-        self.chain = chain
-        self.code = code
+    """
+    def __init__(self, structure, mutation):
+        """
+
+        :param structure: a instance of Structure, a former namedtuple and is in core.py
+        :param mutation: a instance of mutation.
+        """
+        self.mutation = mutation
+        self.position = mutation.residue_index
+        self.structure = PDBParser().get_structure('model', io.StringIO(structure.get_coordinates()))
+        self.chain = structure.chain
+        self.code = structure.code
         self.target_residue = self.structure[0][self.chain][self.position]
         self._target_hse = None
 

@@ -160,9 +160,6 @@ class Structure:
         return PDBMeta(self.code+'_'+self.chain).data
 
 
-
-
-
 class ProteinCore:
     """
     This is a lightweight version of Protein that is intended to run off pre parsed pickles.

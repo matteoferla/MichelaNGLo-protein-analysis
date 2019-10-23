@@ -31,4 +31,4 @@ from .protein_analysis import ProteinAnalyser
 from .protein_manual import ProteinManual
 from .mutation import Mutation
 
-__version__ = '0.3'
+__version__ = '0.4'

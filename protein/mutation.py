@@ -1,4 +1,4 @@
-import re
+import re, os
 from warnings import warn
 
 class Mutation:
@@ -579,3 +579,5 @@ class Mutation:
     @classmethod
     def long_name(cls, letter):
         return ['{n} ({s}, {t})'.format(n=n,s=s,t=t) for s, t, n in cls.names if s == letter][0]
+
+
