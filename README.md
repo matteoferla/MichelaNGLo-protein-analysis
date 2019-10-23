@@ -59,6 +59,18 @@ NB. The script without the data will fetch off the web the Uniprot (only `.parse
 If any changes please change in `protein/settings_handler` the class attribute`GlobalSettings.addresses` (or `Protein.settings.addresses`).
 
 ### Future ideas
+
+See [Notes](notes.md)
+
 For what is needed for VENUS (SNV analyser see that)
 
 The uniprot parser part of this module could be integrated with Biopython. Currently there is no Uniprot parsing capability for it.
+
+
+## More!
+
+Sphinx documentation:
+* [index.md](./index.md)
+* [protein module](./protein.md)
+* [protein.generate module](./protein.generate.md)
+* [modules](./modules.md)
