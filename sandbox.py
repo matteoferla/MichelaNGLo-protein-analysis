@@ -1,6 +1,6 @@
 from protein import ProteinAnalyser, ProteinCore, Mutation, Structure
 from protein.settings_handler import global_settings
-from protein.generate import ProteinGatherer, ProteomeGatherer
+from protein.generate import ProteinGatherer, ProteomeGatherer, split_gNOMAD
 from protein.protein_analysis import StructureAnalyser
 
 import pickle
@@ -76,7 +76,7 @@ def iterate_taxon(taxid):
             pass
 
 
-if __name__ == '__main__' and 1==0:
+if __name__ == '__main__':
     global_settings.verbose = False
     global_settings.init(data_folder='../protein-data')
         #.retrieve_references(ask=False, refresh=False)
@@ -85,7 +85,8 @@ if __name__ == '__main__' and 1==0:
     #global_settings.init()
 
     #make_pdb_dex()
-    #iterate_taxon('9606')
+    split_gNOMAD.gNOMAD()
+    iterate_taxon('9606')
 
     p = ProteinAnalyser(taxid='9606', uniprot='Q9BZ29').load()
     p.mutation = 'P23W'
@@ -104,8 +105,20 @@ if __name__ == '__main__':
 if 1 == 0:
     s = Structure(id='2WM9', description='', x=-1, y=-1, code='2WM9').lookup_sifts()
 
-    iterate_taxon('9606')
 
 if __name__ == '__main__':
-    test_ProteinAnalyser()
+    #test_ProteinAnalyser()
+    p = ProteinCore(uniprot='Q96N67').load()
 
+    def ncbize(n):
+        if n < 1419:
+            return n
+        elif n < 1832:
+            return n+9
+        else:
+            return n+11
+
+    s = [str(ncbize(v.x)) for v in p.gNOMAD]
+    for i in range(len(s)//100 + 1):
+        print('color yellow, chain A and resi '+'+'.join(s[100*i:100*(i+1)]))
+    print('color red, chain A and resi ' + '+'.join([str(ncbize(v.x)) for v in p.gNOMAD if v.impact == 'HIGH']))

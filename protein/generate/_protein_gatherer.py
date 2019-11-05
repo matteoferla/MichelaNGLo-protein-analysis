@@ -430,8 +430,10 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             for snp in json.load(open(file)):
                 resi = int(snp['residue_index'].split('-')[0])
                 variant = Variant(id=f'gNOMAD_{resi}_{resi}_{snp["id"]}',
-                             description='{from_residue}{residue_index}{to_residue} ({id})'.format(**snp),
-                             x=resi, y=resi, impact=snp['impact'])
+                                description='{from_residue}{residue_index}{to_residue} ({id})'.format(**snp),
+                                x=resi, y=resi,
+                                impact=snp['impact'],
+                                homozygous=snp['homozygous'])
                 self.gNOMAD.append(variant)
         else:
             self.gNOMAD = []

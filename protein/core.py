@@ -7,7 +7,7 @@ import gzip, requests
 from warnings import warn
 from .metadata_from_PDBe import PDBMeta
 
-Variant = namedtuple('Variant', ['id', 'x', 'y', 'impact', 'description'])
+Variant = namedtuple('Variant', ['id', 'x', 'y', 'impact', 'description', 'homozygous'], defaults=(None, None, None, None, None, None))
 Variant.__doc__="""
 Stores the gNOMAD data for easy use by FeatureViewer and co. Can be converted to Mutation.
 """

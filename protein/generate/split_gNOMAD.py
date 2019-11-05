@@ -12,13 +12,16 @@ from warnings import warn
 
 
 class gNomadVariant:
-    def __init__(self, symbol, identifier, from_residue, residue_index, to_residue, impact):
+    """This is the same as the namedtuple but with more stuff."""
+    def __init__(self, symbol, identifier, from_residue, residue_index, to_residue, impact, count, homozygous):
         self.symbol = symbol
         self.id = identifier
         self.from_residue = from_residue
         self.to_residue = to_residue
         self.residue_index = residue_index
         self.impact = impact
+        self.homozygous = homozygous
+        self.count = count
 
     @staticmethod
     def parse_line(line):
@@ -57,7 +60,9 @@ class gNomadVariant:
                                    from_residue=data['Amino_acids'].split('/')[0],
                                    residue_index=data['Protein_position'],
                                    to_residue=data['Amino_acids'].split('/')[1] if '/' in data['Amino_acids'] else 'X',
-                                   impact=data['IMPACT']))
+                                   impact=data['IMPACT'],
+                                   homozygous=int(data['nhomalt']),
+                                   count=int(data['AC'])))
             else:
                 pass
         return variant

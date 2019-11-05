@@ -446,10 +446,11 @@ class Mutation:
         self.residue_index = 0
         self.apriori_effect = 'TBD'
         self.surface_expose = ''
+        self.clean_mutation = None
         #self.exposure_effect see property.getter exposure_effect
         self.elm = []  # protein.check_elm(mutation) fills it.
         if mutation:
-            if not isinstance(mutation,str): #it is the namedtuple Variant!
+            if not isinstance(mutation,str): #it is the namedtuple `Variant` (gnomAD snp)!
                 mutation = mutation.description
             self.parse_mutation(mutation)
 
@@ -578,6 +579,12 @@ class Mutation:
 
     @classmethod
     def long_name(cls, letter):
+        """
+        Single amino acid letter to a short string with the name spelt out three ways.
+        :param letter: 1 AA letter
+        :type letter: str
+        :return: str
+        """
         return ['{n} ({s}, {t})'.format(n=n,s=s,t=t) for s, t, n in cls.names if s == letter][0]
 
 
