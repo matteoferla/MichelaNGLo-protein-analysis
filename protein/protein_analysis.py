@@ -184,25 +184,25 @@ class ProteinAnalyser(ProteinCore):
     def get_features_at_position(self, position=None):
         """
         :param position: mutation, str or position
-        :return: list of gNOMAD mutations, which are dictionary e.g. {'id': 'gNOMAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
+        :return: list of gnomAD mutations, which are dictionary e.g. {'id': 'gnomAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
         """
         position = position if position is not None else self.mutation.residue_index
         return self.get_features_near_position(position, wobble=0)
 
     def get_features_near_position(self, position=None, wobble=10):
         position = position if position is not None else self.mutation.residue_index
-        valid = [{**f, 'type': g} for g in self.features for f in self.features[g] if f['x'] - wobble < position < f['y'] + wobble]
+        valid = [{**f, 'type': g} for g in self.features for f in self.features[g] if 'x' in f and f['x'] - wobble < position and  position < f['y'] + wobble]
         svalid = sorted(valid, key=lambda v: int(v['y']) - int(v['x']))
         return svalid
 
-    def get_gNOMAD_near_position(self, position=None, wobble=5):
+    def get_gnomAD_near_position(self, position=None, wobble=5):
         """
         :param position: mutation, str or position
         :param wobble: int, number of residues before and after.
-        :return: list of gNOMAD mutations, which are dictionary e.g. {'id': 'gNOMAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
+        :return: list of gnomAD mutations, which are dictionary e.g. {'id': 'gnomAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
         """
         position = position if position is not None else self.mutation.residue_index
-        valid = [g for g in self.gNOMAD if g.x - wobble < position < g.y + wobble]
+        valid = [g for g in self.gnomAD if g.x - wobble < position < g.y + wobble]
         svalid = sorted(valid, key=lambda v: v.y - v.x)
         return svalid
 

@@ -41,4 +41,4 @@ for ab in aminoacids:
         drawer.DrawMolecule(mols[0], highlightAtoms=inv)
         drawer.FinishDrawing()
         svg = drawer.GetDrawingText()
-        open(f'/home/matteo/Desktop/aa/{ab}{ad}.svg','w').write(svg)
+        open(f'{ab}{ad}.svg','w').write(svg)

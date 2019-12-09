@@ -22,7 +22,7 @@
             * protein.generate.protParam_mod module
 
 
-            * protein.generate.split_gNOMAD module
+            * protein.generate.split_gnomAD module
 
 
             * Module contents

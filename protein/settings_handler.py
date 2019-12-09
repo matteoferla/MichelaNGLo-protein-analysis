@@ -1,16 +1,20 @@
 __description__ = """
-This is the handler for the settings to control where to save stuff, etc.
+The Singleton GlobalSettings is the handler for the settings to control where to save stuff, etc.
 It allows customisation of output if the script is not running on a server.
 The key parts are:
+* startup. It is initialised when the module is imported. However, it is not ready as the files need to be configured with startup.
+* retrieve_references. download all the bits. Phosphosite need manuall download. See `licence_note` in `protein.generate.split_phosphosite`.
 
 
 
 
-Note that the folder pages (.pages_folder) was for when it was not for a server. .wipe_html() clears them.
+Note that the folder pages (.pages_folder) was for when it was not for a server. say .wipe_html() clears them.
+This is old code.
 """
 ################## Environment ###########################
 
 import os, json
+import zipfile
 from pprint import PrettyPrinter
 
 #these are needed for reference file retrieval
@@ -20,6 +24,7 @@ pprint = PrettyPrinter().pprint
 from warnings import warn
 
 class Singleton(type): #https://stackoverflow.com/questions/6760685/creating-a-singleton-in-python
+    """There can only be one setting."""
     _instances = {}
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
@@ -27,6 +32,22 @@ class Singleton(type): #https://stackoverflow.com/questions/6760685/creating-a-s
         else:
             warn('Attempt to initialise another instance of a singleton. Returning original.')
         return cls._instances[cls]
+
+### Some reference files have to be fetched manually...
+### this is for humans/will need to be updated below.
+_refs = (
+    'ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/ExAC.r1.sites.vep.vcf.gz',
+    'http://geneontology.org/gene-associations/goa_human.gaf.gz',
+    'http://purl.obolibrary.org/obo/go.obo',
+    'http://interactome.baderlab.org/data/Raul-Vidal(Nature_2005).psi',
+    'http://slorth.biochem.sussex.ac.uk/download/h.sapiens_ssl_predictions.csv',
+    'https://downloads.thebiogrid.org/Download/BioGRID/Release-Archive/BIOGRID-3.5.166/BIOGRID-ALL-3.5.166.mitab.zip',
+    'https://stringdb-static.org/download/protein.links.v10.5/9606.protein.links.v10.5.txt.gz',
+    'http://www.ensembl.org/biomart/martview/436b8b2b06f64bbee960592afda10817?VIRTUALSCHEMANAME=default&ATTRIBUTES=hsapiens_gene_ensembl.default.feature_page.ensembl_gene_id|hsapiens_gene_ensembl.default.feature_page.ensembl_transcript_id|hsapiens_gene_ensembl.default.feature_page.external_gene_name|hsapiens_gene_ensembl.default.feature_page.uniprotswissprot|hsapiens_gene_ensembl.default.feature_page.uniprot_gn|hsapiens_gene_ensembl.default.feature_page.ensembl_peptide_id&FILTERS=&VISIBLEPANEL=resultspanel',
+    'ftp://ftp.nextprot.org/pub/current_release/mapping/nextprot_refseq.txt',
+    'https://storage.googleapis.com/gnomAD-public/release/2.1.1/vcf/genomes/gnomAD.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'
+    'ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/flatfiles/tsv/pdb_chain_uniprot.tsv.gz')
+
 
 class GlobalSettings(metaclass=Singleton):
     """
@@ -48,7 +69,9 @@ class GlobalSettings(metaclass=Singleton):
                  'ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/resolu.idx',
                  'https://swissmodel.expasy.org/repository/download/core_species/9606_meta.tar.gz',
                  'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/genomes/gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz',
-                 'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/exomes/gnomad.exomes.r2.1.1.sites.vcf.bgz')
+                 'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/exomes/gnomad.exomes.r2.1.1.sites.vcf.bgz',
+                 'http://www.sbg.bio.ic.ac.uk/~missense3d/download/1052_hom_str.zip') #from http://www.sbg.bio.ic.ac.uk/~missense3d/dataset.html
+    manual_task_note = """'## Manual TASKS\nRemember that user has manually downloaded _site_dataset.gz files from https://www.phosphosite.org/staticDownloads at phosphosite.'"""
 
     # getter of data_folder
     def _get_datafolder(self):
@@ -80,7 +103,7 @@ class GlobalSettings(metaclass=Singleton):
         self.home_url = home_url
         self._initialised = False
 
-    def init(self, data_folder='data'):
+    def startup(self, data_folder='data'):
         if self._initialised:
             raise Exception('The module is already initialised.')
         self._initialised = True
@@ -119,7 +142,7 @@ class GlobalSettings(metaclass=Singleton):
 
     def retrieve_references(self, ask = True, refresh=False, issue = ''):
         if not self._initialised:
-            raise ValueError('You have not initialised the settings (set the folder) >>> run xxx.settings.init()')
+            raise ValueError('You have not initialised the settings (set the folder) >>> run xxx.settings.startup()')
         if ask:
             print('*' * 20)
             print('CORE reference DATA IS MISSING --trigger by '+issue)
@@ -141,6 +164,7 @@ class GlobalSettings(metaclass=Singleton):
             self._unzip_file(file)
         ## convert dodgy ones.
         self.create_json_from_idx('resolu.idx', 'resolution.json')
+        print(self.manual_task_note)
 
         #implement cat *.psi > cat.psi where psi files are from http://interactome.baderlab.org/data/')
 
@@ -152,22 +176,24 @@ class GlobalSettings(metaclass=Singleton):
             w.write(data)
 
     def _unzip_file(self, file):
-        unfile = file.replace('.gz', '').replace('.tar', '')
-        if '.tar.gz' in file:
-            if not os.path.exists(unfile):
+        unfile = file.replace('.gz', '').replace('.tar', '').replace('.zip', '')
+        if os.path.exists(unfile):
+            if self.verbose:
+                print('{0} file has already been extracted to {1}'.format(file, unfile))
+            return self
+        elif '.tar.gz' in file:
                 os.mkdir(unfile)
                 tar = tarfile.open(file)
                 tar.extractall(path=unfile)
                 tar.close()
-            elif self.verbose: print('{0} file is already decompressed'.format(file))
-        elif '.gz' in file:  #ignore the .bgz of gnomad. it is too big.
-            if not os.path.isfile(unfile):
-                if self.verbose:
-                    print('{0} file is being extracted to {1}'.format(file, unfile))
+        elif '.gz' in file:  #ignore the .bgz of gnomAD. it is too big.
                 with open(unfile, 'wb') as f_out:
                     with gzip.open(file, 'rb') as f_in:
                         shutil.copyfileobj(f_in, f_out)
-            elif self.verbose: print('{0} file is already decompressed'.format(file))
+                #if self.verbose: print('{0} file is already decompressed'.format(file))
+        elif '.zip' in file:
+            with zipfile.ZipFile(file, 'r') as zip_ref:
+                zip_ref.extractall(self.reference_folder)
         else:
             pass #not a compressed file
         return self

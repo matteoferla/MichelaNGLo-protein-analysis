@@ -16,7 +16,7 @@ The `_UniprotMixin` requires Element-tree to be monkeypatched, which is done in 
 The where-is-what logistics and other settings is stored in `Protein.settings`, which is an instance of `protein.settings_handler.GlobalSettings()`.
 
     >>> from protein import Protein
-    >>> Protein.settings.init('temp_just_for_today')  # create the folders.
+    >>> Protein.settings.startup('temp_just_for_today')  # create the folders.
     >>> Protein.settings.verbose = True
     >>> Protein.settings.missing_attribute_tolerant = True
     >>> Protein(uniprot = 'Q9NWZ3').foo

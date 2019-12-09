@@ -9,7 +9,7 @@ from .metadata_from_PDBe import PDBMeta
 
 Variant = namedtuple('Variant', ['id', 'x', 'y', 'impact', 'description', 'homozygous'], defaults=(None, None, None, None, None, None))
 Variant.__doc__="""
-Stores the gNOMAD data for easy use by FeatureViewer and co. Can be converted to Mutation.
+Stores the gnomAD data for easy use by FeatureViewer and co. Can be converted to Mutation.
 """
 
 class Structure:
@@ -206,7 +206,7 @@ class ProteinCore:
         self.ENST = ''
         self.ENSG = ''
         ### ExAC
-        self.gNOMAD = [] #formerlly alleles
+        self.gnomAD = [] #formerlly alleles
         #self.ExAC_type (property= 'Unparsed' # Dominant | Recessive | None | Unknown (=???)
         self.pLI = -1
         self.pRec = -1

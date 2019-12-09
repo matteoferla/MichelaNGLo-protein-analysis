@@ -3,10 +3,10 @@ from warnings import warn
 
 class Mutation:
     """
-    Stores the mutation. Not to be confused with the namedtuple Variant, which stores gNOMAD mutations.
+    Stores the mutation. Not to be confused with the namedtuple Variant, which stores gnomAD mutations.
     >>> Mutation('p.M12D')
     >>> Mutation('M12D')
-    >>> Mutation(gNOMAD_variant_instance)
+    >>> Mutation(gnomAD_variant_instance)
     This class does not do analyses with Protein, but ProteinAnalysis do. Here however, wordy conversions happen.
     """
     # the following variable was made in apriori_effect.py

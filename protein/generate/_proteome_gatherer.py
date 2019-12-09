@@ -1,7 +1,7 @@
 __doc__ = """
 Generates the data to be used.
 
-However, it repeats itself. The messier uniprot_to_json is basically its successor...
+However, it repeated itself. Hence the switch to uniprot_master_parser.UniprotReader.
 """
 
 from pprint import PrettyPrinter
@@ -10,7 +10,7 @@ pprint = PrettyPrinter().pprint
 import os, json
 from warnings import warn
 from ._protein_gatherer import ProteinGatherer
-from ._proteome_gatherer2 import UniprotReader
+from .uniprot_master_parser import UniprotReader
 from .PDB_blast import Blaster
 import random
 

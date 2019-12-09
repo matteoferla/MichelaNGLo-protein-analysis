@@ -421,24 +421,30 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         return self
 
     @_failsafe
-    def parse_gNOMAD(self):
-        # preparsed.
-        # from protein.generate.split_gNOMAD import gNOMAD
-        # gNOMAD().write('gNOMAD')
-        file = os.path.join(self.settings.temp_folder, 'gNOMAD', self.uniprot +'.json')
+    def parse_gnomAD(self):
+        """
+        preparsed. using from protein.generate.split_gnomAD import gnomAD
+        which splits the huge gnomAD into lots
+        :return:
+        """
+        #
+        #
+        # gnomAD().write('gnomAD')
+        file = os.path.join(self.settings.temp_folder, 'gnomAD', self.uniprot +'.json')
         if os.path.exists(file):
             for snp in json.load(open(file)):
                 resi = int(snp['residue_index'].split('-')[0])
-                variant = Variant(id=f'gNOMAD_{resi}_{resi}_{snp["id"]}',
+                #print('HERE', snp)
+                variant = Variant(id=f'gnomAD_{resi}_{resi}_{snp["id"]}',
                                 description='{from_residue}{residue_index}{to_residue} ({id})'.format(**snp),
                                 x=resi, y=resi,
                                 impact=snp['impact'],
                                 homozygous=snp['homozygous'])
-                self.gNOMAD.append(variant)
+                self.gnomAD.append(variant)
         else:
-            self.gNOMAD = []
-            warn('No gNOMAD data from {0} {1}? Have your run protein.generate.split_gNOMAD?'.format(self.gene_name, self.uniprot))
-        self.log('gNOMAD mutations: {0}'.format(len(self.gNOMAD)))
+            self.gnomAD = []
+            warn('No gnomAD data from {0} {1}? Have your run protein.generate.split_gnomAD?'.format(self.gene_name, self.uniprot))
+        self.log('gnomAD mutations: {0}'.format(len(self.gnomAD)))
         return self
 
     def iter_allele(self, filter=True, consequence=None, split=True):
@@ -495,7 +501,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                  #'PFam': self.parse_pfam, #done.
                  'Swissmodel': self.parse_swissmodel,
                  'pLI': self.parse_pLI,
-                 'gNOMAD': self.parse_gNOMAD,
+                 'gnomAD': self.parse_gnomAD,
                  'parse_pdb_blast': self.parse_pdb_blast
                  #'manual': self.add_manual_data,
                  #'Binding partners': self.fetch_binders
@@ -665,21 +671,20 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         else:
             return None
 
-    #@_failsafe
-    def get_PMT(self):
-        ## rearrange PTM in a file per gene.
+    @_failsafe
+    def get_PTM(self):
+        """
+        This is the old version, it is heavy as it repeats the search for each entry.
+        I will rearrange PTM in a file per gene.
+        :return:
+        """
         assert self.uniprot, 'Uniprot Acc. required. Kind of.'
-        modified_residues = []
-        for f in os.listdir(self.settings.reference_folder):
-            if '_site_dataset' in f and '.gz' not in f:  # it's a Phosphosite plus entry.
-                with open(os.path.join(self.settings.reference_folder, f)) as fh:
-                    next(fh)  # date
-                    next(fh)  # licence
-                    next(fh)  # blankline
-                    for row in csv.DictReader(fh, delimiter='\t'):
-                        if row['ACC_ID'] == self.uniprot: ## this will not pick up mice!
-                            modified_residues.append(row["MOD_RSD"])
-        self.features['PSP_modified_residues'] = modified_residues ## list of str (e.g. 'K30-m2')
+        self.log(f'Getting PTM for {self.uniprot}')
+        fp = os.path.join(self.settings.temp_folder,'phosphosite',self.uniprot+'.json')
+        if fp:
+            with open(fp) as fh:
+                self.features['PSP_modified_residues'] = json.load(fh)
+        return self
 
     @_failsafe
     def _test_failsafe(self):

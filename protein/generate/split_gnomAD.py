@@ -1,3 +1,9 @@
+__doc__ = """
+Entry point:
+
+    >>> gnomAD().split().write()
+"""
+
 from ..settings_handler import global_settings
 import os
 import gzip
@@ -11,8 +17,8 @@ from collections import defaultdict
 from warnings import warn
 
 
-class gNomadVariant:
-    """This is the same as the namedtuple but with more stuff."""
+class gnomADVariant:
+    """This is the same as the namedtuple but with more stuff. It does not get written. to_dict does."""
     def __init__(self, symbol, identifier, from_residue, residue_index, to_residue, impact, count, homozygous):
         self.symbol = symbol
         self.id = identifier
@@ -70,20 +76,28 @@ class gNomadVariant:
 
 
 
-class gNOMAD:
+class gnomAD:
     def __init__(self):
+        """Instantiation starts the settings.
+        but the settings can be changed.
+        `split` splits the file into the self.data dict containing gene acc id as key and list of gnomADVariant.
+        But the bound method `write` writes and the gnomADVariant as regular dictionary.
+        """
         self.namedex = json.load(open(os.path.join(global_settings.dictionary_folder,'taxid9606-names2uniprot.json')))
         self.data = defaultdict(list)
-        self.masterfile = os.path.join(global_settings.reference_folder,'gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz')
-        self.exomasterfile = os.path.join(global_settings.reference_folder,'gnomad.exomes.r2.1.1.sites.vcf.bgz')
+        self.masterfile = os.path.join(global_settings.reference_folder,'gnomAD.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz')
+        self.exomasterfile = os.path.join(global_settings.reference_folder,'gnomAD.exomes.r2.1.1.sites.vcf.bgz')
+
+    def split(self):
         for masterfile in (self.masterfile, self.exomasterfile):
             with gzip.open(masterfile, 'rt') as f:
                 for line in f:
                     if line[0] != '#':
-                        for variant in gNomadVariant.from_line(line):
+                        for variant in gnomADVariant.from_line(line):
                             if variant and variant.symbol in self.namedex:
                                 uniprot = self.namedex[variant.symbol]
                                 if uniprot == 'Q8N300': #an overlapping gene.
+                                    print('debug... for overlapping gene')
                                     print(variant.to_dict())
                                 if variant.id in [v.id for v in self.data[uniprot]]:
                                     continue #dejavu
@@ -94,9 +108,10 @@ class gNOMAD:
                                     warn(f'This line has a mystery gene {variant.symbol}!')
                     else:
                         print(line)
+        return self
 
 
-    def write(self,folder='gNOMAD'):
+    def write(self,folder='gnomAD'):
         full=os.path.join(global_settings.temp_folder,folder)
         if not os.path.exists(full):
             os.mkdir(full)
