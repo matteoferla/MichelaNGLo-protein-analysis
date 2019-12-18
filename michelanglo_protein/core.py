@@ -3,9 +3,11 @@ from datetime import datetime
 from .settings_handler import global_settings #the instance not the class.
 from collections import namedtuple
 import gzip, requests
+from michelanglo_transpiler import PyMolTranspiler
 
 from warnings import warn
 from .metadata_from_PDBe import PDBMeta
+from typing import Dict
 
 Variant = namedtuple('Variant', ['id', 'x', 'y', 'impact', 'description', 'homozygous'], defaults=(None, None, None, None, None, None))
 Variant.__doc__="""
@@ -13,7 +15,7 @@ Stores the gnomAD data for easy use by FeatureViewer and co. Can be converted to
 """
 
 class Structure:
-    #lolz. a C++ coder would hate this name. Sturcture as in "protein structure"
+    #lolz. a C++ coder would hate this name. Sturcture as in "michelanglo_protein structure"
     #that is not funny. Why I did I think it was?
     #Why am I talking to my past self?!
     """
@@ -29,33 +31,38 @@ class Structure:
         Stores the structural data for easy use by FeatureViewer and co. Can be converted to StructureAnalyser
         type = rcsb | swissmodel | homologue | www | local
         """
-        self.id = id
-        self.description = description
-        self.x = int(x)  # resi in the whole uniprot protein
-        self.y = int(y)  # end resi in the whole uniprot protein
-        self.offset = int(offset) # offset is the number *subtracted* from the PDB index to make it match the position in Uniprot.
+        self.id = id #: RCSB code
+        self.description = description #: description
+        self.x = int(x)  #: resi in the whole uniprot michelanglo_protein
+        self.y = int(y)  #: end resi in the whole uniprot michelanglo_protein
+        self.offset = int(offset) #: offset is the number *subtracted* from the PDB index to make it match the position in Uniprot.
         self.pdb_start = None  # no longer used. TO be deleted.
         self.pdb_end = None   # ditto.
-        self.resolution = 0
+        self.resolution = 0 #: crystal resolution. 0 or lower will trigger special cases
         self.code = code
         self.chain_definitions = None #filled by SIFTS
-        self.type = type.lower()
+        self.type = type.lower() #: str: rcsb | swissmodel | homologue | www | local
         self.chain = chain
         if extra is None:
             self.extra = {}
         else:
             self.extra = extra
-        self.coordinates = coordinates
+        self.coordinates = coordinates #: PDBblock
         self.url = url  ## for type = www or local or swissmodel
         # https://files.rcsb.org/download/{self.code}.pdb does not work (often) while the url is something odd.
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
         return {'x': self.x, 'y': self.y, 'id': self.id, 'description': self.description}
 
     def __str__(self):
         return str(self.to_dict())
 
-    def get_coordinates(self):
+    def get_coordinates(self) -> str:
+        """
+        Gets the coordinates (PDB block) based on ``self.url`` and ``self.type``
+        :return: coordinates
+        :rtype: str
+        """
         if self.type == 'rcsb':
             r = requests.get(f'https://files.rcsb.org/download/{self.code}.pdb')
         elif self.type == 'swissmodel':
@@ -72,6 +79,16 @@ class Structure:
             self.coordinates = r.text
         else:
             warn(f'Model {self.code} failed.')
+        return self.coordinates
+
+    def get_offset_coordinates(self):
+        """
+        Gets the coordinates and offsets them.
+        :return:
+        """
+        if not self.chain_definitions:
+            self.lookup_sifts()
+        self.coordinates = PyMolTranspiler.renumber(self.get_coordinates(), self.chain_definitions, 'str', make_A=self.chain).raw_pdb
         return self.coordinates
 
     def includes(self, position, offset=0):
@@ -92,7 +109,7 @@ class Structure:
     def lookup_sifts(self):
         """
         SIFTS data. for PDBe query see elsewhere.
-        There are four start/stop pairs that need to be compared to get a good idea of a protein.
+        There are four start/stop pairs that need to be compared to get a good idea of a michelanglo_protein.
         For a lengthy discussion see https://blog.matteoferla.com/2019/09/pdb-numbering-rollercoaster.html
         Also for a good list of corner case models see https://proteopedia.org/wiki/index.php/Unusual_sequence_numbering
         :return: self
@@ -163,7 +180,7 @@ class Structure:
 class ProteinCore:
     """
     This is a lightweight version of Protein that is intended to run off pre parsed pickles.
-    It forms the base of Protein. This does no protein analyses.
+    It forms the base of Protein. This does no michelanglo_protein analyses.
     It has IO powers though .dump/.gdump saves an instance .load/.gload loads and can work as a class method if the filename is provided as an argument.
     The gzipped forms (.gdump and .gload) are about 1/3 the size. 50 KB.
     """

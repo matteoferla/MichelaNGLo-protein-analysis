@@ -1,8 +1,9 @@
-from protein import ProteinAnalyser, ProteinCore, Mutation, Structure
-from protein.settings_handler import global_settings
-from protein.generate import ProteinGatherer, ProteomeGatherer, split_gnomAD
-from protein.protein_analysis import StructureAnalyser
-
+from michelanglo_protein import ProteinAnalyser, ProteinCore, Mutation, Structure
+from michelanglo_protein.settings_handler import global_settings
+from michelanglo_protein.generate import ProteinGatherer, ProteomeGatherer
+from michelanglo_protein.generate.split_gnomAD import gnomAD
+from michelanglo_protein.protein_analysis import StructureAnalyser
+# Settings = namedtuple('settings', 'dictionary_folder', 'reference_folder', 'temp_folder')
 import pickle
 
 
@@ -14,22 +15,16 @@ def test_ProteinAnalyser():
     print(p.get_features_near_position())
     print(p.get_gnomAD_near_position())
     print(p.model.get_structure_neighbours())
-    print(p2.get_superficiality())
+    print(p.get_superficiality())
 
 
 # p=ProteinGatherer(uniprot='Q6ZN55').parse_uniprot().parse_pdb_blast()
 
-# from protein.apriori_effect import WikiTable
+# from michelanglo_protein.apriori_effect import WikiTable
 # print(WikiTable(WikiTable.grantham).ndata)
 
-def main():
-    ## make everything!
 
-    global_settings.error_tolerant = True
-
-    ProteomeGatherer(skip=True, remake_pickles=True)
-
-from protein.generate.uniprot_master_parser import UniprotReader
+from michelanglo_protein.generate.uniprot_master_parser import UniprotReader
 import os, json
 def mini_gene_data():
     genes = '''DOCK180
@@ -58,7 +53,7 @@ def mini_gene_data():
 
 def make_pdb_dex():
     #I need to make a uniprot to pdb dex.
-    from protein.generate.uniprot_master_parser import UniprotReader
+    from michelanglo_protein.generate.uniprot_master_parser import UniprotReader
     master_file = os.path.join(ProteinGatherer.settings.temp_folder, 'uniprot_sprot.xml')
     UniprotReader.make_dictionary(uniprot_master_file=master_file, first_n_protein=0, chosen_attribute='uniprot')
 
@@ -77,17 +72,38 @@ def iterate_taxon(taxid=9606):
             protein.get_PTM()
             protein.compute_params()
             protein.dump()
-            #protein.get_offsets().parse_gnomAD().compute_params()
-            #protein.dump()
+            #michelanglo_protein.get_offsets().parse_gnomAD().compute_params()
+            #michelanglo_protein.dump()
         except:
             pass
 
 
 if __name__ == '__main__':
     global_settings.verbose = True #False
-    global_settings.startup(data_folder='../protein-data')
+    #global_settings.startup(data_folder='../MichelaNGLo-protein-data')
+    global_settings.startup(data_folder='../MichelaNGLo-data')
+    global_settings.retrieve_references(ask=False, refresh=False)
+#### workspace!
 if 1==1:
-    from protein.generate.split_phosphosite import Phoshosite
+    global_settings.error_tolerant = True
+    UniprotReader()
+    gnomAD(genomasterfile=os.path.join(global_settings.reference_folder,'gnomAD.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'),
+           exomasterfile=os.path.join(global_settings.reference_folder, 'gnomAD.exomes.r2.1.1.sites.vcf.bgz'),
+           namedexfile=os.path.join(global_settings.dictionary_folder, 'taxid9606-names2uniprot.json'),
+           folder=os.path.join(global_settings.temp_folder, 'gnomAD')
+           ).split()
+    iterate_taxon()
+
+elif 1==1:
+    p = ProteinAnalyser(taxid='9606', uniprot='P62873').load() #gnb1 P62873 gnb2 P62879
+    p.mutation = 'A73T'
+    print(p.pdbs)
+    print(p.get_best_model().offset)
+    p.analyse_structure()
+    print(p.structural)
+    #http://0.0.0.0:8088/venus_analyse?uniprot=P62879&species=9606&mutation=A73T
+elif 1==9:
+    from michelanglo_protein.generate.split_phosphosite import Phoshosite
     #ph = Phoshosite().split().write('phosphosite')
     p = ProteinGatherer(taxid='9606', uniprot='P62879').load()
     print(':B and ('+' or '.join([str(m.x) for m in p.gnomAD if m.homozygous])+')')

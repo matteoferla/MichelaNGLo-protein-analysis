@@ -1,9 +1,9 @@
 __doc__ = """
-The script protein.aprior_effect generates the dictionary that is used to say what the apriori effect are. Namely, what amino acid is smaller etc.
->>> from protein.apriori_effect import Changedex
+The script michelanglo_protein.aprior_effect generates the dictionary that is used to say what the apriori effect are. Namely, what amino acid is smaller etc.
+>>> from michelanglo_protein.apriori_effect import Changedex
 >>> pprint(Changedex().fill().to_dict())
 
-Also the scores from wikipedia.
+Also the scores from wikipedia via the class WikiTable.
 """
 
 from collections import defaultdict

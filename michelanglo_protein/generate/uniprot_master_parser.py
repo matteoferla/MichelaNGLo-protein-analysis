@@ -7,8 +7,9 @@ Be warned that ET.Element is a monkeypatched version.
 import os, json, re
 from .ET_monkeypatch import ET
 from ._protein_gatherer import ProteinGatherer as Protein
+from warnings import warn
 
-from protein.generate.split_gnomAD import gnomAD
+from michelanglo_protein.generate.split_gnomAD import gnomAD
 
 from collections import defaultdict
 
@@ -121,7 +122,8 @@ class UniprotReader:
             uniprot_master_file = os.path.join(Protein.settings.reference_folder, 'uniprot_sprot.xml')
             Protein.settings.retrieve_references(ask=False)
             if not os.path.exists(os.path.join(Protein.settings.data_folder, 'gnomAD')):
-                gnomAD().split().write('gnomAD')
+                #gnomAD().split().write('gnomAD')
+                warn('I turned off this step!!!')
         self.file = uniprot_master_file
         count=0
         uniprot_pdbdex = defaultdict(list)
@@ -141,7 +143,7 @@ class UniprotReader:
             ### parser...
             prot = Protein.from_uniprot(entry)
             if prot.organism['common'] == 'Human':
-                prot.parse_swissmodel().get_offsets().get_resolutions().parse_gnomAD()
+                prot.parse_swissmodel().get_offsets().get_resolutions()
             prot.compute_params()
             prot.dump()  # gdump??
             ### dict

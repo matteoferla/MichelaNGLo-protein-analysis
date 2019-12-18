@@ -1,6 +1,6 @@
 ## _BaseMixin contains __getattr__ and _failsafe decorator
 from warnings import warn
-from protein.settings_handler import global_settings #the instance not the class.
+from michelanglo_protein.settings_handler import global_settings #the instance not the class.
 
 
 class _BaseMixin:

@@ -1,5 +1,5 @@
 ############################# UNIPROT PARSING METHODS #############################
-from protein.generate._protein_base_mixin import _BaseMixin
+from michelanglo_protein.generate._protein_base_mixin import _BaseMixin
 # this class requires mixin classes from `_protein_*_mixin.py`. The XML parser for Uniprot requires a special ET from `.ET_monkeypatched`.
 from ..core import Structure
 
@@ -53,7 +53,7 @@ class _UniprotMixin:
                 if subelem.is_tag('molecule'):
                     if subelem.attrib['id'][-2:] != '-1':
                         return None ## this is not the isoform 1 !!!
-                elif subelem.has_attr('type', 'protein sequence ID'):
+                elif subelem.has_attr('type', 'michelanglo_protein sequence ID'):
                     self.ENSP = subelem.attrib['value']
                 elif subelem.has_attr('type', 'gene ID'):
                     self.ENSG = subelem.attrib['value']
@@ -220,7 +220,7 @@ class _UniprotMixin:
                 self.uniprot_name = elem.text.rstrip()
             elif elem.is_tag('sequence') and elem.text:
                 self.sequence = elem.text.rstrip().replace(' ','')
-            elif elem.is_tag('protein'):
+            elif elem.is_tag('michelanglo_protein'):
                 self._parse_protein_element(elem)
             elif elem.is_tag('dbReference'):
                 self._parse_protein_dbReference(elem)

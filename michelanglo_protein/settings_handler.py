@@ -1,11 +1,9 @@
-__description__ = """
+"""
 The Singleton GlobalSettings is the handler for the settings to control where to save stuff, etc.
 It allows customisation of output if the script is not running on a server.
 The key parts are:
-* startup. It is initialised when the module is imported. However, it is not ready as the files need to be configured with startup.
-* retrieve_references. download all the bits. Phosphosite need manuall download. See `licence_note` in `protein.generate.split_phosphosite`.
-
-
+- startup. It is initialised when the module is imported. However, it is not ready as the files need to be configured with startup.
+- retrieve_references. download all the bits. Phosphosite need manuall download. See `licence_note` in `michelanglo_protein.generate.split_phosphosite`.
 
 
 Note that the folder pages (.pages_folder) was for when it was not for a server. say .wipe_html() clears them.
@@ -18,7 +16,8 @@ import zipfile
 from pprint import PrettyPrinter
 
 #these are needed for reference file retrieval
-import urllib, gzip, shutil, tarfile
+import requests, gzip, shutil, tarfile
+from urllib.request import urlopen
 
 pprint = PrettyPrinter().pprint
 from warnings import warn
@@ -54,12 +53,12 @@ class GlobalSettings(metaclass=Singleton):
     This class is container for the paths, which are used by both Variant and Tracker classes.
     Hence why in these two is the attribute .settings
     """
-    verbose = False
-    subdirectory_names = ('reference', 'temp', 'uniprot','pdbblast', 'pickle', 'binders', 'dictionary')
+    verbose = False #:verbose boolean controls the verbosity of the whole module.
+    subdirectory_names = ('reference', 'temp', 'uniprot', 'pdbblast', 'pickle', 'binders', 'dictionary')
 
-                          #'manual', 'transcript', 'protein', 'uniprot', 'pfam', 'pdb', 'ELM', 'ELM_variant', 'pdb_pre_allele', 'pdb_post_allele', 'ExAC', 'pdb_blast', 'pickle', 'references', 'go',
+                          #'manual', 'transcript', 'michelanglo_protein', 'uniprot', 'pfam', 'pdb', 'ELM', 'ELM_variant', 'pdb_pre_allele', 'pdb_post_allele', 'ExAC', 'pdb_blast', 'pickle', 'references', 'go',
                           #'binders')
-    fetch = True
+    fetch = True #: boolean for whether to download data from the interwebs.
     missing_attribute_tolerant = True
     error_tolerant = False
     addresses = ('ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz',
@@ -85,6 +84,7 @@ class GlobalSettings(metaclass=Singleton):
         self._datafolder = new_folder
         if not os.path.isdir(new_folder):
             os.mkdir(new_folder)
+            warn(f'The folder {new_folder} was created. This means that you will have to run `global_settings.retrieve_references(ask=False, refresh=True)`')
         for directory in self.subdirectory_names:
             if new_folder:
                 path = os.path.join(new_folder, directory)
@@ -169,11 +169,14 @@ class GlobalSettings(metaclass=Singleton):
         #implement cat *.psi > cat.psi where psi files are from http://interactome.baderlab.org/data/')
 
     def _get_url(self, url, file):
-        req = urllib.request.Request(url)
-        response = urllib.request.urlopen(req)
-        data = response.read()
-        with open(file, 'wb') as w:
-            w.write(data)
+        if 'ftp://' in url:
+            req = urlopen(url)
+            with open(file, 'wb') as fp:
+                shutil.copyfileobj(req, fp)
+        else:
+            with requests.get(url, stream=True) as r:
+                with open(file, 'wb') as f:
+                    shutil.copyfileobj(r.raw, f)
 
     def _unzip_file(self, file):
         unfile = file.replace('.gz', '').replace('.tar', '').replace('.zip', '')
@@ -205,7 +208,6 @@ class GlobalSettings(metaclass=Singleton):
         elif not os.path.isfile(fullfile):
             self.retrieve_references(issue = fullfile)
         ## handle compression
-
         return open(fullfile)
 
     def open(self, kind):
@@ -217,7 +219,7 @@ class GlobalSettings(metaclass=Singleton):
                 'go_human': 'goa_human.gaf',
                 'huri':'cat.psi',
                 'biogrid':'BIOGRID-ALL-3.5.166.mitab.txt',
-                'string':'9606.protein.links.v10.5.txt',
+                'string':'9606.michelanglo_protein.links.v10.5.txt',
                 'ensembl':'ensemb.txt',
                 'nextprot':'nextprot_refseq.txt',
                 'swissmodel':'9606_meta/SWISS-MODEL_Repository/INDEX.json',

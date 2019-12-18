@@ -43,6 +43,8 @@ The data is a big. It needs slimming as unfortunately it has gotten bloated. So 
 The module `protein.generate` creates the needed files.
 
 At some point I started writing `settings.retrieve_references()` but stopped as it would have been for the once and some reference require passwords and some change faster than stairways in Hogwarts (_ie._ NCBI).
+It mostly works. But downloading large datasets such as gnomAD will run out of RAM as it currently is not streamed.
+Also as of December 2019 there is no exome gnomAD v3. So it has to be made from the gargantuan dataset.
 
 
 NB. The script without the data will fetch off the web the Uniprot (only `.parse_uniprot()` will work without screaming).

@@ -1,4 +1,4 @@
-<!-- protein-module-for-VENUS documentation master file, created by
+<!-- michelanglo_protein-module-for-VENUS documentation master file, created by
 sphinx-quickstart on Mon Dec  9 16:33:35 2019.
 You can adapt this file completely to your liking, but it should at least
 contain the root `toctree` directive. -->

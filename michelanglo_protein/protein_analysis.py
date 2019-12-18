@@ -213,6 +213,7 @@ class ProteinAnalyser(ProteinCore):
         :param position: mutation, str or position
         :return: list of self.pdbs+self.swissmodel+self.pdb_matches...
         """
+        print('Use get_best_model')
         raise DeprecationWarning
         return [pdb for pdb in self.pdbs + self.swissmodel + self.pdb_matches if int(pdb['x']) < position < int(pdb['y'])]
 
@@ -245,9 +246,12 @@ class ProteinAnalyser(ProteinCore):
 
     def analyse_structure(self):
         structure = self.get_best_model()
+        #structure id a michelanglo_protein.core.Structure object
         if not structure:
+            self.structural = None
             return self
-        self.structure = StructureAnalyser(structure, self.mutation)
+        self.structural = StructureAnalyser(structure, self.mutation)
+        return self
 
 
     # conservation score
@@ -255,7 +259,7 @@ class ProteinAnalyser(ProteinCore):
 
 class StructureAnalyser:
     """
-
+    3D details of a mutation based on the structure which is stored in ``.structure`` (which is a ``Bio.PDB.PDBParser`` obj.)
     """
     def __init__(self, structure, mutation):
         """
@@ -265,17 +269,18 @@ class StructureAnalyser:
         """
         self.mutation = mutation
         self.position = mutation.residue_index
-        self.structure = PDBParser().get_structure('model', io.StringIO(structure.get_coordinates()))
+        self.structure = structure
+        self.model = PDBParser().get_structure('model', io.StringIO(structure.get_offset_coordinates()))
         self.chain = structure.chain
         self.code = structure.code
-        self.target_residue = self.structure[0][self.chain][self.position]
+        self.target_residue = self.model[0][self.chain][self.position]
         self._target_hse = None
 
     @property
     def target_hse(self):
         if not self._target_hse:
-            hse = HSExposureCB(self.structure)
-            self._target_hse = hse[(self.structure[0][self.chain].get_id(), self.target_residue.id)]
+            hse = HSExposureCB(self.model)
+            self._target_hse = hse[(self.model[0][self.chain].get_id(), self.target_residue.id)]
         return self._target_hse
 
 
@@ -316,7 +321,7 @@ class StructureAnalyser:
         overthreshhold = 10+threshhold #no atom in a arginine will be within threshhold of a given atom if any atom is greater than this.
         double_overthreshhold = 20 + threshhold #no atom in a arginine will be within threshhold of a any atom in a given residue if any atom is greater than this.
         doublebreak = False
-        for residue in self.structure[0][self.chain]:
+        for residue in self.model[0][self.chain]:
             for atom in residue:
                 if doublebreak==True:
                     doublebreak = False
