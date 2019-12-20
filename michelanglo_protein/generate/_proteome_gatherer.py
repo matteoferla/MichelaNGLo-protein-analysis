@@ -1,7 +1,7 @@
 __doc__ = """
 Generates the data to be used.
 
-However, it repeated itself. Hence the switch to uniprot_master_parser.UniprotReader.
+However, it repeated itself. Hence the switch to uniprot_master_parser.UniprotMasterReader.
 """
 
 from pprint import PrettyPrinter
@@ -10,7 +10,7 @@ pprint = PrettyPrinter().pprint
 import os, json
 from warnings import warn
 from ._protein_gatherer import ProteinGatherer
-from .uniprot_master_parser import UniprotReader
+from .uniprot_master_parser import UniprotMasterReader
 from .split_gnomAD import gnomAD
 from .PDB_blast import Blaster
 from ..settings_handler import global_settings #the instance not the class.
@@ -34,7 +34,7 @@ class ProteomeGathererOLD:
         Calls the variaous parts that get things ready.
         :param skip: boolean, if true it runs parse_proteome
         """
-        warn('This script is depractated in favour of uniprot_master_parser.UniprotReader', category=DeprecationWarning)
+        warn('This script is depractated in favour of uniprot_master_parser.UniprotMasterReader', category=DeprecationWarning)
         ################ FETCH ALL RAW FILES #################################################
         ProteinGatherer.settings.verbose = True
         announce('Retrieving references')
@@ -44,12 +44,12 @@ class ProteomeGathererOLD:
         ################ PARSE UNIPROT #######################################################
         self.master_file = os.path.join(ProteinGatherer.settings.temp_folder, 'uniprot_sprot.xml')
         # This class parses the uniprot FTP file and can do various things. such as making a small one that is only human.
-        # But mainly the `UniprotReader.convert('uniprot_sprot.xml')` method whcih generates the JSON files required.
+        # But mainly the `UniprotMasterReader.convert('uniprot_sprot.xml')` method whcih generates the JSON files required.
         # first_n_protein is for testing.
         announce('Convert Master Uniprot file')
         if not skip:
-            #UniprotReader.convert(uniprot_master_file = self.master_file, first_n_protein=0)
-            UniprotReader()
+            #UniprotMasterReader.convert(uniprot_master_file = self.master_file, first_n_protein=0)
+            UniprotMasterReader()
 
         ################ BLAST PDB #######################################################
         # uncompresses the pdbaa
@@ -99,7 +99,7 @@ class ProteomeGatherer:
         self.settings.retrieve_references(ask=False, refresh=False)
         self.settings.error_tolerant = True
         announce('Parsing Uniprot')
-        UniprotReader()
+        UniprotMasterReader()
         announce('Splitting gnomAD files')
         gnomAD(genomasterfile=os.path.join(self.settings.reference_folder,
                                            'gnomAD.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'),

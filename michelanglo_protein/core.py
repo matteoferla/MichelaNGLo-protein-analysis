@@ -258,6 +258,7 @@ class ProteinCore:
     ############################# IO #############################
     def _get_species_folder(self):
         if self.organism['NCBI Taxonomy'] == 'NA':
+            self.log(f'NA Species??! {self.organism} for {self.uniprot_name}')
             species = f'taxid{self.get_species_for_uniprot()}'
         else:
             species = f'taxid{self.organism["NCBI Taxonomy"]}'

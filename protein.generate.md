@@ -155,11 +155,11 @@ Initialize self.  See help(type(self)) for accurate signature.
 ## protein.generate.uniprot_master_parser module
 
 This file parses the uniprot FTP file and can do various things. such as making a small one that is only human.
-But mainly the UniprotReader.convert(‘uniprot_sprot.xml’) method whcih generates the JSON files required. In future these will be databases…
+But mainly the UniprotMasterReader.convert(‘uniprot_sprot.xml’) method whcih generates the JSON files required. In future these will be databases…
 Be warned that ET.Element is a monkeypatched version.
 
 
-#### class protein.generate.uniprot_master_parser.UniprotReader(uniprot_master_file=None, first_n_protein=0, chosen_attribute='uniprot')
+#### class protein.generate.uniprot_master_parser.UniprotMasterReader(uniprot_master_file=None, first_n_protein=0, chosen_attribute='uniprot')
 Bases: `object`
 
 see generator iter_human

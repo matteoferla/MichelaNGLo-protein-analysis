@@ -24,7 +24,7 @@ def test_ProteinAnalyser():
 # print(WikiTable(WikiTable.grantham).ndata)
 
 
-from michelanglo_protein.generate.uniprot_master_parser import UniprotReader
+from michelanglo_protein.generate.uniprot_master_parser import UniprotMasterReader
 import os, json
 def mini_gene_data():
     genes = '''DOCK180
@@ -53,9 +53,9 @@ def mini_gene_data():
 
 def make_pdb_dex():
     #I need to make a uniprot to pdb dex.
-    from michelanglo_protein.generate.uniprot_master_parser import UniprotReader
+    from michelanglo_protein.generate.uniprot_master_parser import UniprotMasterReader
     master_file = os.path.join(ProteinGatherer.settings.temp_folder, 'uniprot_sprot.xml')
-    UniprotReader.make_dictionary(uniprot_master_file=master_file, first_n_protein=0, chosen_attribute='uniprot')
+    UniprotMasterReader.make_dictionary(uniprot_master_file=master_file, chosen_attribute='uniprot')
 
 def iterate_taxon(taxid=9606):
     """
@@ -82,13 +82,15 @@ if __name__ == '__main__':
     global_settings.verbose = True #False
     #global_settings.startup(data_folder='../MichelaNGLo-protein-data')
     global_settings.startup(data_folder='../MichelaNGLo-data')
-    global_settings.retrieve_references(ask=False, refresh=False)
 #### workspace!
 if 1==1:
+    ## The new proteome gatherer!
+    #global_settings.retrieve_references(ask=False, refresh=False)
     global_settings.error_tolerant = True
-    UniprotReader()
-    gnomAD(genomasterfile=os.path.join(global_settings.reference_folder,'gnomAD.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'),
-           exomasterfile=os.path.join(global_settings.reference_folder, 'gnomAD.exomes.r2.1.1.sites.vcf.bgz'),
+    UniprotMasterReader(first_n_protein=100)
+    exit()
+    gnomAD(genomasterfile=os.path.join(global_settings.reference_folder,'gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'),
+           exomasterfile=os.path.join(global_settings.reference_folder, 'gnomad.exomes.r2.1.1.sites.vcf.bgz'),
            namedexfile=os.path.join(global_settings.dictionary_folder, 'taxid9606-names2uniprot.json'),
            folder=os.path.join(global_settings.temp_folder, 'gnomAD')
            ).split()
@@ -114,7 +116,7 @@ elif 1==9:
 elif 1==0:
     iterate_taxon('9606')
         #.retrieve_references(ask=False, refresh=False)
-    #UniprotReader()
+    #UniprotMasterReader()
 
     #global_settings.startup()
 

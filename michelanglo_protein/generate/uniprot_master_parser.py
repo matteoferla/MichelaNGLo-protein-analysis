@@ -1,10 +1,12 @@
 """
 This file parses the uniprot FTP file and can do various things. such as making a small one that is only human.
-But mainly the `UniprotReader.convert('uniprot_sprot.xml')` method whcih generates the JSON files required. In future these will be databases...
+But mainly the `UniprotMasterReader.convert('uniprot_sprot.xml')` method whcih generates the JSON files required. In future these will be databases...
 Be warned that ET.Element is a monkeypatched version.
 """
 
-import os, json, re
+import os, json, re, time
+from threading import Thread, Semaphore, Lock, active_count
+import itertools
 from .ET_monkeypatch import ET
 from ._protein_gatherer import ProteinGatherer as Protein
 from warnings import warn
@@ -14,7 +16,7 @@ from michelanglo_protein.generate.split_gnomAD import gnomAD
 from collections import defaultdict
 
 ##### Uniprot reader
-class UniprotReader:
+class UniprotMasterReader:
     """
     see generator iter_human
     NB. The ET.Element has been expanded. See `help(ElementalExpansion)`
@@ -125,68 +127,25 @@ class UniprotReader:
                 #gnomAD().split().write('gnomAD')
                 warn('I turned off this step!!!')
         self.file = uniprot_master_file
-        count=0
-        uniprot_pdbdex = defaultdict(list)
-        uniprot_datasetdex = defaultdict(dict)
-        organism_greater_namedex = defaultdict(dict)
-        organism_lesser_namedex = defaultdict(dict)
-        uniprot_namedex = {}
-        uniprot_speciesdex = {}
-        organismdex = {}
-        seqdex = {}
-        genedex = {}
+        self.first_n_protein = first_n_protein
+        self.chosen_attribute = chosen_attribute
+        self._uniprot_pdbdex = defaultdict(list)  #: dict of key=uniprot and value=list of PDB codes
+        self._uniprot_datasetdex = defaultdict(str)  #: dict of key=uniprot and value=dataset type Swiss-Prot | TrEMBL
+        self._organism_greater_namedex = defaultdict(dict)  #: dict of taxid as keys, with dict value with keys names and values prefered name (uniprot id) for the good names
+        self._organism_lesser_namedex = defaultdict(dict)  #: dict of taxid as keys, with dict value with keys names and values prefered name (uniprot id) for the potentially stinky names
+        self._uniprot_namedex = {}  #: dict of key=uniprot and value=human name for title
+        self._uniprot_speciesdex = {}  #: dict of key=uniprot and value=taxid
+        self._organismdex = {}  #: dict of key=orgnism names and value=taxid
+        self._semaphore = Semaphore(50)
+        self._lock = Lock()
+        ## run
         for entry in self.iter_all():
-            # debugging overrider....
-            count+=1
-            if count == first_n_protein:
-                break
-            ### parser...
-            prot = Protein.from_uniprot(entry)
-            if prot.organism['common'] == 'Human':
-                prot.parse_swissmodel().get_offsets().get_resolutions()
-            prot.compute_params()
-            prot.dump()  # gdump??
-            ### dict
-            chosen_name = getattr(prot, chosen_attribute)
-            # update the organism dex
-            org = prot.organism['NCBI Taxonomy']
-            if not org in organismdex:
-                for k in prot.organism:
-                    organismdex[prot.organism[k]] = org
-            ## fill namedex
-            if prot.uniprot in uniprot_datasetdex:
-                print('Repeated uniprot!', prot.uniprot)
-                continue
-            ## make dictionaries...
-            uniprot_datasetdex[prot.uniprot] = prot.uniprot_dataset
-            uniprot_pdbdex[prot.uniprot].extend([p.id for p in prot.pdbs])
-            if prot.gene_name and prot.gene_name in organism_greater_namedex[org]:
-                if prot.organism['scientific'] == 'Homo sapiens':
-                    print('#'*20)
-                    print('CLASH!!!!!', prot.gene_name, prot.uniprot, prot.organism['scientific'], prot.recommended_name, uniprot_datasetdex[prot.uniprot], uniprot_datasetdex[organism_greater_namedex[org][prot.gene_name]])
-                if prot.uniprot_dataset == 'TrEMBL' and uniprot_datasetdex[organism_greater_namedex[org][prot.gene_name]] == 'Swiss-Prot':
-                    continue
-            if prot.recommended_name and prot.recommended_name in organism_greater_namedex[org]:
-                if prot.organism['scientific'] == 'Homo sapiens':
-                    print('#' * 20)
-                    print('CLASH!!!!!', prot.gene_name, prot.uniprot, prot.recommended_name,
-                      uniprot_datasetdex[prot.uniprot],
-                      uniprot_datasetdex[organism_greater_namedex[org][prot.recommended_name]])
-                if prot.uniprot_dataset == 'TrEMBL' and uniprot_datasetdex[organism_greater_namedex[org][prot.recommended_name]] == 'Swiss-Prot':
-                    continue
-            organism_greater_namedex[org][prot.uniprot_name] = chosen_name
-            organism_greater_namedex[org][prot.recommended_name] = chosen_name
-            organism_greater_namedex[org][prot.gene_name] = chosen_name
-            uniprot_namedex[prot.uniprot] = prot.recommended_name
-            uniprot_speciesdex[prot.uniprot] = org
-            for group in [prot.alt_gene_name_list, prot.alternative_fullname_list, prot.alternative_shortname_list]:
-                for name in group:
-                    if re.match('[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+',name):
-                        continue # no EC numbers!
-                    organism_lesser_namedex[org][name] = chosen_name
+            Thread(target=self.parse, args=[entry]).start()
+            while active_count() > 50:
+                time.sleep(1)
         ## final touches to the whole sets...
-        for org in organism_greater_namedex:
-            namedex = {**organism_lesser_namedex[org], **organism_greater_namedex[org]}
+        for org in self._organism_greater_namedex:
+            namedex = {**self._organism_lesser_namedex[org], **self._organism_greater_namedex[org]}
             ## cleanup
             for k in ('\n      ', '\n     ', '\n    ', '\n   ', '', '\n', ' '):
                 if k in namedex:
@@ -195,10 +154,71 @@ class UniprotReader:
             fn = os.path.join(Protein.settings.dictionary_folder, f'taxid{org}-names2{chosen_attribute}.json')
             json.dump(namedex, open(fn, 'w'))  ## name to pdbs
         fn = os.path.join(Protein.settings.dictionary_folder, f'organism.json')
-        json.dump(organismdex, open(fn, 'w'))  ## organism to taxid
+        json.dump(self._organismdex, open(fn, 'w'))  ## organism to taxid
         ## lighten
-        for dex, fn in ((uniprot_pdbdex, 'uniprot2pdb.json'),
-                        (uniprot_namedex, 'uniprot2name.json'),
-                        (uniprot_speciesdex, 'uniprot2species.json')):
+        for dex, fn in ((self._uniprot_pdbdex, 'uniprot2pdb.json'),
+                        (self._uniprot_namedex, 'uniprot2name.json'),
+                        (self._uniprot_speciesdex, 'uniprot2species.json')):
             fp = os.path.join(Protein.settings.dictionary_folder, fn)
             json.dump({k: dex[k] for k in dex if dex[k]}, open(fp, 'w'))
+
+    def parse(self, entry):
+        ### parser...
+        self._semaphore.acquire()
+        prot = Protein.from_uniprot(entry)
+        if prot.uniprot in self._uniprot_datasetdex:
+            print('Repeated uniprot!', prot.uniprot)
+            self._semaphore.release()
+            return None
+        prot.get_offsets().get_resolutions()
+        if prot.organism['common'] == 'Human':
+            prot.parse_swissmodel()
+            pass
+        prot.compute_params()
+        ### dict
+        chosen_name = getattr(prot, self.chosen_attribute)
+        # update the organism dex
+        org = prot.organism['NCBI Taxonomy']
+        self._lock.acquire()
+        prot.dump()  # gdump??
+        if org not in self._organismdex:
+            for k in prot.organism:
+                self._organismdex[prot.organism[k]] = org
+        ## make dictionaries...
+        self._uniprot_datasetdex[prot.uniprot] = prot.uniprot_dataset
+        self._uniprot_pdbdex[prot.uniprot].extend([p.id for p in prot.pdbs])
+        if prot.gene_name and prot.gene_name in self._organism_greater_namedex[org]:
+            if prot.organism['scientific'] == 'Homo sapiens':
+                print('#' * 20)
+                print('CLASH!!!!!', prot.gene_name, prot.uniprot, prot.organism['scientific'],
+                      prot.recommended_name,
+                      self._uniprot_datasetdex[prot.uniprot],
+                      self._uniprot_datasetdex[self._organism_greater_namedex[org][prot.gene_name]])
+            if prot.uniprot_dataset == 'TrEMBL' and self._uniprot_datasetdex[
+                self._organism_greater_namedex[org][prot.gene_name]] == 'Swiss-Prot':
+                self._lock.release()
+                return None
+        if prot.recommended_name and prot.recommended_name in self._organism_greater_namedex[org]:
+            if prot.organism['scientific'] == 'Homo sapiens':
+                print('#' * 20)
+                print('CLASH!!!!!', prot.gene_name, prot.uniprot, prot.recommended_name,
+                      self._uniprot_datasetdex[prot.uniprot],
+                      self._uniprot_datasetdex[self._organism_greater_namedex[org][prot.recommended_name]])
+            if prot.uniprot_dataset == 'TrEMBL' and self._uniprot_datasetdex[
+                self._organism_greater_namedex[org][prot.recommended_name]] == 'Swiss-Prot':
+                self._lock.release()
+                return None
+        self._organism_greater_namedex[org][prot.uniprot] = chosen_name
+        self._organism_greater_namedex[org][prot.uniprot_name] = chosen_name
+        self._organism_greater_namedex[org][prot.recommended_name] = chosen_name
+        self._organism_greater_namedex[org][prot.gene_name] = chosen_name
+        self._uniprot_namedex[prot.uniprot] = prot.recommended_name
+        self._uniprot_speciesdex[prot.uniprot] = org
+        for group in [prot.alt_gene_name_list, prot.alternative_fullname_list, prot.alternative_shortname_list]:
+            for name in group:
+                if re.match('[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+', name):
+                    continue  # no EC numbers!
+                self._organism_lesser_namedex[org][name] = chosen_name
+        self._lock.release()
+        self._semaphore.release()
+        return None
