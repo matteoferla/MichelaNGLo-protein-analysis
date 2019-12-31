@@ -1,4 +1,4 @@
-## Protein module of VENUS (SNV analsyer)
+## Protein module for Michelanglo and VENUS (formerly SNV analyser)
 
 The `protein` module collects all the data needed for analysing variants.
 
