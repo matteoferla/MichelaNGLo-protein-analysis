@@ -16,7 +16,7 @@ if __name__ == '__main__':
     ## Phosphosite
     #Phosphosite().split().write()
     ## Uniprot
-    UniprotMasterReader(first_n_protein=10)
+    UniprotMasterReader(first_n_protein=0)
     # gnomAD data needs to be split up after that the dictionaries are made.
     taxid=9606 #that's humans
     gnomAD(genomasterfile=os.path.join(global_settings.reference_folder,'gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'),
