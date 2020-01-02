@@ -44,7 +44,7 @@ _refs = (
     'https://stringdb-static.org/download/protein.links.v10.5/9606.protein.links.v10.5.txt.gz',
     'http://www.ensembl.org/biomart/martview/436b8b2b06f64bbee960592afda10817?VIRTUALSCHEMANAME=default&ATTRIBUTES=hsapiens_gene_ensembl.default.feature_page.ensembl_gene_id|hsapiens_gene_ensembl.default.feature_page.ensembl_transcript_id|hsapiens_gene_ensembl.default.feature_page.external_gene_name|hsapiens_gene_ensembl.default.feature_page.uniprotswissprot|hsapiens_gene_ensembl.default.feature_page.uniprot_gn|hsapiens_gene_ensembl.default.feature_page.ensembl_peptide_id&FILTERS=&VISIBLEPANEL=resultspanel',
     'ftp://ftp.nextprot.org/pub/current_release/mapping/nextprot_refseq.txt',
-    'https://storage.googleapis.com/gnomAD-public/release/2.1.1/vcf/genomes/gnomAD.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'
+    'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/genomes/gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'
     'ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/flatfiles/tsv/pdb_chain_uniprot.tsv.gz')
 
 

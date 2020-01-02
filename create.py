@@ -11,12 +11,12 @@ import os, json
 if __name__ == '__main__':
     global_settings.verbose = True #False
     global_settings.startup(data_folder='../protein-data')
-    global_settings.retrieve_references(ask=False, refresh=False)
+    #global_settings.retrieve_references(ask=False, refresh=False)
     global_settings.error_tolerant = True
     ## Phosphosite
-    Phosphosite.split().write()
+    #Phosphosite().split().write()
     ## Uniprot
-    UniprotMasterReader(first_n_protein=100)
+    UniprotMasterReader(first_n_protein=10)
     # gnomAD data needs to be split up after that the dictionaries are made.
     taxid=9606 #that's humans
     gnomAD(genomasterfile=os.path.join(global_settings.reference_folder,'gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'),

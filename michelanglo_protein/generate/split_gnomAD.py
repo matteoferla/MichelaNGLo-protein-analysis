@@ -64,7 +64,7 @@ class gnomADVariant:
                     variant.append(cls(symbol=data['SYMBOL'],
                                    identifier=data['ID'],
                                    from_residue=data['Amino_acids'].split('/')[0],
-                                   residue_index=int(data['Protein_position']),
+                                   residue_index=int(data['Protein_position'].split('-')[0]),
                                    to_residue=data['Amino_acids'].split('/')[1] if '/' in data['Amino_acids'] else 'X',
                                    impact=data['IMPACT'],
                                    homozygous=int(data['nhomalt']),
