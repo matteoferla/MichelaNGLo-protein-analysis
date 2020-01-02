@@ -27,7 +27,7 @@ The old code was slow:
         
         """+licence_note
 
-class Phoshosite:
+class Phosphosite:
     def __init__(self):
         self.settings = global_settings
         self.sources = []

@@ -5,6 +5,7 @@ from michelanglo_protein.settings_handler import global_settings
 from michelanglo_protein.generate import ProteinGatherer, ProteomeGatherer
 from michelanglo_protein.generate.split_gnomAD import gnomAD
 from michelanglo_protein.generate.uniprot_master_parser import UniprotMasterReader
+from michelanglo_protein.generate.split_phosphosite import Phosphosite
 import os, json
 
 if __name__ == '__main__':
@@ -12,6 +13,9 @@ if __name__ == '__main__':
     global_settings.startup(data_folder='../protein-data')
     global_settings.retrieve_references(ask=False, refresh=False)
     global_settings.error_tolerant = True
+    ## Phosphosite
+    Phosphosite.split().write()
+    ## Uniprot
     UniprotMasterReader(first_n_protein=100)
     # gnomAD data needs to be split up after that the dictionaries are made.
     taxid=9606 #that's humans

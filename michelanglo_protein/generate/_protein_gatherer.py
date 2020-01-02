@@ -674,8 +674,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     @_failsafe
     def get_PTM(self):
         """
-        This is the old version, it is heavy as it repeats the search for each entry.
-        I will rearrange PTM in a file per gene.
+        To run this requires ``Phosphosite().split().write()`` to have been run at some point...
         :return:
         """
         assert self.uniprot, 'Uniprot Acc. required. Kind of.'
