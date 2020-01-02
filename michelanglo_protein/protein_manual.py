@@ -1,5 +1,5 @@
 from .core import ProteinCore
-import os, csv
+import os, csv, markdown
 from warnings import warn
 from shutil import copyfile
 

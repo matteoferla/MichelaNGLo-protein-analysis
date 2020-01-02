@@ -9,7 +9,7 @@ import os, json
 
 if __name__ == '__main__':
     global_settings.verbose = True #False
-    global_settings.startup(data_folder='../MichelaNGLo-data')
+    global_settings.startup(data_folder='../protein-data')
     global_settings.retrieve_references(ask=False, refresh=False)
     global_settings.error_tolerant = True
     UniprotMasterReader(first_n_protein=100)
