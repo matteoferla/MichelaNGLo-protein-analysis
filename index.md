@@ -2,7 +2,7 @@
 sphinx-quickstart on Mon Dec  9 16:33:35 2019.
 You can adapt this file completely to your liking, but it should at least
 contain the root `toctree` directive. -->
-# Welcome to protein-module-for-VENUS’s documentation!
+# Welcome to protein-module’s documentation!
 
 
 * protein package
