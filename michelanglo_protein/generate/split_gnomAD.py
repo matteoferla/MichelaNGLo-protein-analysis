@@ -121,7 +121,7 @@ class gnomAD:
                                     path = os.path.join(self.datafolder, previous + '.json')
                                     if os.path.exists(path) and not self.store_in_memory:
                                         with open(path, 'r') as r:
-                                            older = json.load(path)
+                                            older = json.load(r)
                                     else:
                                         older = []
                                     with open(path, 'w') as w:

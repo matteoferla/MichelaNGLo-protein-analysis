@@ -10,11 +10,11 @@ import os, json
 
 if __name__ == '__main__':
     global_settings.verbose = True #False
-    global_settings.startup(data_folder='../protein-data')
-    #global_settings.retrieve_references(ask=False, refresh=False)
     global_settings.error_tolerant = True
+    global_settings.startup(data_folder='../protein-data')
+    global_settings.retrieve_references(ask=False, refresh=False)
     ## Phosphosite
-    #Phosphosite().split().write()
+    Phosphosite().split().write()
     ## Uniprot
     UniprotMasterReader(first_n_protein=0)
     # gnomAD data needs to be split up after that the dictionaries are made.
@@ -34,3 +34,4 @@ if __name__ == '__main__':
             protein.dump()
         except:
             pass
+    print('Done.')

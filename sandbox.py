@@ -81,21 +81,12 @@ def iterate_taxon(taxid=9606):
 if __name__ == '__main__':
     global_settings.verbose = True #False
     #global_settings.startup(data_folder='../MichelaNGLo-protein-data')
-    global_settings.startup(data_folder='../MichelaNGLo-data')
+    global_settings.startup(data_folder='../protein-data')
 #### workspace!
 if 1==1:
-    ## The new proteome gatherer!
-    #global_settings.retrieve_references(ask=False, refresh=False)
-    global_settings.error_tolerant = True
-    UniprotMasterReader(first_n_protein=100)
-    exit()
-    gnomAD(genomasterfile=os.path.join(global_settings.reference_folder,'gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'),
-           exomasterfile=os.path.join(global_settings.reference_folder, 'gnomad.exomes.r2.1.1.sites.vcf.bgz'),
-           namedexfile=os.path.join(global_settings.dictionary_folder, 'taxid9606-names2uniprot.json'),
-           folder=os.path.join(global_settings.temp_folder, 'gnomAD')
-           ).split()
-    iterate_taxon()
-
+    p = ProteinCore(taxid='9606', uniprot='P62873').load() #gnb1 P62873 gnb2 P62879
+    for k in dir(p):
+        print(k, getattr(p, k))
 elif 1==1:
     p = ProteinAnalyser(taxid='9606', uniprot='P62873').load() #gnb1 P62873 gnb2 P62879
     p.mutation = 'A73T'
