@@ -151,36 +151,3 @@ class gnomAD:
                 json.dump([v.to_dict() for v in self.data[gene]],w)
         return self
 
-'''
-    if self.pLI == -1:  # No ExAC name so don't bother.
-        return
-    file = os.path.join(self.settings.ExAC_folder, self.uniprot + '_ExAC.vcf')
-    matches = []
-    if os.path.isfile(file):
-        self.log('Reading from cached _ExAC.vcf file')
-        matches = list(open(file))
-    else:
-        self.log('Parsing ExAC.r1.sites.vep.vcf')
-        # out.write('#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO')
-        gmatch = '|{}|'.format(self.gene_name)
-        with self.settings.open('ExAC_vep') as fh:
-            for line in fh:
-                if line and line[0] != '#' and gmatch in line:
-                    matches.append(line)
-                    # data = parse(line)
-        with open(file, 'w') as out:
-            out.writelines(matches)
-        self.log('... {} Matches found'.format(len(matches)))
-    # parse entries. Oddly some are incorrect if the gene happens to be potentially ambiguous.
-    parsed = [parse(line) for line in matches]
-    self.alleles = [x for x in parsed if x['SYMBOL'] == self.gene_name]
-    if self.alleles:
-        self.ENSG = self.alleles[0]['Gene']
-    verdict_list = [self.verify_allele(a) for a in self.iter_allele()]
-    verdict_sum = sum(verdict_list)
-    verdict_len = len(verdict_list)
-    if verdict_len and verdict_sum / verdict_len > 0.8:
-        self.log('ExAC data usable. There are {s} valid out of {l}'.format(s=verdict_sum, l=verdict_len))
-    else:
-        self.log('ExAC data cannot be integrated. There are {s} valid out of {l}'.format(s=verdict_sum, l=verdict_len))
-        self.alleles = []  # no ExAC.'''
