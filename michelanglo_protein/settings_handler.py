@@ -153,20 +153,30 @@ class GlobalSettings(metaclass=Singleton):
                 print('Exiting...')
                 exit()
         for url in self.addresses:
-            file = os.path.join(self.reference_folder, os.path.split(url)[1])
-            if os.path.isfile(file) and not refresh:
-                if self.verbose:
-                    print('{0} file is present already'.format(file))
-            else:
-                if self.verbose:
-                    print('{0} file is being downloaded'.format(file))
-                self._get_url(url, file)
-            self._unzip_file(file)
+            self._deal_w_url(url, refresh)
         ## convert dodgy ones.
         self.create_json_from_idx('resolu.idx', 'resolution.json')
         print(self.manual_task_note)
 
         #implement cat *.psi > cat.psi where psi files are from http://interactome.baderlab.org/data/')
+
+    def _deal_w_url(self, url, refresh=False) -> str:
+        """
+        If the file does not exist or refresh is true, it downloads (calling``self._get_url(url, file)``) and unzips the page (``self._unzip_file(file)``).
+        :param url:
+        :param refresh:
+        :return: the file name (full)
+        """
+        file = os.path.join(self.reference_folder, os.path.split(url)[1])
+        if os.path.isfile(file) and not refresh:
+            if self.verbose:
+                print('{0} file is present already'.format(file))
+        else:
+            if self.verbose:
+                print('{0} file is being downloaded'.format(file))
+            self._get_url(url, file)
+        self._unzip_file(file)
+        return file
 
     def _get_url(self, url, file):
         if 'ftp://' in url:
