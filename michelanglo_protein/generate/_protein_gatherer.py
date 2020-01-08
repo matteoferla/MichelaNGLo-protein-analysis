@@ -680,7 +680,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         assert self.uniprot, 'Uniprot Acc. required. Kind of.'
         self.log(f'Getting PTM for {self.uniprot}')
         fp = os.path.join(self.settings.temp_folder,'phosphosite',self.uniprot+'.json')
-        if fp:
+        if os.path.exists(fp):
             with open(fp) as fh:
                 self.features['PSP_modified_residues'] = json.load(fh)
         return self
