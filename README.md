@@ -10,6 +10,14 @@ The `michelanglo_protein` module collects all the data needed for analysing vari
     print(p.get_gnomAD_near_position())
     print(p.model.get_structure_neighbours())
     print(p.get_superficiality())
+    
+
+The site [michelanglo.sgc.ox.ac.uk](https://michelanglo.sgc.ox.ac.uk) depends on three repos:
+* [MichelaNGLo-app](https://github.com/matteoferla/MichelaNGLo)
+* [MichelaNGLo-transpiler](https://github.com/matteoferla/MichelaNGLo-transpiler)
+* **MichelaNGLo-protein-module**
+
+This module can be used independently of Michelanglo app module, but requires the transpiler module.
 
 ### files within protein module
 
