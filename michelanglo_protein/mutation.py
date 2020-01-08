@@ -536,25 +536,25 @@ class Mutation:
 
     @property
     def exposure_effect(self):
-        lowconc = '(lowering michelanglo_protein concentrations)'
+        lowconc = '(lowering protein concentrations)'
         lessbind = '(less binding means less activation or inhibition)'
         neglegible = 'The effect should be negligible.'
         if self.surface_expose == 'buried':
             if self.to_residue == 'P':
-                return f'Proline is highly destabilising in michelanglo_protein cores (it cannot be part of &alpha;-helices for example) {lowconc}.'
+                return f'Proline is highly destabilising in protein cores (it cannot be part of &alpha;-helices for example) {lowconc}.'
             elif 'differently charged' in self.apriori_effect:
-                return f'Charge changes in michelanglo_protein cores are highly destabilising {lowconc}.'
+                return f'Charge changes in protein cores are highly destabilising {lowconc}.'
             elif 'bigger' in self.apriori_effect or 'shaped' in self.apriori_effect:
-                return f'Larger residues in michelanglo_protein cores are highly destabilising {lowconc}.'
+                return f'Larger residues in protein cores are highly destabilising {lowconc}.'
             elif 'polar' in self.apriori_effect:
                 return f'Protein cores are generally hydrophobic, so a change in polarity is generally destabilising {lowconc}.'
             elif 'smaller' in self.apriori_effect:
-                return f'Changes to smaller residues remove some interactions, thus weakly destabilising the michelanglo_protein (potentially lowering michelanglo_protein concentrations) but most likely have no effect.'
+                return f'Changes to smaller residues remove some interactions, thus weakly destabilising the protein (potentially lowering michelanglo_protein concentrations) but most likely have no effect.'
             else:
-                return f'Mutations in michelanglo_protein cores are generally destabilising {lowconc}, but the mutation is very mild.'
+                return f'Mutations in protein cores are generally destabilising {lowconc}, but the mutation is very mild.'
         elif self.surface_expose == 'partially buried':
             if self.to_residue == 'P':
-                return f'Proline is highly destabilising in michelanglo_protein cores (it cannot be part of &alpha;-helices for example) {lowconc}.'
+                return f'Proline is highly destabilising in protein cores (it cannot be part of &alpha;-helices for example) {lowconc}.'
             elif 'differently charged' in self.apriori_effect:
                 return f'Charge changes are most often destabilising {lowconc}.'
             elif 'bigger' in self.apriori_effect or 'shaped' in self.apriori_effect:

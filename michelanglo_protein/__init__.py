@@ -1,6 +1,6 @@
 __doc__ = """
 This module has several classes.
-* ProteinCore is used by the rest and provides the backbone. It can read and write itself (even in compressed form, see .gdump and .gload) but not generate michelanglo_protein data. for that there is
+* ProteinCore is used by the rest and provides the backbone. It can read and write itself (even in compressed form, see .gdump and .gload) but not generate protein data. for that there is
 * generate.ProteinGatherer, which parses data from various sources. generate.ProteomeGatherer starts everything up and parses the whole proteome.
 * there are some classes in generate too, but they don't see the light of day. For those see generate._protein_gatherer
 * Mutation handles the mutation

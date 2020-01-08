@@ -28,7 +28,7 @@ from Bio.SeqUtils import ProtParam, ProtParamData
 
 class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     """
-    This class handles each michelanglo_protein entry from Uniprot. See __init__ for the list of variables stored.
+    This class handles each protein entry from Uniprot. See __init__ for the list of variables stored.
     It fills them from various other sources.
 
         >>> ProteinGatherer()
@@ -223,7 +223,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             self.log('parsing HURI...')
             for row in self.settings.open('huri'):
                 # Unique identifier for interactor A	Unique identifier for interactor B	Alternative identifier for interactor A	Alternative identifier for interactor B	Aliases for A	Aliases for B	Interaction detection methods	First author	Identifier of the publication	NCBI Taxonomy identifier for interactor A	NCBI Taxonomy identifier for interactor B	Interaction types	Source databases	Interaction identifier(s)	Confidence score	Complex expansion	Biological role A	Biological role B	Experimental role A	Experimental role B	Interactor type A	Interactor type B	Xref for interactor A	Xref for interactor B	Xref for the interaction	Annotations for interactor A	Annotations for interactor B	Annotations for the interaction	NCBI Taxonomy identifier for the host organism	Parameters of the interaction	Creation date	Update date	Checksum for interactor A	Checksum for interactor B	Checksum for interaction	negative	Feature(s) for interactor A	Feature(s) for interactor B	Stoichiometry for interactor A	Stoichiometry for interactor B	Participant identification method for interactor A	Participant identification method for interactor B
-                # -	uniprotkb:Q6P1W5-2	ensembl:ENST00000507897.5|ensembl:ENSP00000426769.1|ensembl:ENSG00000213204.8	ensembl:ENST00000373374.7|ensembl:ENSP00000362472.3|ensembl:ENSG00000142698.14	human orfeome collection:2362(author assigned name)	human orfeome collection:5315(author assigned name)	"psi-mi:""MI:1112""(two hybrid prey pooling approach)"	Yu et al.(2011)	pubmed:21516116	taxid:9606(Homo Sapiens)	taxid:9606(Homo Sapiens)	"psi-mi:""MI:0407""(direct interaction)"	-	-	-	-	-	-	"psi-mi:""MI:0496""(bait)"	"psi-mi:""MI:0498""(prey)"	"psi-mi:""MI:0326""(michelanglo_protein)"	"psi-mi:""MI:0326""(michelanglo_protein)"	-	-	-	"comment:""vector name: pDEST-DB""|comment:""centromeric vector""|comment:""yeast strain: Y8930"""	"comment:""vector name: pDEST-AD""|comment:""centromeric vector""|comment:""yeast strain: Y8800"""	"comment:""Found in screens 1."""	taxid:4932(Saccharomyces cerevisiae)	-	6/30/2017	-	-	-	-	-	DB domain (n-terminal): gal4 dna binding domain:n-n	AD domain (n-terminal): gal4 activation domain:n-n	-	-	"psi-mi:""MI1180""(partial DNA sequence identification)"	"psi-mi:""MI1180""(partial DNA sequence identification)"
+                # -	uniprotkb:Q6P1W5-2	ensembl:ENST00000507897.5|ensembl:ENSP00000426769.1|ensembl:ENSG00000213204.8	ensembl:ENST00000373374.7|ensembl:ENSP00000362472.3|ensembl:ENSG00000142698.14	human orfeome collection:2362(author assigned name)	human orfeome collection:5315(author assigned name)	"psi-mi:""MI:1112""(two hybrid prey pooling approach)"	Yu et al.(2011)	pubmed:21516116	taxid:9606(Homo Sapiens)	taxid:9606(Homo Sapiens)	"psi-mi:""MI:0407""(direct interaction)"	-	-	-	-	-	-	"psi-mi:""MI:0496""(bait)"	"psi-mi:""MI:0498""(prey)"	"psi-mi:""MI:0326""(protein)"	"psi-mi:""MI:0326""(michelanglo_protein)"	-	-	-	"comment:""vector name: pDEST-DB""|comment:""centromeric vector""|comment:""yeast strain: Y8930"""	"comment:""vector name: pDEST-AD""|comment:""centromeric vector""|comment:""yeast strain: Y8800"""	"comment:""Found in screens 1."""	taxid:4932(Saccharomyces cerevisiae)	-	6/30/2017	-	-	-	-	-	DB domain (n-terminal): gal4 dna binding domain:n-n	AD domain (n-terminal): gal4 activation domain:n-n	-	-	"psi-mi:""MI1180""(partial DNA sequence identification)"	"psi-mi:""MI1180""(partial DNA sequence identification)"
                 if ':' + self.gene_name + '(' in row:  #
                     protein_set = re.findall('\:(\w+)\(gene name\)', row)
                     if len(protein_set) == 2:
@@ -365,14 +365,14 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                             entry['elm_identifier']))
 
     def fetch_ENSP(self):
-        """EMBL ids should vome from the Unirpto entry. However, in some cases too many it is absent."""
+        """EMBL ids should have come from the Unirpto entry. However, in some cases (too many) it is absent."""
         for row in self.settings.open('ensembl'):
             if self.gene_name in row:
                 if row.count(' ') > 5:
                     self.ENSP = row.split()[5]
                 break
         else:
-            warn('Unknown Ensembl michelanglo_protein id for ' + self.gene_name)
+            warn('Unknown Ensembl protein id for ' + self.gene_name)
         return self
 
 
@@ -571,7 +571,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
 
 
     def get_percent_modelled(self):
-        """Returns the [0,1] fraction of the michelanglo_protein length that is modelled (repeats arent recounted)"""
+        """Returns the [0,1] fraction of the protein length that is modelled (repeats arent recounted)"""
 
         def clean(text):
             if isinstance(text, int):
@@ -616,7 +616,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     def augment_pdb_w_offset(self):
         """
         SIFTS data. for PDBe query see elsewhere.
-        There are four start/stop pairs that need to be compared to get a good idea of a michelanglo_protein.
+        There are four start/stop pairs that need to be compared to get a good idea of a protein.
         For a lengthy discussion see https://blog.matteoferla.com/2019/09/pdb-numbering-rollercoaster.html
 
         :return:

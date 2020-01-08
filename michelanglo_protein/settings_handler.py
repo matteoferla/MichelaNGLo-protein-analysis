@@ -56,7 +56,7 @@ class GlobalSettings(metaclass=Singleton):
     verbose = False #:verbose boolean controls the verbosity of the whole module.
     subdirectory_names = ('reference', 'temp', 'uniprot', 'pdbblast', 'pickle', 'binders', 'dictionary')
 
-                          #'manual', 'transcript', 'michelanglo_protein', 'uniprot', 'pfam', 'pdb', 'ELM', 'ELM_variant', 'pdb_pre_allele', 'pdb_post_allele', 'ExAC', 'pdb_blast', 'pickle', 'references', 'go',
+                          #'manual', 'transcript', 'protein', 'uniprot', 'pfam', 'pdb', 'ELM', 'ELM_variant', 'pdb_pre_allele', 'pdb_post_allele', 'ExAC', 'pdb_blast', 'pickle', 'references', 'go',
                           #'binders')
     fetch = True #: boolean for whether to download data from the interwebs.
     missing_attribute_tolerant = True
