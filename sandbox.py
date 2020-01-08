@@ -77,6 +77,19 @@ def iterate_taxon(taxid=9606):
         except:
             pass
 
+def describe(uniprot):
+    p = ProteinCore(taxid='9606', uniprot=uniprot).load()  # gnb1 P62873 gnb2 P62879
+    for k in dir(p):
+        print(k, getattr(p, k))
+
+def analyse(uniprot):
+    p = ProteinAnalyser(taxid='9606', uniprot=uniprot).load()
+    p.mutation = f'{p.sequence[65]}66W'
+    print(p.pdbs)
+    print(p.get_best_model().offset)
+    p.analyse_structure()
+    print(p.structural)
+    # http://0.0.0.0:8088/venus_analyse?uniprot=P62879&species=9606&mutation=A73T
 
 if __name__ == '__main__':
     global_settings.verbose = True #False
@@ -84,17 +97,13 @@ if __name__ == '__main__':
     global_settings.startup(data_folder='../protein-data')
 #### workspace!
 if 1==1:
-    p = ProteinCore(taxid='9606', uniprot='P62873').load() #gnb1 P62873 gnb2 P62879
-    for k in dir(p):
-        print(k, getattr(p, k))
-elif 1==1:
-    p = ProteinAnalyser(taxid='9606', uniprot='P62873').load() #gnb1 P62873 gnb2 P62879
-    p.mutation = 'A73T'
-    print(p.pdbs)
-    print(p.get_best_model().offset)
-    p.analyse_structure()
-    print(p.structural)
-    #http://0.0.0.0:8088/venus_analyse?uniprot=P62879&species=9606&mutation=A73T
+    #describe('P62873')
+    #analyse('P62873')
+    p = ProteinGatherer(taxid='9606', uniprot='P62873').load()
+    print(p.gnomAD)
+    print(p.parse_gnomAD())
+    print(p.gnomAD)
+    print(p.features['PSP_modified_residues'])
 elif 1==9:
     from michelanglo_protein.generate.split_phosphosite import Phoshosite
     #ph = Phoshosite().split().write('phosphosite')
@@ -127,6 +136,7 @@ elif 1==0:
     print('retrieving...')
     global_settings.retrieve_references(ask=False, refresh=False)
 else:
+    ## dock 9 ops.
     #test_ProteinAnalyser()
     p = ProteinGatherer(uniprot='Q96N67').load()
     p.parse_gnomAD()

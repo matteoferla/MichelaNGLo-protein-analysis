@@ -433,7 +433,9 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         file = os.path.join(self.settings.temp_folder, 'gnomAD', self.uniprot +'.json')
         if os.path.exists(file):
             for snp in json.load(open(file)):
-                resi = int(snp['residue_index'].split('-')[0])
+                resi = snp['residue_index']
+                if isinstance(resi, str):
+                    resi = int(resi.split('-')[0])
                 #print('HERE', snp)
                 variant = Variant(id=f'gnomAD_{resi}_{resi}_{snp["id"]}',
                                 description='{from_residue}{residue_index}{to_residue} ({id})'.format(**snp),
