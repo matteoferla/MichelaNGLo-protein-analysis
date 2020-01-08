@@ -7,6 +7,17 @@ from michelanglo_protein.generate.split_gnomAD import gnomAD
 from michelanglo_protein.generate.uniprot_master_parser import UniprotMasterReader
 from michelanglo_protein.generate.split_phosphosite import Phosphosite
 import os, json
+import os, requests, re, unicodedata
+
+def message(msg):
+    if 'SLACK_WEBHOOK' in os.environ:
+        msg = unicodedata.normalize('NFKD', msg).encode('ascii', 'ignore').decode('ascii')
+        msg = re.sub('[^\w\s\-.,;?!@#()\[\]]', '', msg)
+        r = requests.post(url=os.environ['SLACK_WEBHOOK'],
+                          headers={'Content-type': 'application/json'},
+                          data=f"{{'text': '{msg}'}}")
+    else:
+        print(msg)
 
 if __name__ == '__main__':
     global_settings.verbose = True #False
@@ -19,8 +30,8 @@ if __name__ == '__main__':
     UniprotMasterReader(first_n_protein=0)
     # gnomAD data needs to be split up after that the dictionaries are made.
     taxid=9606 #that's humans
-    gnomAD(genomasterfile=os.path.join(global_settings.reference_folder,'gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'),
-           exomasterfile=os.path.join(global_settings.reference_folder, 'gnomad.exomes.r2.1.1.sites.vcf.bgz'),
+    gnomAD(masterfiles=[os.path.join(global_settings.reference_folder,'gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'),
+                        os.path.join(global_settings.reference_folder, 'gnomad.exomes.r2.1.1.sites.vcf.bgz')],
            namedexfile=os.path.join(global_settings.dictionary_folder, 'taxid9606-names2uniprot.json'),
            folder=os.path.join(global_settings.temp_folder, 'gnomAD')
            ).split()
@@ -34,4 +45,4 @@ if __name__ == '__main__':
             protein.dump()
         except:
             pass
-    print('Done.')
+    message('Done.')
