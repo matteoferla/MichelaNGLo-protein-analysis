@@ -26,7 +26,7 @@ class Structure:
     settings = global_settings
 
     #__slots__ = ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'coordinates', 'extra']
-    def __init__(self, id, description, x:int, y:int, code, type='rcsb',chain='A',offset:int=0, coordinates=None, extra=None, url=''):
+    def __init__(self, id, description, x:int, y:int, code, type='rcsb',chain='*',offset:int=0, coordinates=None, extra=None, url=''):
         """
         Stores the structural data for easy use by FeatureViewer and co. Can be converted to StructureAnalyser
         type = rcsb | swissmodel | homologue | www | local
@@ -36,13 +36,14 @@ class Structure:
         self.x = int(x)  #: resi in the whole uniprot protein
         self.y = int(y)  #: end resi in the whole uniprot protein
         self.offset = int(offset) #: offset is the number *subtracted* from the PDB index to make it match the position in Uniprot.
+        self.offsets = {} if chain == '*' else {chain: int(offset)} ### this is going to be the only one.
         self.pdb_start = None  # no longer used. TO be deleted.
         self.pdb_end = None   # ditto.
         self.resolution = 0 #: crystal resolution. 0 or lower will trigger special cases
         self.code = code
-        self.chain_definitions = None #filled by SIFTS
+        self.chain_definitions = [] #filled by SIFT. This is a list with a Dict per chain.
         self.type = type.lower() #: str: rcsb | swissmodel | homologue | www | local
-        self.chain = chain
+        self.chain = chain #: type str: chain letter or * (all)
         if extra is None:
             self.extra = {}
         else:
@@ -131,12 +132,6 @@ class Structure:
             return self
         details = self._get_sifts()
         ## get matching chain.
-        try:
-            detail = next(filter(lambda x: self.chain == x['CHAIN'], details))
-        except StopIteration:
-            warn(f'{self.code} {self.chain} not in {details}')
-            return self
-        self.offset = get_offset(detail)
         self.chain_definitions = [{'chain': d['CHAIN'],
                                    'uniprot': d['SP_PRIMARY'],
                                    'x': int(d["SP_BEG"]),
@@ -145,6 +140,14 @@ class Structure:
                                    'range': f'{d["SP_BEG"]}-{d["SP_END"]}',
                                    'name': None,
                                    'description': None} for d in details]
+        try:
+            if self.chain != '*':
+                detail = next(filter(lambda x: self.chain == x['CHAIN'], details))
+                self.offset = get_offset(detail)
+        except StopIteration:
+            warn(f'{self.code} {self.chain} not in {details}')
+            return self
+        self.offsets = {d['chain']: d['offset'] for d in self.chain_definitions}
         return self
 
     def _get_sifts(self, all_chains=True): #formerly called .lookup_pdb_chain_uniprot
