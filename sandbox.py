@@ -1,4 +1,4 @@
-from michelanglo_protein import ProteinAnalyser, ProteinCore, Mutation, Structure
+from michelanglo_protein import ProteinAnalyser, ProteinCore, Mutation, structure
 from michelanglo_protein.settings_handler import global_settings
 from michelanglo_protein.generate import ProteinGatherer, ProteomeGatherer
 from michelanglo_protein.generate.split_gnomAD import gnomAD
@@ -82,13 +82,35 @@ def describe(uniprot):
     for k in dir(p):
         print(k, getattr(p, k))
 
+def jsonable(self):
+    def deobjectify(x):
+        if isinstance(x, dict):
+            return {k: deobjectify(x[k]) for k in x}
+        elif isinstance(x, list) or isinstance(x, set):
+            return [deobjectify(v) for v in x]
+        elif isinstance(x, int) or isinstance(x, float):
+            return x
+        else:
+            return str(x) # really ought to deal with falseys.
+    return {a: deobjectify(getattr(self, a, '')) for a in self.__dict__}
+
 def analyse(uniprot):
     p = ProteinAnalyser(taxid='9606', uniprot=uniprot).load()
     p.mutation = f'{p.sequence[65]}66W'
-    print(p.pdbs)
-    print(p.get_best_model().offset)
+    print('First', jsonable(p))
+    p.predict_effect()
+    print('Predicted', {**jsonable(p.mutation),
+                 'features_near_mutation': p.get_features_near_position(p.mutation.residue_index),
+                 'position_as_protein_percent': round(p.mutation.residue_index/len(p)*100),
+                 'gnomAD_near_mutation': p.get_gnomAD_near_position()})
     p.analyse_structure()
-    print(p.structural)
+
+    print('PDBs: ', p.pdbs)
+    #print('Best one: ',p.get_best_model())
+    p.analyse_structure()
+    # print('analysed', {**jsonable(p.structural),
+    #     'superficiality': p.structural.get_superficiality(),
+    #     'structural_neighbours': list(p.structural.get_structure_neighbours())})
     # http://0.0.0.0:8088/venus_analyse?uniprot=P62879&species=9606&mutation=A73T
 
 if __name__ == '__main__':
@@ -98,13 +120,13 @@ if __name__ == '__main__':
 #### workspace!
 if 1==1:
     #describe('P62873')
-    #analyse('P62873')
+    analyse('P62873')
+elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()
     print(p.gnomAD)
     print(p.parse_gnomAD())
     print(p.gnomAD)
     print(p.features['PSP_modified_residues'])
-elif 1==9:
     from michelanglo_protein.generate.split_phosphosite import Phoshosite
     #ph = Phoshosite().split().write('phosphosite')
     p = ProteinGatherer(taxid='9606', uniprot='P62879').load()

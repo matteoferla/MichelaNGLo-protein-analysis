@@ -554,7 +554,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                     continue
                 if not model['seqid']:
                     warn('Odd entry')
-                    print(model)
                     model['seqid'] = 0
                 self.swissmodel.append(
                                         Structure(description='{template} (identity:{seqid:.0f}%)'.format(**model),

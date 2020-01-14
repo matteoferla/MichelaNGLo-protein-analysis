@@ -1,6 +1,6 @@
 """Download and parse all the protein data (use this, not proteome gatherer)"""
 
-from michelanglo_protein import ProteinAnalyser, ProteinCore, Mutation, Structure
+from michelanglo_protein import ProteinAnalyser, ProteinCore, Mutation, structure
 from michelanglo_protein.settings_handler import global_settings
 from michelanglo_protein.generate import ProteinGatherer, ProteomeGatherer
 from michelanglo_protein.generate.split_gnomAD import gnomAD
