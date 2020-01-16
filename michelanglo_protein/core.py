@@ -248,3 +248,15 @@ class ProteinCore:
                 self._threads[k].join()
         self._threads = {}
         return self
+
+    def asdict(self):
+        def deobjectify(x):
+            if isinstance(x, dict):
+                return {k: deobjectify(x[k]) for k in x}
+            elif isinstance(x, list) or isinstance(x, set):
+                return [deobjectify(v) for v in x]
+            elif isinstance(x, int) or isinstance(x, float):
+                return x
+            else:
+                return str(x)  # really ought to deal with falseys.
+        return {a: deobjectify(getattr(self, a, '')) for a in self.__dir__() if a[0] != '_' and type(getattr(self, a, '')).__name__ != 'method'}

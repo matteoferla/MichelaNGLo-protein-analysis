@@ -6,6 +6,9 @@ from michelanglo_protein.protein_analysis import StructureAnalyser
 # Settings = namedtuple('settings', 'dictionary_folder', 'reference_folder', 'temp_folder')
 import pickle
 
+from pprint import PrettyPrinter
+pprint = PrettyPrinter().pprint
+
 
 def test_ProteinAnalyser():
     p = ProteinAnalyser(uniprot = ' Q86V25').load()
@@ -78,9 +81,9 @@ def iterate_taxon(taxid=9606):
             pass
 
 def describe(uniprot):
+    print('***************** DESCRIPTION *******************************')
     p = ProteinCore(taxid='9606', uniprot=uniprot).load()  # gnb1 P62873 gnb2 P62879
-    for k in dir(p):
-        print(k, getattr(p, k))
+    pprint(p.asdict())
 
 def jsonable(self):
     def deobjectify(x):
@@ -95,9 +98,10 @@ def jsonable(self):
     return {a: deobjectify(getattr(self, a, '')) for a in self.__dict__}
 
 def analyse(uniprot):
+    print('***************** ANALYSIS *******************************')
     p = ProteinAnalyser(taxid='9606', uniprot=uniprot).load()
     p.mutation = f'{p.sequence[65]}66W'
-    print('First', jsonable(p))
+    print('First', p.asdict())
     p.predict_effect()
     print('Predicted', {**jsonable(p.mutation),
                  'features_near_mutation': p.get_features_near_position(p.mutation.residue_index),
@@ -119,7 +123,7 @@ if __name__ == '__main__':
     global_settings.startup(data_folder='../protein-data')
 #### workspace!
 if 1==1:
-    #describe('P62873')
+    describe('P62873')
     analyse('P62873')
 elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()
