@@ -101,17 +101,13 @@ def analyse(uniprot):
     print('***************** ANALYSIS *******************************')
     p = ProteinAnalyser(taxid='9606', uniprot=uniprot).load()
     p.mutation = f'{p.sequence[65]}66W'
-    print('First', p.asdict())
     p.predict_effect()
-    print('Predicted', {**jsonable(p.mutation),
-                 'features_near_mutation': p.get_features_near_position(p.mutation.residue_index),
-                 'position_as_protein_percent': round(p.mutation.residue_index/len(p)*100),
-                 'gnomAD_near_mutation': p.get_gnomAD_near_position()})
     p.analyse_structure()
+    print(p)
+    import json
+    json.dump(p.asdict(), open('test.json','w'))
 
-    print('PDBs: ', p.pdbs)
     #print('Best one: ',p.get_best_model())
-    p.analyse_structure()
     # print('analysed', {**jsonable(p.structural),
     #     'superficiality': p.structural.get_superficiality(),
     #     'structural_neighbours': list(p.structural.get_structure_neighbours())})
@@ -123,7 +119,7 @@ if __name__ == '__main__':
     global_settings.startup(data_folder='../protein-data')
 #### workspace!
 if 1==1:
-    describe('P62873')
+    #describe('P62873')
     analyse('P62873')
 elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()

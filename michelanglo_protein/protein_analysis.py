@@ -112,7 +112,9 @@ class ProteinAnalyser(ProteinCore):
         #self.analyse_structure()
 
     def check_mutation(self):
-        if len(self.sequence) > self.mutation.residue_index and self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue:
+        if len(self.sequence) > self.mutation.residue_index and \
+            self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue and \
+            self.mutation_to_residue in 'ACDEFGHIKLMNPQRSTVWY':
             return True
         else:
             return False  # call mutation_discrepancy to see why.
@@ -121,12 +123,12 @@ class ProteinAnalyser(ProteinCore):
         # returns a string explaining the `check_mutation` discrepancy error
         neighbours = ''
         if len(self.sequence) < self.mutation.residue_index:
-            return 'Uniprot {g} is {l} amino acids long, while user claimed a mutation at {i}.'.format(
+            return 'Uniprot {g} is only {l} amino acids long, while user claimed a mutation at {i}.'.format(
                 g=self.uniprot,
                 i=self.mutation.residue_index,
                 l=len(self.sequence)
             )
-        else:
+        elif self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue:
             neighbours = self._neighbours(midresidue=self.sequence[self.mutation.residue_index - 1],
                                           position=self.mutation.residue_index,
                                           marker='*')
@@ -137,6 +139,8 @@ class ProteinAnalyser(ProteinCore):
                 f=self.mutation.from_residue,
                 s=neighbours
             )
+        else:
+            return 'VENUS can only deal with missenses right now.'
 
     ################################# ELM
 
@@ -205,7 +209,6 @@ class ProteinAnalyser(ProteinCore):
         svalid = sorted(valid, key=lambda v: v.y - v.x)
         return svalid
 
-
     def _get_structures_with_position(self, position):
         """
         Fetches structures that exists at a given position.
@@ -241,6 +244,10 @@ class ProteinAnalyser(ProteinCore):
         else:
             return pdb
 
+    @property
+    def property_at_mutation(self):
+        return {k: self.properties[k][self.mutation.residue_index -1] for k in self.properties}
+
     #### THE FUTURE
 
     def analyse_structure(self):
@@ -250,6 +257,7 @@ class ProteinAnalyser(ProteinCore):
             self.structural = None
             return self
         self.structural = StructureAnalyser(structure, self.mutation)
+        #self.structural_gnomAD_neighbours = [ for n in self.structural.neighbours]
         return self
 
 

@@ -252,11 +252,23 @@ class ProteinCore:
     def asdict(self):
         def deobjectify(x):
             if isinstance(x, dict):
-                return {k: deobjectify(x[k]) for k in x}
+                d = {k: deobjectify(x[k]) for k in x}
+                return {k: v for k,v in d.items() if v is None}
             elif isinstance(x, list) or isinstance(x, set):
-                return [deobjectify(v) for v in x]
+                l = [deobjectify(v) for v in x]
+                return [ll for ll in l if ll is None]
             elif isinstance(x, int) or isinstance(x, float):
                 return x
+            elif isinstance(x, str) or isinstance(x, bool) or x is None:  # really ought to deal with falseys.
+                return str(x)
+            elif type(x).__name__  == 'method':
+                return None
+            elif x.__class__.__module__ in ('michelanglo_protein.protein_analysis',
+                                            'michelanglo_protein.structure',
+                                            'michelanglo_protein.core',
+                                            'michelanglo_protein.analyse.Pymol_StructureAnalyser'):
+                # ('builtin', 'builtins','datetime', michelanglo_protein.settings_handler, michelanglo_protein.generate.ET_monkeypatch):
+                return {a: deobjectify(getattr(x, a, '')) for a in x.__dir__() if a[0] != '_' and type(getattr(x, a, '')).__name__ != 'method'}
             else:
-                return str(x)  # really ought to deal with falseys.
-        return {a: deobjectify(getattr(self, a, '')) for a in self.__dir__() if a[0] != '_' and type(getattr(self, a, '')).__name__ != 'method'}
+                return str(x)
+        return deobjectify(self)

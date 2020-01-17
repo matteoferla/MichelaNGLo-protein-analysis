@@ -1,6 +1,7 @@
 from ..structure import Structure
 from ..mutation import Mutation
-from michelanglo_transpiler import GlobalPyMOL
+from michelanglo_transpiler import pymol2, PyMolTranspiler
+import math
 
 class StructureAnalyser:
     """
@@ -23,16 +24,16 @@ class StructureAnalyser:
         self.position = mutation.residue_index
         self.structure = structure
         self.model = None
-        self.chain = structure.chain
+        self.chain = 'A' #structure.chain get offset will change the chain to A.
         self.coordinates = structure.get_offset_coordinates()
         self.code = structure.code
         self.target_selection = f'(resi {self.position} and chain {self.chain})'
         self.pymol = None
         self._obj_name = 'myprotein'
-        with GlobalPyMOL() as self.pymol:
+        with pymol2.PyMOL() as self.pymol:
             self.pymol.cmd.read_pdbstr(self.coordinates, self._obj_name)
             self.N_atoms = self.pymol.cmd.select(self.target_selection)
-            self.has_all_heavy_atoms = self.N_atoms >= normal_HA[self.mutation.from_residue]
+            self.has_all_heavy_atoms = self.N_atoms >= self.normal_HA[self.mutation.from_residue]
             self.pymol.cmd.h_add()
             self.neighbours = self.get_neighbours()
             self.SASA = self.get_SASA()
@@ -43,7 +44,10 @@ class StructureAnalyser:
             self.RSA = self.SASA / self.maxASA[self.mutation.from_residue]
             self.SS = self.get_SS()
             self.buried = self.RSA >= 0.2
-
+            self.ligand_list = self.get_ligand_list()
+            _, self.closest_ligand, self.distance_to_closest_ligand = self.get_distance_to_closest_ligand().values()
+            print(self.ligand_list)
+            self.closest_chain, self.distance_to_closest_ligand = self.get_distance_to_closest_chain().values()
         self.pymol = None
 
     def get_SS(self, sele=None):
@@ -74,7 +78,64 @@ class StructureAnalyser:
         """
         assert self.pymol is not None, 'Can only be called within a PyMOL session'
         if not sele:
-            sele = f'(not {self.target_selection}) and (byres ({self.target_residue} around {threshhold})) and name CA'
+            sele = f'(not {self.target_selection}) and (byres ({self.target_selection} around {threshhold})) and name CA'
         my_dict = {'residues': []}
         self.pymol.cmd.iterate(sele, "residues.append((resi,resn))", space=my_dict)
         return my_dict['residues']
+
+
+    def get_distance_to_closest_chain(self):
+        ## this is CA only.
+        assert self.pymol is not None, 'Can only be called within a PyMOL session'
+        my_dict = {'chains': set(), 'target': {}, 'others': {}}
+        self.pymol.cmd.iterate(f'name CA', "chains.add(chain)", space=my_dict)
+        if len(my_dict['chains']) == 0:
+            return {'closest': None, 'distance': None}
+        else:
+            self.pymol.cmd.iterate_state(1, f'{self.target_selection} and name CA', "target['CA'] =(x,y,z)", space=my_dict)
+            closest_d = 99999
+            closest_c = ''
+            for c in my_dict['chains']:
+                self.pymol.cmd.iterate_state(1, f'chain {c} and name CA', "others[resi]=(x,y,z)", space=my_dict)
+                for a in my_dict['others']:
+                    d = self.euclidean(my_dict['target']['CA'], my_dict['others'][a])
+                    if d < closest_d:
+                        closest_d = d
+                        closest_c = f'{a}:{c}'
+            return {'closest': closest_c, 'distance': closest_d}
+
+    def get_distance_to_closest_ligand(self):
+        """
+
+        :return: {'target': target atom, 'closest': ligand atom, 'distance': Ang distance}
+        """
+        assert self.pymol is not None, 'Can only be called within a PyMOL session'
+        my_dict = {'target': {}, 'ligands': {}}
+        self.pymol.cmd.iterate_state(1, f'{self.target_selection}', "target[resi+'.'+name+':'+chain] =(x,y,z)", space=my_dict)
+        if not self.ligand_list:
+            return {'target': None, 'closest': None, 'distance': None}
+        for lig in self.ligand_list:
+            self.pymol.cmd.iterate_state(1, f'resn {lig}', "ligands[resi+'.'+name+':'+chain] = (x,y,z)", space=my_dict)
+        closest_t = ''
+        closest_l = ''
+        closest_d = 99999
+        for l in my_dict['ligands']:
+            for t in my_dict['target']:
+                d = self.euclidean(my_dict['ligands'][l], my_dict['target'][t])
+                if d < closest_d:
+                    closest_t = t
+                    closest_l = l
+        return {'target': closest_t, 'closest': closest_l, 'distance': closest_d}
+
+
+    @staticmethod
+    def euclidean(a, b):
+        return math.sqrt(sum([(a[i]-b[i])**2 for i in range(3)]))
+
+    def get_ligand_list(self):
+        assert self.pymol is not None, 'Can only be called within a PyMOL session'
+        my_dict = {'residues': set()}
+        self.pymol.cmd.iterate(f'all', "residues.add(resn)", space=my_dict)
+        exclusion = PyMolTranspiler.boring_ligand + PyMolTranspiler.water_ligand + PyMolTranspiler.aa_ligand
+        return {lig.upper() for lig in my_dict['residues'] if lig.upper() not in exclusion}
+
