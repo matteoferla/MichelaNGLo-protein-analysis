@@ -45,9 +45,9 @@ class StructureAnalyser:
             self.SS = self.get_SS()
             self.buried = self.RSA >= 0.2
             self.ligand_list = self.get_ligand_list()
-            _, self.closest_ligand, self.distance_to_closest_ligand = self.get_distance_to_closest_ligand().values()
-            print(self.ligand_list)
-            self.closest_chain, self.distance_to_closest_ligand = self.get_distance_to_closest_chain().values()
+            t = self.get_distance_to_closest_ligand()
+            self.closest_ligand = t['closest']
+            self.distance_to_closest_ligand = t['distance']
         self.pymol = None
 
     def get_SS(self, sele=None):
@@ -55,12 +55,16 @@ class StructureAnalyser:
         if not sele:
             sele = self.target_selection
         my_dict = {'residues': []}
-        self.pymol.cmd.iterate(f'{sele} and name CA', "residues.append((ss,))", space=my_dict)
-        ss = my_dict['residues'][0]
-        if ss in self.ss_types:
-            return self.ss_types[ss]
+        CA = f'{sele} and name CA'
+        if not self.pymol.cmd.select(CA):
+            return 'Unknown'
         else:
-            'Unknown'
+            self.pymol.cmd.iterate(CA, "residues.append(ss)", space=my_dict)
+            ss = my_dict['residues'][0]
+            if ss in self.ss_types:
+                return self.ss_types[ss]
+            else:
+                'Unknown'
 
     def get_SASA(self, sele=None):
         assert self.pymol is not None, 'Can only be called within a PyMOL session'
@@ -115,7 +119,7 @@ class StructureAnalyser:
         if not self.ligand_list:
             return {'target': None, 'closest': None, 'distance': None}
         for lig in self.ligand_list:
-            self.pymol.cmd.iterate_state(1, f'resn {lig}', "ligands[resi+'.'+name+':'+chain] = (x,y,z)", space=my_dict)
+            self.pymol.cmd.iterate_state(1, f'resn {lig}', "ligands['['+resn+']'+resi+'.'+name+':'+chain] = (x,y,z)", space=my_dict)
         closest_t = ''
         closest_l = ''
         closest_d = 99999
@@ -125,6 +129,7 @@ class StructureAnalyser:
                 if d < closest_d:
                     closest_t = t
                     closest_l = l
+                    closest_d = d
         return {'target': closest_t, 'closest': closest_l, 'distance': closest_d}
 
 
