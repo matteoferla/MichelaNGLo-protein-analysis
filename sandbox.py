@@ -5,6 +5,7 @@ from michelanglo_protein.generate.split_gnomAD import gnomAD
 from michelanglo_protein.protein_analysis import StructureAnalyser
 # Settings = namedtuple('settings', 'dictionary_folder', 'reference_folder', 'temp_folder')
 import pickle
+import sys, traceback
 
 from pprint import PrettyPrinter
 pprint = PrettyPrinter().pprint
@@ -80,6 +81,62 @@ def iterate_taxon(taxid=9606):
         except:
             pass
 
+def how_many_empty(taxid=9606):
+    from collections import Counter
+    global_settings.verbose = False
+    empty = 0
+    full = 0
+    path = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
+    for pf in os.listdir(path):
+        p = ProteinGatherer().load(file=os.path.join(path, pf))
+        if len(p.sequence) == 0:
+            print(p)
+            empty += 1
+        else:
+            full +=1
+    print(full, empty)
+
+def compress(taxid=9606, target='../gpickle'):
+    if not os.path.exists(target):
+        os.mkdir(target)
+    source = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
+    for pf in os.listdir(source):
+        p = ProteinCore().load(file=os.path.join(source, pf))
+        p.gdump(file=os.path.join(target, pf))
+
+
+def fix_empty(taxid=9606):
+    from collections import Counter
+    global_settings.verbose = False
+    glitchy = 0
+    fine = 0
+    fixed = 0
+    path = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
+    for pf in os.listdir(path):
+        p = ProteinGatherer().load(file=os.path.join(path, pf))
+        if len(p.sequence) == 0:
+            print('****************************************')
+            print(f'Attempting to fix {p.gene_name}')
+            try:
+                global_settings.verbose = True
+                p.parse_uniprot()
+                p.parse_swissmodel()
+                p.compute_params()
+                p.parse_gnomAD()
+                p.get_PTM()
+                assert len(p.sequence) > 0, 'Darn. Sequence is zero AA long'
+                p.dump()
+                fixed += 1
+                global_settings.verbose = False
+            except Exception:
+                traceback.print_exc(file=sys.stdout)
+                glitchy += 1
+        else:
+            fine +=1
+    print('****************************************')
+    print(f'Fine: {fine:,}, Fixed {fixed:,}, Glitchy: {glitchy:,}')
+
+
 def describe(uniprot):
     print('***************** DESCRIPTION *******************************')
     p = ProteinCore(taxid='9606', uniprot=uniprot).load()  # gnb1 P62873 gnb2 P62879
@@ -113,14 +170,26 @@ def analyse(uniprot):
     #     'structural_neighbours': list(p.structural.get_structure_neighbours())})
     # http://0.0.0.0:8088/venus_analyse?uniprot=P62879&species=9606&mutation=A73T
 
+def reparse_gene(name):
+    human = json.load(open(os.path.join(global_settings.dictionary_folder, 'taxid9606-names2uniprot.json')))
+    target = human[name]
+    p = ProteinGatherer(uniprot=target)
+    p.parse_uniprot()
+    print(p.sequence)
+
 if __name__ == '__main__':
     global_settings.verbose = True #False
     #global_settings.startup(data_folder='../MichelaNGLo-protein-data')
     global_settings.startup(data_folder='../protein-data')
 #### workspace!
 if 1==1:
-    #describe('P62873')
-    analyse('P62873')
+    #describe('P01112')
+    #analyse('P62873')
+    #how_many_empty()
+    #fix_empty()
+    compress()
+
+    #parse_uniprot(
 elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()
     print(p.gnomAD)

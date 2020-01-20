@@ -247,7 +247,8 @@ class UniprotMasterReader:
             self._semaphore.release()
             #print(prot.uniprot)
             return None
-        except:
+        except Exception as error:
+            print(error.__class__.__name__, str(error))
             self._lock.release()
             self._semaphore.release()
 

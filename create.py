@@ -19,6 +19,14 @@ def message(msg):
     else:
         print(msg)
 
+def _gnomad():
+    gnomAD(masterfiles=[
+        os.path.join(global_settings.reference_folder, 'gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'),
+            os.path.join(global_settings.reference_folder, 'gnomad.exomes.r2.1.1.sites.vcf.bgz')],
+            namedexfile=os.path.join(global_settings.dictionary_folder, 'taxid9606-names2uniprot.json'),
+            folder=os.path.join(global_settings.temp_folder, 'gnomAD')
+            ).split()
+
 if __name__ == '__main__':
     global_settings.verbose = True #False
     global_settings.error_tolerant = True
@@ -31,13 +39,9 @@ if __name__ == '__main__':
     UniprotMasterReader(first_n_protein=0)
     message('Uniprot split')
     # gnomAD data needs to be split up after that the dictionaries are made.
-    taxid=9606 #that's humans
-    # gnomAD(masterfiles=[os.path.join(global_settings.reference_folder,'gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'),
-    #                     os.path.join(global_settings.reference_folder, 'gnomad.exomes.r2.1.1.sites.vcf.bgz')],
-    #        namedexfile=os.path.join(global_settings.dictionary_folder, 'taxid9606-names2uniprot.json'),
-    #        folder=os.path.join(global_settings.temp_folder, 'gnomAD')
-    #        ).split()
+    # _gnomad()
     message('gnomAD split')
+    taxid = 9606  # that's humans
     path = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
     for pf in os.listdir(path):
         try:

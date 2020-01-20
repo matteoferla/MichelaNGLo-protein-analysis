@@ -171,8 +171,6 @@ class ProteinCore:
             path = self._get_species_folder()
             file = os.path.join(path,  f'{self.uniprot}.pgz')
         self.complete()  # wait complete.
-        if not os.path.exists(path):
-            os.mkdir(path)
         with gzip.GzipFile(file, 'w') as f:
             pickle.dump(self.__dict__, f)
         self.log('Data saved to {} as gzipped pickled dictionary'.format(file))

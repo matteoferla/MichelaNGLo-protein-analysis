@@ -2,7 +2,7 @@
 
 The `michelanglo_protein` module collects all the data needed for analysing variants.
     
-    p = ProteinAnalyser(uniprot = ' Q86V25').load()
+    p = ProteinAnalyser(uniprot = 'Q86V25').load()
     print(p)
     p.mutation = Mutation('p.N127W')
     p.analyse_structure()
@@ -11,6 +11,12 @@ The `michelanglo_protein` module collects all the data needed for analysing vari
     print(p.model.get_structure_neighbours())
     print(p.get_superficiality())
     
+The data loaded is either gatherered from various databases, some of which need splitting (_vide infra_ or `create.py`).
+If it is just the one gene, you can use the following, which will retrieve the Uniprot data of the one gene (failing to get external data if unavailable):
+
+    p = ProteinGatherer(uniprot='Q86V25')
+    p.parse_uniprot()
+    
 
 The site [michelanglo.sgc.ox.ac.uk](https://michelanglo.sgc.ox.ac.uk) depends on three repos:
 * [MichelaNGLo-app](https://github.com/matteoferla/MichelaNGLo)
@@ -18,6 +24,9 @@ The site [michelanglo.sgc.ox.ac.uk](https://michelanglo.sgc.ox.ac.uk) depends on
 * **MichelaNGLo-protein-module**
 
 This module can be used independently of Michelanglo app module, but requires the transpiler module.
+
+If you are interested in the gene/protein name synonyms to uniprot mapping files see 
+[Name synomyms to Uniprot](https://github.com/matteoferla/Name-synomyms-to-Uniprot).
 
 ### files within protein module
 

@@ -114,7 +114,7 @@ class ProteinAnalyser(ProteinCore):
     def check_mutation(self):
         if len(self.sequence) > self.mutation.residue_index and \
             self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue and \
-            self.mutation_to_residue in 'ACDEFGHIKLMNPQRSTVWY':
+            self.mutation.to_residue in 'ACDEFGHIKLMNPQRSTVWY':
             return True
         else:
             return False  # call mutation_discrepancy to see why.
@@ -122,13 +122,14 @@ class ProteinAnalyser(ProteinCore):
     def mutation_discrepancy(self):
         # returns a string explaining the `check_mutation` discrepancy error
         neighbours = ''
+        print(self.mutation.residue_index, len(self.sequence), self.sequence[self.mutation.residue_index - 1], self.mutation.from_residue)
         if len(self.sequence) < self.mutation.residue_index:
             return 'Uniprot {g} is only {l} amino acids long, while user claimed a mutation at {i}.'.format(
                 g=self.uniprot,
                 i=self.mutation.residue_index,
                 l=len(self.sequence)
             )
-        elif self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue:
+        elif self.sequence[self.mutation.residue_index - 1] != self.mutation.from_residue:
             neighbours = self._neighbours(midresidue=self.sequence[self.mutation.residue_index - 1],
                                           position=self.mutation.residue_index,
                                           marker='*')
@@ -139,8 +140,10 @@ class ProteinAnalyser(ProteinCore):
                 f=self.mutation.from_residue,
                 s=neighbours
             )
+        elif self.mutation.to_residue not in 'ACDEFGHIKLMNPQRSTVWY':
+            return 'Analysis can only deal with missenses right now.'
         else:
-            return 'VENUS can only deal with missenses right now.'
+            raise ValueError(f'Unable to analyse {self.uniprot} for mysterious reasons (resi:{self.mutation.residue_index}, from:{self.mutation.from_residue}, to:{self.mutation.to_residue})')
 
     ################################# ELM
 

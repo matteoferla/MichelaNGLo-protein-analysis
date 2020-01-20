@@ -236,7 +236,7 @@ class _UniprotMixin:
         for group in self.features:
             for i in range(len(self.features[group])):
                 self.features[group][i]['type'] = group  ## in case of flattening.
-                if self.features[group][i]['description'] == '-':
+                if 'description' in self.features[group][i] and self.features[group][i]['description'] == '-':
                     self.features[group][i]['description'] = group
         if self.uniprot == '':
             if len(self.accession_list):
