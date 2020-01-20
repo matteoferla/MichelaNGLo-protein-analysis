@@ -6,7 +6,7 @@ from .core import ProteinCore
 from .mutation import Mutation
 import re
 import io, os
-from .analyse.Pymol_StructureAnalyser import StructureAnalyser
+from .analyse import StructureAnalyser
 
 class ProteinAnalyser(ProteinCore):
     def __init__(self,*args,**kwargs):
