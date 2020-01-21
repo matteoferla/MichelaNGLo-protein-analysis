@@ -128,10 +128,13 @@ class Structure:
         """
         def get_offset(detail):
             if detail['PDB_BEG'] == 'None':
-                # assuming 1 is the start, which is pretty likely.
+                # This is problematic. This means that there are unresolved residues at the N terminus.
+                # This can go either way.
                 b = int(detail['RES_BEG'])
                 if b != 1:
-                    warn('SP_BEG is not 1, yet PDB_BEG is without a crystallised start')
+                    warn('SP_BEG (species peptide beggining) is not 1, yet PDB_BEG is without a crystallised start')
+                else:
+                    return 0
             else:
                 r = re.search('(-?\d+)', detail['PDB_BEG'])
                 if r is None:

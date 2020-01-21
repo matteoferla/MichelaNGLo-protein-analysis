@@ -187,7 +187,11 @@ if 1==1:
     #analyse('P62873')
     #how_many_empty()
     #fix_empty()
-    compress()
+    #compress()
+    p = ProteinCore(taxid='9606', uniprot='Q7L8A9').load()
+    for s in p.pdbs:
+        s.lookup_sifts()
+        print(s.code, s.chain_definitions)
 
     #parse_uniprot(
 elif 1==9:
