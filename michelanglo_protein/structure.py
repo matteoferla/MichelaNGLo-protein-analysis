@@ -144,22 +144,24 @@ class Structure:
 
         if self.type != 'rcsb':
             return self
-        details = self._get_sifts()
-        ## get matching chain.
-        self.chain_definitions = [{'chain': d['CHAIN'],
-                                   'uniprot': d['SP_PRIMARY'],
-                                   'x': int(d["SP_BEG"]),
-                                   'y': int(d["SP_END"]),
-                                   'offset': get_offset(d),
-                                   'range': f'{d["SP_BEG"]}-{d["SP_END"]}',
-                                   'name': None,
-                                   'description': None} for d in details]
+
+        if not self.chain_definitions:
+            details = self._get_sifts()
+            ## get matching chain.
+            self.chain_definitions = [{'chain': d['CHAIN'],
+                                       'uniprot': d['SP_PRIMARY'],
+                                       'x': int(d["SP_BEG"]),
+                                       'y': int(d["SP_END"]),
+                                       'offset': get_offset(d),
+                                       'range': f'{d["SP_BEG"]}-{d["SP_END"]}',
+                                       'name': None,
+                                       'description': None} for d in details]
         try:
             if self.chain != '*':
-                detail = next(filter(lambda x: self.chain == x['CHAIN'], details))
-                self.offset = get_offset(detail)
+                detail = next(filter(lambda x: self.chain == x['chain'], self.chain_definitions))
+                self.offset = detail['offset']
         except StopIteration:
-            warn(f'{self.code} {self.chain} not in {details}')
+            warn(f'{self.code} {self.chain} not in {self.chain_definitions}')
             return self
         self.offsets = {d['chain']: d['offset'] for d in self.chain_definitions}
         return self
