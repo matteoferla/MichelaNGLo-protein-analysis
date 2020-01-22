@@ -9,8 +9,6 @@ from warnings import warn
 from .metadata_from_PDBe import PDBMeta
 from typing import Dict
 
-
-
 class Structure:
     #lolz. a C++ coder would hate this name. Sturcture as in "protein structure"
     #that is not funny. Why I did I think it was?

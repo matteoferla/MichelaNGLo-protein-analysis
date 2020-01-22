@@ -28,6 +28,10 @@ This module can be used independently of Michelanglo app module, but requires th
 If you are interested in the gene/protein name synonyms to uniprot mapping files see 
 [Name synomyms to Uniprot](https://github.com/matteoferla/Name-synomyms-to-Uniprot).
 
+If you want human protein and don't want to generate the data (i.e. by running `create.py`) see [human protein](https://github.com/matteoferla/MichelaNGLo-human-protein-data).
+
+For installation instructions see relevant sections in [Michelanglo deployment](https://github.com/matteoferla/MichelaNGLo-app/blob/master/git_docs/deploy.md).
+
 ### files within protein module
 
 The `michelanglo_protein` module contains a `.generate` subfolder.

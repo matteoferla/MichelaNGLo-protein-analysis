@@ -12,7 +12,7 @@ pprint = PrettyPrinter().pprint
 
 
 def test_ProteinAnalyser():
-    p = ProteinAnalyser(uniprot = ' Q86V25').load()
+    p = ProteinAnalyser(uniprot = 'Q86V25').load()
     print(p)
     p.mutation = Mutation('p.N127W')
     p.analyse_structure()
@@ -102,7 +102,7 @@ def compress(taxid=9606, target='../gpickle'):
     source = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
     for pf in os.listdir(source):
         p = ProteinCore().load(file=os.path.join(source, pf))
-        p.gdump(file=os.path.join(target, pf))
+        p.gdump(file=os.path.join(target, os.path.splitext(pf)[0]+'.gzp'))
 
 
 def fix_empty(taxid=9606):
@@ -187,11 +187,7 @@ if 1==1:
     #analyse('P62873')
     #how_many_empty()
     #fix_empty()
-    #compress()
-    p = ProteinCore(taxid='9606', uniprot='Q7L8A9').load()
-    for s in p.pdbs:
-        s.lookup_sifts()
-        print(s.code, s.chain_definitions)
+    compress()
 
     #parse_uniprot(
 elif 1==9:
