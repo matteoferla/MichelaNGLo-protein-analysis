@@ -544,10 +544,23 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         return self
 
     def parse_swissmodel(self):
+        """
+        Fills the object with ``.swissmodel`` data for key species.
+
+        :return:
+        """
         # entry: {"uniprot_seq_length": 246, "provider": "PDB", "seqid": "", "from": 3, "uniprot_ac": "P31946",
         # "uniprot_seq_md5": "c82f2efd57f939ee3c4e571708dd31a8", "url": "https://swissmodel.expasy.org/repository/uniprot/P31946.pdb?from=3&to=232&template=6byk&provider=pdb",
         # "to": 232, "template": "6byk", "iso_id": "P31946-1", "coordinate_id": "5be4a9c602efd0e456a7ffeb"}
-        models=json.load(self.settings.open('swissmodel'))['index']
+        ## figure what animal it is. fix missing.
+        if self.organism['NCBI Taxonomy'] == 'NA':
+            self.organism['NCBI Taxonomy'] = self.get_species_for_uniprot()
+        ## Now. figure what animal it is.
+        if self.organism['NCBI Taxonomy'] in (9606, 3702, 6239, 7227, 10090, 36329, 83332, 83333, 93061, 190650, 208964, 284812, 559292):
+            reffile = 'swissmodel'+self.organism['NCBI Taxonomy']
+        else:
+            return self
+        models=json.load(self.settings.open(reffile))['index']
         for model in models:
             if self.uniprot == model['uniprot_ac']:
                 if model['provider'] == 'PDB':

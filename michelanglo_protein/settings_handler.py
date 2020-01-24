@@ -61,15 +61,16 @@ class GlobalSettings(metaclass=Singleton):
     fetch = True #: boolean for whether to download data from the interwebs.
     missing_attribute_tolerant = True
     error_tolerant = False
-    addresses = ('ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz',
+    addresses = ['ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz',
                  'ftp://ftp.ncbi.nlm.nih.gov/blast/db/pdbaa.tar.gz',
                  'ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/functional_gene_constraint/fordist_cleaned_exac_r03_march16_z_pli_rec_null_data.txt',
                  'ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/flatfiles/tsv/pdb_chain_uniprot.tsv.gz',
                  'ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/resolu.idx',
-                 'https://swissmodel.expasy.org/repository/download/core_species/9606_meta.tar.gz',
                  'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/genomes/gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz',
                  'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/exomes/gnomad.exomes.r2.1.1.sites.vcf.bgz',
-                 'http://www.sbg.bio.ic.ac.uk/~missense3d/download/1052_hom_str.zip') #from http://www.sbg.bio.ic.ac.uk/~missense3d/dataset.html
+                 'http://www.sbg.bio.ic.ac.uk/~missense3d/download/1052_hom_str.zip'] #from http://www.sbg.bio.ic.ac.uk/~missense3d/dataset.html
+    for _s in (9606, 3702, 6239, 7227, 10090, 36329, 83332, 83333, 93061, 190650, 208964, 284812, 559292):
+        addresses.append(f'https://swissmodel.expasy.org/repository/download/core_species/{_s}_meta.tar.gz')
     manual_task_note = """'## Manual TASKS\nRemember that user has manually downloaded _site_dataset.gz files from https://www.phosphosite.org/staticDownloads at phosphosite.'"""
 
     # getter of data_folder
@@ -232,12 +233,17 @@ class GlobalSettings(metaclass=Singleton):
                 'string':'9606.michelanglo_protein.links.v10.5.txt',
                 'ensembl':'ensemb.txt',
                 'nextprot':'nextprot_refseq.txt',
-                'swissmodel':'9606_meta/SWISS-MODEL_Repository/INDEX.json',
                 'pdb_chain_uniprot': 'pdb_chain_uniprot.tsv',
                 'elm':'elm_classes.tsv',
                 'resolution': 'resolution.json'}
-        assert kind in kdex, 'This is weird. unknown kind, should be: {0}'.format(list(kdex.keys()))
-        return self._open_reference(kdex[kind])
+        if 'swissmodel' in kind:
+            taxid = kind.replace('swissmodel','')
+            if taxid == '':
+                taxid = '9606' #legacy.
+            return self._open_reference(f'{taxid}_meta/SWISS-MODEL_Repository/INDEX.json')
+        else:
+            assert kind in kdex, 'This is weird. unknown kind, should be: {0}'.format(list(kdex.keys()))
+            return self._open_reference(kdex[kind])
 
     def create_json_from_idx(self, infile, outfile):
         # resolu.idx is in the weirdest format.

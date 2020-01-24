@@ -101,7 +101,7 @@ class ProteinCore:
         self.pNull = -1
         ### pdb
         self.pdb_matches =[] #{'match': align.title[0:50], 'match_score': hsp.score, 'match_start': hsp.query_start, 'match_length': hsp.align_length, 'match_identity': hsp.identities / hsp.align_length}
-        self.swissmodel = []
+        self.swissmodel = [] #parse_swissmodel() fills it.
         self.percent_modelled = -1
         ### junk
         self.other = other ### this is a garbage bin. But a handy one.

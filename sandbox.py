@@ -5,10 +5,14 @@ from michelanglo_protein.generate.split_gnomAD import gnomAD
 from michelanglo_protein.protein_analysis import StructureAnalyser
 # Settings = namedtuple('settings', 'dictionary_folder', 'reference_folder', 'temp_folder')
 import pickle
-import sys, traceback
+import sys, traceback, re
+from collections import Counter
+
+import pymol2, os
 
 from pprint import PrettyPrinter
 pprint = PrettyPrinter().pprint
+from multiprocessing import Pool
 
 
 def test_ProteinAnalyser():
@@ -81,6 +85,34 @@ def iterate_taxon(taxid=9606):
         except:
             pass
 
+def all_swiss():
+    p = Pool(6)
+    global_settings.verbose = False
+    taxa = (3702, 6239, 7227, 10090, 36329, 83332, 83333, 93061, 190650, 208964, 284812, 559292)  # 9606
+    p.map(add_swissmodel, taxa)
+
+def add_swissmodel(taxid=9606):
+        print(f'************************ {taxid} *************************************')
+        path = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
+        for pf in os.listdir(path):
+            p = ProteinGatherer().load(file=os.path.join(path, pf))
+            if len(p.sequence) == 0:
+                try:
+                    global_settings.verbose = True
+                    p.parse_uniprot()
+                    p.parse_swissmodel()
+                    p.compute_params()
+                    p.parse_gnomAD()
+                    p.get_PTM()
+                    assert len(p.sequence) > 0, 'Darn. Sequence is zero AA long'
+                    p.dump()
+                    global_settings.verbose = False
+                except Exception:
+                    traceback.print_exc(file=sys.stdout)
+            else:
+                p.parse_swissmodel()
+                p.dump()
+
 def how_many_empty(taxid=9606):
     from collections import Counter
     global_settings.verbose = False
@@ -142,6 +174,145 @@ def describe(uniprot):
     p = ProteinCore(taxid='9606', uniprot=uniprot).load()  # gnb1 P62873 gnb2 P62879
     pprint(p.asdict())
 
+def inspect_offsets(uniprot):
+    print('***************** inspect_offsets *******************************')
+    p = ProteinCore(taxid='9606', uniprot=uniprot).load()
+    for s in p.pdbs:
+        print(s.code)
+        print(s.chain_definitions)
+        print(s._get_sifts())
+
+def fix_offsets(file):
+    p = ProteinCore().load(file=file)
+    lines = []
+    for s in p.pdbs:
+        if s.type != 'rcsb':
+            continue
+        details = s._get_sifts()
+        for detail in details:
+            ## clean rows
+            for k in ('PDB_BEG', 'PDB_END', 'RES_END', 'RES_BEG', 'SP_BEG', 'SP_END'):
+                if k == 'None' or k is None:
+                    detail[k] = None
+                elif isinstance(detail[k], int):
+                    pass  # this means so test is being done.
+                else:
+                    r = re.search('(-?\d+)', detail[k])  # str().isdigit() does not like negatives.
+                    if r is None:
+                        detail[k] = None
+                    else:
+                        detail[k] = int(r.group(1))  # yes. py int is signed
+            ## get offset
+            if detail['PDB_BEG'] is not None:  ##nice.
+                offset = detail['SP_BEG'] - detail['PDB_BEG']
+            elif detail['PDB_END'] is not None:
+                offset = detail['SP_BEG'] - (detail['PDB_END'] - (detail['SP_END'] - detail['SP_BEG']))
+            elif detail['SP_BEG']:
+                try:
+                    offset = s.get_offset_from_PDB(detail, p.sequence)
+                except: ## Pymol subclasses BaseException.
+                    pass
+            else:
+                offset = 0
+            lines.append(f"{s.code}\t{detail['CHAIN']}\t{detail['SP_PRIMARY']}\t{offset}")
+        s.chain_definitions = [{'chain': d['CHAIN'],
+                                'uniprot': d['SP_PRIMARY'],
+                                'x': d["SP_BEG"],
+                                'y': d["SP_END"],
+                                'offset': offset,
+                                'range': f'{d["SP_BEG"]}-{d["SP_END"]}',
+                                'name': None,
+                                'description': None} for d in details]
+        s.offsets = {d['chain']: d['offset'] for d in s.chain_definitions}
+        try:
+            if s.chain != '*':
+                detail = next(filter(lambda x: s.chain == x['chain'], s.chain_definitions))
+                s.offset = detail['offset']
+        except:
+            pass
+
+    if p.pdbs:
+        p.dump()
+    return '\n'.join(lines)
+
+
+
+def fix_all_offsets():
+    p = Pool(6)
+    global_settings.verbose = False
+    with open('PDB_Uniprot_offsets.tsv', 'w') as w:
+        for species in os.listdir(os.path.join(global_settings.pickle_folder)):
+            if 'taxid' not in species:
+                continue
+            if '9606' not in species:
+                continue
+            source = os.path.join(global_settings.pickle_folder, species)
+            blocks = p.map(fix_offsets, [os.path.join(source, pf) for pf in os.listdir(source)])
+            w.write('\n'.join(blocks))
+            w.write('\n')
+
+def touch_offsets(taxid=9606):
+    overview = []
+    global_settings.verbose = False
+    source = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
+    for pf in os.listdir(source):
+        p = ProteinCore().load(file=os.path.join(source, pf))
+        for s in p.pdbs:
+            if s.type != 'rcsb':
+                continue
+            details = s._get_sifts()
+            v = []
+            for detail in details:
+                ## clean rows
+                for k in ('PDB_BEG', 'PDB_END', 'RES_END', 'RES_BEG', 'SP_BEG', 'SP_END'):
+                    if k == 'None' or k is None:
+                        detail[k] = None
+                    elif isinstance(detail[k], int):
+                        pass  # this means so test is being done.
+                    else:
+                        r = re.search('(-?\d+)', detail[k])  # str().isdigit() does not like negatives.
+                        if r is None:
+                            detail[k] = None
+                        else:
+                            detail[k] = int(r.group(1))  # yes. py int is signed
+                ## get offset
+                if detail['PDB_BEG'] is not None:  ##nice.
+                    offset = detail['SP_BEG'] - detail['PDB_BEG']
+                    if offset and detail['PDB_BEG'] == detail['RES_BEG']:
+                        v.append('off-start')
+                    elif offset:
+                        v.append('off-unstart')
+                    elif detail['SP_BEG'] != 1:
+                        v.append('no-off-unstart')
+                    else:
+                        v.append('no-off-start')
+                elif detail['PDB_END'] is not None:
+                    offset = detail['SP_BEG'] - (detail['PDB_END'] - (detail['SP_END'] - detail['SP_BEG']))
+                    if offset and detail['PDB_END'] == detail['RES_END']:
+                        v.append('off-start')
+                    elif offset:
+                        v.append('off-unstart')
+                    elif detail['SP_BEG'] != 1:
+                        v.append('no-off-unstart')
+                    else:
+                        v.append('no-off-start')
+                elif detail['SP_BEG'] == 1:
+                    offset = 0
+                    v.append('no-off-start')
+                elif detail['RES_BEG'] == 1:
+                    # This is problematic. This means that there are unresolved residues at the N & C termini.
+                    # This can go either way.
+                    v.append('RES1')
+                    offset = 0
+                else:
+                    v.append('RESn')
+                    offset = 0
+            if 'RESn' in v or 'RES1' in v:
+                offset = s.get_offset_from_PDB(details, p.sequence)
+            c = Counter(v).most_common()
+            overview.append('+'.join(sorted(set(v))))
+    print(Counter(overview).most_common())
+
 def jsonable(self):
     def deobjectify(x):
         if isinstance(x, dict):
@@ -179,17 +350,20 @@ def reparse_gene(name):
 
 if __name__ == '__main__':
     global_settings.verbose = True #False
-    #global_settings.startup(data_folder='../MichelaNGLo-protein-data')
     global_settings.startup(data_folder='../protein-data')
 #### workspace!
 if 1==1:
+    #os.mkdir(os.path.join(ProteinCore.settings.temp_folder, 'PDB'))
     #describe('P01112')
     #analyse('P62873')
     #how_many_empty()
     #fix_empty()
-    compress()
-
+    #compress()
     #parse_uniprot(
+    #inspect_offsets('P01133')
+    #touch_offsets()
+    #fix_all_offsets()
+    all_swiss()
 elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()
     print(p.gnomAD)

@@ -1,9 +1,8 @@
 import pickle, os, re, json
 from datetime import datetime
 from .settings_handler import global_settings #the instance not the class.
-from collections import namedtuple
 import gzip, requests
-from michelanglo_transpiler import PyMolTranspiler
+from michelanglo_transpiler import PyMolTranspiler, pymol2
 
 from warnings import warn
 from .metadata_from_PDBe import PDBMeta
@@ -124,33 +123,38 @@ class Structure:
         Also for a good list of corner case models see https://proteopedia.org/wiki/index.php/Unusual_sequence_numbering
         :return: self
         """
-        def get_offset(detail):
-            if detail['PDB_BEG'] == 'None':
-                # This is problematic. This means that there are unresolved residues at the N terminus.
-                # This can go either way.
-                b = int(detail['RES_BEG'])
-                if b != 1:
-                    warn('SP_BEG (species peptide beggining) is not 1, yet PDB_BEG is without a crystallised start')
-                else:
-                    return 0
-            else:
-                r = re.search('(-?\d+)', detail['PDB_BEG'])
-                if r is None:
-                    return self
-                b = int(r.group(1))
-            return int(detail['SP_BEG']) - b
-
         if self.type != 'rcsb':
-            return self
+            return self #it is probably clean.
 
         if not self.chain_definitions:
             details = self._get_sifts()
-            ## get matching chain.
+            for detail in details:
+                ## clean rows
+                for k in ('PDB_BEG','PDB_END', 'RES_END', 'RES_BEG', 'SP_BEG','SP_END'):
+                    if k == 'None' or k is None:
+                        detail[k] = None
+                    elif isinstance(detail[k], int):
+                        pass # this means so test is being done.
+                    else:
+                        r = re.search('(-?\d+)', detail[k]) #str().isdigit() does not like negatives.
+                        if r is None:
+                            detail[k] = None
+                        else:
+                            detail[k] = int(r.group(1)) #yes. py int is signed
+                ## get offset
+                if detail['PDB_BEG'] is not None:  ##nice.
+                    offset = detail['SP_BEG'] - detail['PDB_BEG']
+                elif detail['PDB_END'] is not None:
+                    offset = detail['SP_BEG'] - ( detail['PDB_END'] - (detail['SP_END'] - detail['SP_BEG']))
+                elif detail['SP_BEG']:
+                    offset = 0
+                else:
+                    offset = 0
             self.chain_definitions = [{'chain': d['CHAIN'],
                                        'uniprot': d['SP_PRIMARY'],
-                                       'x': int(d["SP_BEG"]),
-                                       'y': int(d["SP_END"]),
-                                       'offset': get_offset(d),
+                                       'x': d["SP_BEG"],
+                                       'y': d["SP_END"],
+                                       'offset': offset,
                                        'range': f'{d["SP_BEG"]}-{d["SP_END"]}',
                                        'name': None,
                                        'description': None} for d in details]
@@ -174,6 +178,34 @@ class Structure:
                     if self.chain == entry['CHAIN'] or all_chains:
                         details.append(entry)
         return details
+
+    def get_offset_from_PDB(self, chain_detail: Dict, sequence:str) -> int:
+        """
+        This gets the offset for a chain in the code given a sequence.
+        It takes 30 ms to run. However, the sequence is problematic.
+
+        :param chain: see SIFTs {'PDB': '5l8o', 'CHAIN': 'C', 'SP_PRIMARY': 'P51161', 'RES_BEG': 1, 'RES_END': 128, 'PDB_BEG': None, 'PDB_END': None, 'SP_BEG': 1, 'SP_END': 128}
+        :type chain: Dict
+        :param sequence: sequence of unirpot
+        :type sequence: str
+        :return: offset
+        :rtype: int
+        """
+        aa = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K',
+              'ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N',
+              'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W',
+              'ALA': 'A', 'VAL': 'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
+        with pymol2.PyMOL() as pymol:
+            pymol.cmd.set('fetch_path', os.path.join(self.settings.temp_folder, 'PDB'))
+            pymol.cmd.fetch(self.code)
+            target = sequence[chain_detail['RES_BEG'] - 1: chain_detail['RES_BEG'] + 10]
+            atoms = pymol.cmd.get_model(f"chain {chain_detail['CHAIN']} and pepseq {target}")
+            prev = 'X'
+            for atom in atoms.atom:
+                if atom.resn in aa:
+                    for i in range(1, 10):
+                        if aa[atom.resn] == target[i] and target[i - 1] == prev:
+                            return (i + chain_detail["SP_BEG"]) - atom.resi
 
     def lookup_resolution(self):
         if self.type != 'rcsb':
