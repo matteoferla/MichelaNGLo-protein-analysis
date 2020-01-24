@@ -86,27 +86,38 @@ def iterate_taxon(taxid=9606):
             pass
 
 def all_swiss():
+    """
+    A posteriori fix to the fact that I had only human!
+    Note that it incorportates the recatching.
+
+    :return:
+    """
     p = Pool(6)
     global_settings.verbose = False
     taxa = (3702, 6239, 7227, 10090, 36329, 83332, 83333, 93061, 190650, 208964, 284812, 559292)  # 9606
     p.map(add_swissmodel, taxa)
 
 def add_swissmodel(taxid=9606):
+        def fix(p):
+            global_settings.verbose = True
+            p.parse_all(mode='serial')
+            assert len(p.sequence) > 0, 'Darn. Sequence is zero AA long'
+            p.dump()
+            global_settings.verbose = False
+
         print(f'************************ {taxid} *************************************')
         path = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
         for pf in os.listdir(path):
-            p = ProteinGatherer().load(file=os.path.join(path, pf))
+            if os.path.splitext(pf)[1] != '.p':
+                continue
+            try:
+                p = ProteinGatherer().load(file=os.path.join(path, pf))
+            except:
+                p = ProteinGatherer(uniprot=pf.replace('.p',''))
+                fix(p)
             if len(p.sequence) == 0:
                 try:
-                    global_settings.verbose = True
-                    p.parse_uniprot()
-                    p.parse_swissmodel()
-                    p.compute_params()
-                    p.parse_gnomAD()
-                    p.get_PTM()
-                    assert len(p.sequence) > 0, 'Darn. Sequence is zero AA long'
-                    p.dump()
-                    global_settings.verbose = False
+                    fix(p)
                 except Exception:
                     traceback.print_exc(file=sys.stdout)
             else:
@@ -183,6 +194,12 @@ def inspect_offsets(uniprot):
         print(s._get_sifts())
 
 def fix_offsets(file):
+    """
+    This method fixes the offsets of a file. and saves.
+
+    :param file: fullpath.
+    :return:
+    """
     p = ProteinCore().load(file=file)
     lines = []
     for s in p.pdbs:
@@ -209,9 +226,13 @@ def fix_offsets(file):
                 offset = detail['SP_BEG'] - (detail['PDB_END'] - (detail['SP_END'] - detail['SP_BEG']))
             elif detail['SP_BEG']:
                 try:
-                    offset = s.get_offset_from_PDB(detail, p.sequence)
+                    if detail['SP_PRIMARY'] == p.uniprot:
+                        offset = s.get_offset_from_PDB(detail, p.sequence)
+                    else:
+                        seq = ProteinCore(uniprot=detail['SP_PRIMARY']).load().sequence
+                        offset = s.get_offset_from_PDB(detail, seq)
                 except: ## Pymol subclasses BaseException.
-                    pass
+                    offset = 0
             else:
                 offset = 0
             lines.append(f"{s.code}\t{detail['CHAIN']}\t{detail['SP_PRIMARY']}\t{offset}")
@@ -238,13 +259,16 @@ def fix_offsets(file):
 
 
 def fix_all_offsets():
+    """
+    This fixes all the offsets.
+
+    :return:
+    """
     p = Pool(6)
     global_settings.verbose = False
     with open('PDB_Uniprot_offsets.tsv', 'w') as w:
         for species in os.listdir(os.path.join(global_settings.pickle_folder)):
             if 'taxid' not in species:
-                continue
-            if '9606' not in species:
                 continue
             source = os.path.join(global_settings.pickle_folder, species)
             blocks = p.map(fix_offsets, [os.path.join(source, pf) for pf in os.listdir(source)])
@@ -308,7 +332,7 @@ def touch_offsets(taxid=9606):
                     v.append('RESn')
                     offset = 0
             if 'RESn' in v or 'RES1' in v:
-                offset = s.get_offset_from_PDB(details, p.sequence)
+                offset =0
             c = Counter(v).most_common()
             overview.append('+'.join(sorted(set(v))))
     print(Counter(overview).most_common())
@@ -364,6 +388,7 @@ if 1==1:
     #touch_offsets()
     #fix_all_offsets()
     all_swiss()
+    fix_all_offsets()
 elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()
     print(p.gnomAD)

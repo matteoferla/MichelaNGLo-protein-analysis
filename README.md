@@ -106,13 +106,18 @@ NB. The script without the data will fetch off the web the Uniprot (only `.parse
 
 #### Current requirements that are implemented
 
-| Resource | Location | Reason | Last checked |
-| --- | --- | --- | --- |
-| Uniprot | [ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz](ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz) | Most of the data comes from Uniprot | 15/03/2019 |
-| NCBI PDB BLAST DB | [ftp://ftp.ncbi.nlm.nih.gov/blast/db/pdbaa.tar.gz](ftp://ftp.ncbi.nlm.nih.gov/blast/db/pdbaa.tar.gz)  | Needed to find homogues with crystal structures | 15/03/2019 |
+See `protein/settings_handler` the class attribute`GlobalSettings.addresses` (or `Protein.settings.addresses`).
 
+### Offset
 
-If any changes please change in `protein/settings_handler` the class attribute`GlobalSettings.addresses` (or `Protein.settings.addresses`).
+The offset of a PDB chain in the coordinate resi relative to Uniprot is based on `SIFT` data. Mostly.
+
+In some cases there is both a missing N and C terminus (see [offset_issue.png](/offset_issue)), which means that there is no PDB_BEG or PDB_END.
+This is where the bound method of Structure `.get_offset_from_PDB(detail, sequence)` comes in. This is a fix to an already generated file.
+It requires the sequence of the chain in question.
+
+See also: [blog post](http://blog.matteoferla.com/2019/09/pdb-numbering-rollercoaster.html).
+
 
 ### Future ideas
 

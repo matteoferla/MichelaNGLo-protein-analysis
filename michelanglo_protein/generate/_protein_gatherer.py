@@ -497,14 +497,15 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             warn('There is no uniprot value in this entry!')
             self.uniprot = json.load(open(os.path.join(self.settings.data_folder,'human_prot_namedex.json')))[self.gene_name]
         if not self.gene_name:
-            self.parse_uniprot()
+            self.parse_uniprot()  #this runs off the web.
         ### fetch!
-        tasks = { #'Uniprot': self.parse_uniprot, #already done.
-                 #'PFam': self.parse_pfam, #done.
+        tasks = {
                  'Swissmodel': self.parse_swissmodel,
                  'pLI': self.parse_pLI,
+                 'param': self.compute_params,
                  'gnomAD': self.parse_gnomAD,
-                 'parse_pdb_blast': self.parse_pdb_blast
+                 'ptm': self.get_PTM
+                 #'parse_pdb_blast': self.parse_pdb_blast
                  #'manual': self.add_manual_data,
                  #'Binding partners': self.fetch_binders
                 }
@@ -525,7 +526,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             else:
                 self._threads = threads
                 return self
-        else:
+        else:  #serial
             for task_fn in tasks.values():
                 task_fn()
         return self
