@@ -198,7 +198,9 @@ class Structure:
         with pymol2.PyMOL() as pymol:
             pymol.cmd.set('fetch_path', os.path.join(self.settings.temp_folder, 'PDB'))
             pymol.cmd.fetch(self.code)
-            target = sequence[chain_detail['RES_BEG'] - 1: chain_detail['RES_BEG'] + 10]
+            target = sequence[chain_detail['SP_BEG'] - 1: chain_detail['SP_BEG'] + 10]
+            if len(target) == 0:
+                return 0
             atoms = pymol.cmd.get_model(f"chain {chain_detail['CHAIN']} and pepseq {target}")
             prev = 'X'
             for atom in atoms.atom:

@@ -206,6 +206,8 @@ def fix_offsets(file):
         if s.type != 'rcsb':
             continue
         details = s._get_sifts()
+        s.chain_definitions = []
+        s.offsets = {}
         for detail in details:
             ## clean rows
             for k in ('PDB_BEG', 'PDB_END', 'RES_END', 'RES_BEG', 'SP_BEG', 'SP_END'):
@@ -235,16 +237,17 @@ def fix_offsets(file):
                     offset = 0
             else:
                 offset = 0
+            detail['offset'] = offset
             lines.append(f"{s.code}\t{detail['CHAIN']}\t{detail['SP_PRIMARY']}\t{offset}")
-        s.chain_definitions = [{'chain': d['CHAIN'],
-                                'uniprot': d['SP_PRIMARY'],
-                                'x': d["SP_BEG"],
-                                'y': d["SP_END"],
-                                'offset': offset,
-                                'range': f'{d["SP_BEG"]}-{d["SP_END"]}',
-                                'name': None,
-                                'description': None} for d in details]
-        s.offsets = {d['chain']: d['offset'] for d in s.chain_definitions}
+            s.chain_definitions.append({'chain': detail['CHAIN'],
+                                        'uniprot': detail['SP_PRIMARY'],
+                                        'x': detail["SP_BEG"],
+                                        'y': detail["SP_END"],
+                                        'offset': offset,
+                                        'range': f'{detail["SP_BEG"]}-{detail["SP_END"]}',
+                                        'name': None,
+                                        'description': None})
+            s.offsets[detail['CHAIN']] = offset
         try:
             if s.chain != '*':
                 detail = next(filter(lambda x: s.chain == x['chain'], s.chain_definitions))
@@ -264,7 +267,7 @@ def fix_all_offsets():
 
     :return:
     """
-    p = Pool(6)
+    p = Pool(4)
     global_settings.verbose = False
     with open('PDB_Uniprot_offsets.tsv', 'w') as w:
         for species in os.listdir(os.path.join(global_settings.pickle_folder)):
@@ -387,7 +390,7 @@ if 1==1:
     #inspect_offsets('P01133')
     #touch_offsets()
     #fix_all_offsets()
-    all_swiss()
+    #all_swiss()
     fix_all_offsets()
 elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()
