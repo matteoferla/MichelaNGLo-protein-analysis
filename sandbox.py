@@ -202,6 +202,10 @@ def fix_offsets(file):
     """
     p = ProteinCore().load(file=file)
     lines = []
+    if len(p.sequence) == 0:
+        print('Empy entry!')
+        p.parse_all(mode='serial')
+        p.dump()
     for s in p.pdbs:
         if s.type != 'rcsb':
             continue
@@ -231,12 +235,19 @@ def fix_offsets(file):
                     if detail['SP_PRIMARY'] == p.uniprot:
                         offset = s.get_offset_from_PDB(detail, p.sequence)
                     else:
-                        seq = ProteinCore(uniprot=detail['SP_PRIMARY']).load().sequence
-                        offset = s.get_offset_from_PDB(detail, seq)
-                except: ## Pymol subclasses BaseException.
+                        try:
+                            seq = ProteinCore(uniprot=detail['SP_PRIMARY']).load().sequence
+                            offset = s.get_offset_from_PDB(detail, seq)
+                        except ValueError: # unknown species.
+                            offset = 0 # trembl id or similar.
+                except BaseException as err: ## Pymol subclasses BaseException.
+                    print(f'ERROR {err.__class__.__name__} {err}')
                     offset = 0
             else:
                 offset = 0
+            if offset is None:
+                offset = 0
+                print('OFFSET ERRROR.')
             detail['offset'] = offset
             lines.append(f"{s.code}\t{detail['CHAIN']}\t{detail['SP_PRIMARY']}\t{offset}")
             s.chain_definitions.append({'chain': detail['CHAIN'],
@@ -270,13 +281,16 @@ def fix_all_offsets():
     p = Pool(4)
     global_settings.verbose = False
     with open('PDB_Uniprot_offsets.tsv', 'w') as w:
-        for species in os.listdir(os.path.join(global_settings.pickle_folder)):
-            if 'taxid' not in species:
-                continue
-            source = os.path.join(global_settings.pickle_folder, species)
-            blocks = p.map(fix_offsets, [os.path.join(source, pf) for pf in os.listdir(source)])
-            w.write('\n'.join(blocks))
-            w.write('\n')
+        # for species in os.listdir(os.path.join(global_settings.pickle_folder)):
+        #     if 'taxid' not in species:
+        #         continue
+        species = 'taxid9606'
+        source = os.path.join(global_settings.pickle_folder, species)
+        # for pf in os.listdir(source):
+        #     fix_offsets(os.path.join(source, pf))
+        blocks = p.map(fix_offsets, [os.path.join(source, pf) for pf in os.listdir(source)])
+        w.write('\n'.join(blocks))
+        w.write('\n')
 
 def touch_offsets(taxid=9606):
     overview = []
@@ -389,9 +403,8 @@ if 1==1:
     #parse_uniprot(
     #inspect_offsets('P01133')
     #touch_offsets()
+    all_swiss()
     #fix_all_offsets()
-    #all_swiss()
-    fix_all_offsets()
 elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()
     print(p.gnomAD)

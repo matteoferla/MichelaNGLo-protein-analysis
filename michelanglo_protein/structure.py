@@ -198,16 +198,37 @@ class Structure:
         with pymol2.PyMOL() as pymol:
             pymol.cmd.set('fetch_path', os.path.join(self.settings.temp_folder, 'PDB'))
             pymol.cmd.fetch(self.code)
-            target = sequence[chain_detail['SP_BEG'] - 1: chain_detail['SP_BEG'] + 10]
+            target = sequence[chain_detail['SP_BEG'] - 1: chain_detail['SP_BEG'] + 50]
             if len(target) == 0:
+                print(f'sequence is {len(sequence)}, while range is {chain_detail["SP_BEG"]}-{chain_detail["SP_END"]}')
                 return 0
-            atoms = pymol.cmd.get_model(f"chain {chain_detail['CHAIN']} and pepseq {target}")
+            atoms = pymol.cmd.get_model(f"chain {chain_detail['CHAIN']} and pepseq {target} and name CA")
             prev = 'X'
+            prev_i = -999
             for atom in atoms.atom:
+                if int(atom.resi) == prev_i:
+                    continue
                 if atom.resn in aa:
-                    for i in range(1, 10):
+                    ## Simplest case:
+                    # if aa[atom.resn] == target[0]:
+                    #     return chain_detail["SP_BEG"] - atom.resi
+                    ## In case there are missing parts.
+                    # for i in range(0, 20):
+                    #     if aa[atom.resn] == target[i]:
+                    #         return (i + chain_detail["SP_BEG"]) - atom.resi
+                    ## In case there are missing parts and repeated residues.
+                    #print(atom.resn, atom.resi, target)
+                    for i in range(1, 50): #in case there are missing parts.
                         if aa[atom.resn] == target[i] and target[i - 1] == prev:
-                            return (i + chain_detail["SP_BEG"]) - atom.resi
+                            #print(f'YATTA {(i + chain_detail["SP_BEG"]) - int(atom.resi)}')
+                            return (i + chain_detail["SP_BEG"]) - int(atom.resi)
+                    prev = aa[atom.resn]
+                else:
+                    prev = 'X'
+                prev_i = int(atom.resi)
+            else: #more than 50 aa without coordinates at the N terminus? Engineered residues.
+                print(f'{self.code} More than 50 AA without a match!! {target} {prev}')
+                return 0
 
     def lookup_resolution(self):
         if self.type != 'rcsb':
