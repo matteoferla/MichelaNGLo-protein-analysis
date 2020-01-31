@@ -122,7 +122,7 @@ class ProteinAnalyser(ProteinCore):
     def mutation_discrepancy(self):
         # returns a string explaining the `check_mutation` discrepancy error
         neighbours = ''
-        print(self.mutation.residue_index, len(self.sequence), self.sequence[self.mutation.residue_index - 1], self.mutation.from_residue)
+        #print(self.mutation.residue_index, len(self.sequence), self.sequence[self.mutation.residue_index - 1], self.mutation.from_residue)
         if len(self.sequence) < self.mutation.residue_index:
             return 'Uniprot {g} is only {l} amino acids long, while user claimed a mutation at {i}.'.format(
                 g=self.uniprot,

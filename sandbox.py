@@ -139,7 +139,7 @@ def how_many_empty(taxid=9606):
             full +=1
     print(full, empty)
 
-def compress(taxid=9606, target='../gpickle'):
+def compress(taxid=9606, target='/home/matteo/Coding/Michelanglo/MichelaNGLo-human-protein-data/gpickle'):
     if not os.path.exists(target):
         os.mkdir(target)
     source = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
@@ -397,13 +397,13 @@ if 1==1:
     #os.mkdir(os.path.join(ProteinCore.settings.temp_folder, 'PDB'))
     #describe('P01112')
     #analyse('P62873')
-    #how_many_empty()
+    how_many_empty()
     #fix_empty()
-    #compress()
+    compress()
     #parse_uniprot(
     #inspect_offsets('P01133')
     #touch_offsets()
-    all_swiss()
+    #all_swiss()
     #fix_all_offsets()
 elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()
