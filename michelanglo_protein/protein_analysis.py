@@ -76,6 +76,7 @@ class ProteinAnalyser(ProteinCore):
     def _neighbours(self, midresidue, position, marker='*', span=10):
         """
         Gets the 10 AA stretch for mutant or not.
+
         :param midresidue: what is the letter to put in middle. Used for wt and mutant.
         :param position: number
         :param marker: '*' to surround the midresidue.
@@ -154,10 +155,28 @@ class ProteinAnalyser(ProteinCore):
 
     ################################# ELM
 
-    def _rex_elm(self, neighbours, regex):
-        rex = re.search(regex, neighbours)
+    def _rex_elm(self, neighbours:str, regex:str, starter:bool=False, ender:bool=False):
+        """
+        The padding in neighbours is to stop ^ and $ matching.
+        :param neighbours: sequence around the mutation
+        :type neighbours: str
+        :param regex: ELM regex
+        :type regex: str
+        :param starter: is it at the start?
+        :param ender: is it at the end?
+        :return: None or tuple(start:int, stop:int)
+        """
+        if starter:
+            offset = 0
+            rex = re.search(regex, neighbours + 'XXX')
+        elif ender:
+            offset = 3
+            rex = re.search(regex, 'X' * offset +neighbours)
+        else:
+            offset = 3
+            rex = re.search(regex, 'X' * offset + neighbours + 'X' * offset)
         if rex:
-            return (rex.start(), rex.end())
+            return (rex.start() - offset, rex.end() - offset)
         else:
             return False
 
@@ -169,8 +188,10 @@ class ProteinAnalyser(ProteinCore):
         results = []
         elm = self.elmdata
         for r in elm:
-            w = self._rex_elm(neighbours, r['Regex'])
-            m = self._rex_elm(mut_neighbours, r['Regex'])
+            starter = position < 5
+            ender = position + 5 > len(self.sequence)
+            w = self._rex_elm(neighbours, r['Regex'], starter, ender)
+            m = self._rex_elm(mut_neighbours, r['Regex'], starter, ender)
             if w != False or m != False:
                 match = {'name': r['FunctionalSiteName'],
                          'description': r['Description'],
