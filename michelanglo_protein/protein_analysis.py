@@ -9,6 +9,13 @@ import io, os
 from .analyse import StructureAnalyser
 
 class ProteinAnalyser(ProteinCore):
+    ptm_definitions = {'p': 'phosphorylated',
+                       'ub': 'ubiquitinated',
+                       'ga': 'O-galactosylated',
+                       'm1': 'methylated',
+                       'm2': 'dimethylated',
+                       'm3': 'trimethylated'}
+
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
         ### other ###
@@ -197,7 +204,16 @@ class ProteinAnalyser(ProteinCore):
 
     def get_features_near_position(self, position=None, wobble=10):
         position = position if position is not None else self.mutation.residue_index
-        valid = [{**f, 'type': g} for g in self.features for f in self.features[g] if 'x' in f and f['x'] - wobble < position and  position < f['y'] + wobble]
+        valid = []
+        for g in self.features:
+            for f in self.features[g]:
+                if 'x' in f:
+                    if f['x'] - wobble < position and position < f['y'] + wobble:
+                        valid.append({**f, 'type': g})
+                elif 'residue_index':
+                    if f['residue_index'] - wobble < position and position < f['residue_index'] + wobble:
+                        ## PTM from phosphosite plus are formatted differently. the feature viewer and the .structural known this.
+                        valid.append({'x': f['residue_index'], 'y': f['residue_index'], 'description': self.ptm_definitions[f['ptm']], 'type': 'Post translational'})
         svalid = sorted(valid, key=lambda v: int(v['y']) - int(v['x']))
         return svalid
 
@@ -205,53 +221,49 @@ class ProteinAnalyser(ProteinCore):
         """
         :param position: mutation, str or position
         :param wobble: int, number of residues before and after.
-        :return: list of gnomAD mutations, which are dictionary e.g. {'id': 'gnomAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
+        :return: list of gnomAD mutations, which are named touples e.g. {'id': 'gnomAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
         """
         position = position if position is not None else self.mutation.residue_index
-        valid = [g for g in self.gnomAD if g.x - wobble < position < g.y + wobble]
-        svalid = sorted(valid, key=lambda v: v.y - v.x)
+        #valid = [g for g in self.gnomAD if g.x - wobble < position < g.y + wobble]
+        #svalid = sorted(valid, key=lambda v: v.y - v.x)
+        valid = {g.description: g for g in self.gnomAD if g.x - wobble < position < g.y + wobble}
+        svalid = sorted(valid.values(), key=lambda v: v.x)
         return svalid
 
-    def _get_structures_with_position(self, position):
-        """
-        Fetches structures that exists at a given position.
-        :param position: mutation, str or position
-        :return: list of self.pdbs+self.swissmodel+self.pdb_matches...
-        """
-        print('Use get_best_model')
-        raise DeprecationWarning
-        return [pdb for pdb in self.pdbs + self.swissmodel + self.pdb_matches if int(pdb['x']) < position < int(pdb['y'])]
+    # def _get_structures_with_position(self, position):
+    #     """
+    #     Fetches structures that exists at a given position.
+    #     :param position: mutation, str or position
+    #     :return: list of self.pdbs+self.swissmodel+self.pdb_matches...
+    #     """
+    #     print('Use get_best_model')
+    #     raise DeprecationWarning
+    #     return [pdb for pdb in self.pdbs + self.swissmodel + self.pdb_matches if int(pdb['x']) < position < int(pdb['y'])]
 
     def get_best_model(self):
         """
-        This currently just gets the first PDB. It ought to check what is the best.
+        This currently just gets the first PDB based on resolution. It ought to check what is the best properly.
+        it checks pdbs first, then swissmodel.
         :return:
         """
-        def _get_best_model_within(l):
+        for l in (self.pdbs, self.swissmodel):
             if l:
                 good = []
-                for model in l:
+                for model in l: #model is a structure object.
                     if model.includes(self.mutation.residue_index):
                         good.append(model)
                 if good:
                     good.sort(key=lambda x: x.resolution)
                     return good[0]
-                else:
-                    return None
-            else:
-                return None
-
-        pdb = _get_best_model_within(self.pdbs)
-        if not pdb:
-            return _get_best_model_within(self.swissmodel)
-        else:
-            return pdb
+                else: # no models with mutation.
+                    pass
+            else: #no models in group
+                pass
+        return None
 
     @property
     def property_at_mutation(self):
         return {k: self.properties[k][self.mutation.residue_index -1] for k in self.properties}
-
-    #### THE FUTURE
 
     def analyse_structure(self):
         structure = self.get_best_model()
@@ -260,9 +272,38 @@ class ProteinAnalyser(ProteinCore):
             self.structural = None
             return self
         self.structural = StructureAnalyser(structure, self.mutation)
-        #self.structural_gnomAD_neighbours = [ for n in self.structural.neighbours]
+        if self.structural and self.structural.neighbours:
+            ## see mutation.exposure_effect
+            self.mutation.surface_expose = 'buried' if self.structural.buried else 'surface'
+            self.annotate_neighbours()
         return self
 
+
+    def annotate_neighbours(self):
+        """
+        The structural neighbours does not contain data re features.
+        :return:
+        """
+        for neigh in self.structural.neighbours:
+            neigh['resn'] = Mutation.aa3to1(neigh['resn'])
+            if neigh['chain'] != 'A':
+                neigh['detail'] = 'interface'
+            else:
+                specials = []
+                r = int(neigh['resi'])
+                gnomad = ['gnomAD:' + g.description for g in self.gnomAD if r == g.x]
+                specials.extend(gnomad)
+                for k in ('initiator methionine',
+                          'modified residue',
+                          'glycosylation site',
+                          'non-standard amino acid'):
+                    if k in self.features:
+                        specials.extend(['PTM:' + m['description'] for m in self.features[k] if r == m['x']])
+                if 'PSP_modified_residues' in self.features:
+                    specials.extend(
+                        ['PTM:' + self.ptm_definitions[m['ptm']] for m in self.features['PSP_modified_residues'] if
+                         r == m['residue_index']])
+                neigh['detail'] = ' / '.join(specials)
 
     # conservation score
     # disorder

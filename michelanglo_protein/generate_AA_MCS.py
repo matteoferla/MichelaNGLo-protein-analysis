@@ -40,6 +40,11 @@ Valine  Val     V       C5H11NO2        CC(C)[C@@H](C(=O)O)N    nonpolar        
         return aminoacids
 
     def draw(self):
+        """
+        makes and writes the images of the amino acids.
+        The format is '{ab}{ad}.svg' where ab is from/whence, and ad is to/whither.
+        :return: None
+        """
         for ab in self.aminoacids:
             for ad in self.aminoacids:
                 mols = [self.aminoacids[k] for k in (ab, ad)]

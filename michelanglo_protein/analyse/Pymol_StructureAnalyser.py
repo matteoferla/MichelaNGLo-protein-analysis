@@ -27,6 +27,10 @@ class StructureAnalyser:
         self.chain = 'A' #structure.chain get offset will change the chain to A.
         self.coordinates = structure.get_offset_coordinates()
         self.code = structure.code
+        # these two are very much for the ajax.
+        self.chain_definitions = structure.chain_definitions  # seems redundant but str(structure) does not give these.
+        self.history = {'code': self.code, 'changes': 'offset and made chain A'},
+        # do operations on structure
         self.target_selection = f'(resi {self.position} and chain {self.chain})'
         self.pymol = None
         self._obj_name = 'myprotein'
@@ -43,7 +47,7 @@ class StructureAnalyser:
                 self.SASA_sidechain = self.get_SASA(f'{self.target_selection} and name CA')
             self.RSA = self.SASA / self.maxASA[self.mutation.from_residue]
             self.SS = self.get_SS()
-            self.buried = self.RSA >= 0.2
+            self.buried = self.RSA <= 0.2
             self.ligand_list = self.get_ligand_list()
             t = self.get_distance_to_closest_ligand()
             self.closest_ligand = t['closest']
@@ -83,8 +87,9 @@ class StructureAnalyser:
         assert self.pymol is not None, 'Can only be called within a PyMOL session'
         if not sele:
             sele = f'(not {self.target_selection}) and (byres ({self.target_selection} around {threshhold})) and name CA'
+            #sele = f'(byres ({self.target_selection} around {threshhold})) and name CA'
         my_dict = {'residues': []}
-        self.pymol.cmd.iterate(sele, "residues.append((resi,resn))", space=my_dict)
+        self.pymol.cmd.iterate(sele, "residues.append({'resi': resi, 'resn': resn, 'chain': chain})", space=my_dict)
         return my_dict['residues']
 
 

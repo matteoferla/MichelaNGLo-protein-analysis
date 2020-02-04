@@ -587,4 +587,11 @@ class Mutation:
         """
         return ['{n} ({s}, {t})'.format(n=n,s=s,t=t) for s, t, n in cls.names if s == letter][0]
 
+    @classmethod
+    def aa3to1(cls, value):
+        v = value.strip().title()
+        for one, three, full in cls.names:
+            if three == v:
+                return one
+
 
