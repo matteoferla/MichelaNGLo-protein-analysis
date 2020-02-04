@@ -43,24 +43,31 @@ Valine  Val     V       C5H11NO2        CC(C)[C@@H](C(=O)O)N    nonpolar        
         """
         makes and writes the images of the amino acids.
         The format is '{ab}{ad}.svg' where ab is from/whence, and ad is to/whither.
+        The match matches only complete rings ``FindMCS(mols, ringMatchesRingOnly=True, completeRingsOnly=True)``,
+        because it was matching any bonding and making a weird open match with Y and W.
+
         :return: None
         """
         for ab in self.aminoacids:
             for ad in self.aminoacids:
                 mols = [self.aminoacids[k] for k in (ab, ad)]
-                res=Chem.rdFMCS.FindMCS(mols)
+                res=Chem.rdFMCS.FindMCS(mols, ringMatchesRingOnly=True, completeRingsOnly=True)
                 common = Chem.MolFromSmarts(res.smartsString)
                 drawer = rdMolDraw2D.MolDraw2DSVG(400,200)
                 rdDepictor.Compute2DCoords(mols[0])
-                inv = [i for i in range(mols[0].GetNumAtoms()) if i not in mols[0].GetSubstructMatch(common)]
-                drawer.DrawMolecule(mols[0], highlightAtoms=inv)
+                unconserved = [i for i in range(mols[0].GetNumAtoms()) if i not in mols[0].GetSubstructMatch(common)]
+                drawer.DrawMolecule(mols[0], highlightAtoms=unconserved)
                 drawer.FinishDrawing()
                 svg = drawer.GetDrawingText()
                 open(f'{ab}{ad}.svg','w').write(svg)
 
     def sizes(self):
-        return {aa: self.aminoacids[aa].GetNumAtoms() for aa in self.aminoacids}
+        """
+        Gets the number of heavy atoms that a AA ought to have.
 
+        :return:
+        """
+        return {aa: self.aminoacids[aa].GetNumAtoms() for aa in self.aminoacids}
 
 
 if __name__ == '__main__':
