@@ -1,5 +1,5 @@
 import pyrosetta, pymol2, re, os
-from typing import List, Dict
+from typing import List, Dict #, TypedDict
 from collections import namedtuple
 
 pyrosetta.init(silent=True, options='-mute core basic protocols')
@@ -125,15 +125,21 @@ class Mutator:
             os.remove(tmpfile)
         return block
 
-    def ddG(self, alt_resn:str):
+    def analyse_mutation(self, alt_resn:str) -> Dict:
         self.do_relax()
         self.mark('relaxed')
-        native = self.pose.clone()
+        self.native = self.pose.clone()
+        nblock = self.output()
         self.mutate(alt_resn)
-        m.mark('mutate')
+        self.mark('mutate')
         self.do_relax()
-        m.mark('mutarelax')
-        rmsd = pyrosetta.rosetta.core.scoring.CA_rmsd(native, m.pose)
+        self.mark('mutarelax')
+        return {'ddG': self.scores['mutarelax'] - self.scores['relaxed'],
+                'scores': self.scores,
+                'native': nblock,
+                'mutant': self.output(),
+                'rmsd': pyrosetta.rosetta.core.scoring.CA_rmsd(self.native, self.pose)
+                }
 
 
 if __name__ == '__main__':

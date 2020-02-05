@@ -6,7 +6,7 @@ from .core import ProteinCore
 from .mutation import Mutation
 import re
 import io, os
-from .analyse import StructureAnalyser
+from .analyse import StructureAnalyser, Mutator
 
 class ProteinAnalyser(ProteinCore):
     ptm_definitions = {'p': 'phosphorylated',
@@ -288,7 +288,7 @@ class ProteinAnalyser(ProteinCore):
 
     def analyse_structure(self):
         structure = self.get_best_model()
-        #structure id a michelanglo_protein.core.Structure object
+        #structure is a michelanglo_protein.core.Structure object
         if not structure:
             self.structural = None
             return self
@@ -298,6 +298,17 @@ class ProteinAnalyser(ProteinCore):
             self.mutation.surface_expose = 'buried' if self.structural.buried else 'surface'
             self.annotate_neighbours()
         return self
+
+    def analyse_FF(self):
+        """
+        Calls the pyrosetta.
+
+        :return:
+        """
+        if self.structural is None:
+            return None
+        mut = Mutator(pdbblock = self.structural.coordinates, target_resi = self.mutation.residue_index, target_chain = 'A', cycles = 1, radius = 3)
+        return mut.analyse_mutation(self.mutation.to_residue) #{ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
 
 
     def annotate_neighbours(self):
