@@ -397,14 +397,19 @@ if 1==1:
     #os.mkdir(os.path.join(ProteinCore.settings.temp_folder, 'PDB'))
     #describe('P01112')
     #analyse('P62873')
-    how_many_empty()
+    #how_many_empty()
     #fix_empty()
-    compress()
+    #compress()
     #parse_uniprot(
     #inspect_offsets('P01133')
     #touch_offsets()
     #all_swiss()
     #fix_all_offsets()
+    #p = ProteinCore(taxid='9606', uniprot='P01112').load()
+    p = ProteinCore(taxid='3562', uniprot='Q8GT36').load()
+    print(sum(p.properties['kd'])/len(p))
+    print(sum(p.properties['Flex']) / len(p))
+
 elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()
     print(p.gnomAD)

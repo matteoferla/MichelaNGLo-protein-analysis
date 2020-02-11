@@ -2,7 +2,7 @@ import pyrosetta, pymol2, re, os
 from typing import List, Dict #, TypedDict
 from collections import namedtuple
 
-pyrosetta.init(silent=True, options='-mute core basic protocols')
+pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
 
 Target = namedtuple('target', ['resi', 'chain'])
 
