@@ -159,6 +159,7 @@ class ProteinCore:
         return False
 
     def dump(self, file=None):
+        self.assert_safe()
         if not file:
             path = self._get_species_folder()
             file = os.path.join(path, '{0}.p'.format(self.uniprot))
@@ -167,6 +168,7 @@ class ProteinCore:
         self.log('Data saved to {} as pickled dictionary'.format(file))
 
     def gdump(self, file=None):
+        self.assert_safe()
         if not file:
             path = self._get_species_folder()
             file = os.path.join(path,  f'{self.uniprot}.pgz')
@@ -183,6 +185,10 @@ class ProteinCore:
         else:
             raise ValueError('Cannot figure out species of uniprot to load it. Best bet is to fetch it.')
 
+    def assert_safe(self):
+        if re.match(r'[^\w.]', self.uniprot):
+            raise ValueError('forbidden character used in Uniprot ID')
+
     #decorator /fake @classmethod
     def _ready_load(fun):
         """
@@ -191,6 +197,7 @@ class ProteinCore:
         :return:
         """
         def loader(self, file=None):
+            self.assert_safe()
             if not file:
                 path = self._get_species_folder()
                 if fun.__name__ == 'load':
