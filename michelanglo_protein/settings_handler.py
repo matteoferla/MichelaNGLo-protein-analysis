@@ -2,6 +2,7 @@
 The Singleton GlobalSettings is the handler for the settings to control where to save stuff, etc.
 It allows customisation of output if the script is not running on a server.
 The key parts are:
+
 - startup. It is initialised when the module is imported. However, it is not ready as the files need to be configured with startup.
 - retrieve_references. download all the bits. Phosphosite need manuall download. See `licence_note` in `michelanglo_protein.generate.split_phosphosite`.
 
@@ -169,14 +170,21 @@ class GlobalSettings(metaclass=Singleton):
         :return: the file name (full)
         """
         file = os.path.join(self.reference_folder, os.path.split(url)[1])
-        if os.path.isfile(file) and not refresh:
+        unfile = file.replace('.gz', '').replace('.tar', '').replace('.zip', '')
+        if os.path.isfile(unfile) and not refresh:
             if self.verbose:
-                print('{0} file is present already'.format(file))
+                print('{0} unzipped file is present already'.format(unfile))
+        elif os.path.isfile(file) and not refresh:
+            if self.verbose:
+                print('{0} zipped file is present already, but not unzipped'.format(file))
+            self._unzip_file(file)
         else:
+            if os.path.isfile(unfile):
+                os.remove(unfile)
             if self.verbose:
                 print('{0} file is being downloaded'.format(file))
             self._get_url(url, file)
-        self._unzip_file(file)
+            self._unzip_file(file)
         return file
 
     def _get_url(self, url, file):

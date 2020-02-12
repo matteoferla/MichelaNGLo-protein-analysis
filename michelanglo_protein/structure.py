@@ -61,19 +61,18 @@ class Structure:
         if self.type == 'rcsb':
             r = requests.get(f'https://files.rcsb.org/download/{self.code}.pdb')
         elif self.type == 'swissmodel':
-            r = requests.get(self.url)
+            r = requests.get(self.url, allow_redirects=True)
         elif self.type == 'www':
             r = requests.get(self.url)
         elif self.type == 'local':
             self.coordinates = open(self.url).read()
             return self.coordinates
         else:
-            warn(f'Model type {self.type}  for {self.id} could not be recognised.')
-            return None
+            raise ValueError(f'Model type {self.type}  for {self.id} could not be recognised.')
         if r.status_code == 200:
             self.coordinates = r.text
         else:
-            warn(f'Model {self.code} failed.')
+            warn(f'Model {self.code} ({self.url}) failed.')
         return self.coordinates
 
     def get_offset_coordinates(self):

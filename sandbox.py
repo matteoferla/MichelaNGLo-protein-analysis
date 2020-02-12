@@ -85,44 +85,7 @@ def iterate_taxon(taxid=9606):
         except:
             pass
 
-def all_swiss():
-    """
-    A posteriori fix to the fact that I had only human!
-    Note that it incorportates the recatching.
 
-    :return:
-    """
-    p = Pool(6)
-    global_settings.verbose = False
-    taxa = (3702, 6239, 7227, 10090, 36329, 83332, 83333, 93061, 190650, 208964, 284812, 559292)  # 9606
-    p.map(add_swissmodel, taxa)
-
-def add_swissmodel(taxid=9606):
-        def fix(p):
-            global_settings.verbose = True
-            p.parse_all(mode='serial')
-            assert len(p.sequence) > 0, 'Darn. Sequence is zero AA long'
-            p.dump()
-            global_settings.verbose = False
-
-        print(f'************************ {taxid} *************************************')
-        path = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
-        for pf in os.listdir(path):
-            if os.path.splitext(pf)[1] != '.p':
-                continue
-            try:
-                p = ProteinGatherer().load(file=os.path.join(path, pf))
-            except:
-                p = ProteinGatherer(uniprot=pf.replace('.p',''))
-                fix(p)
-            if len(p.sequence) == 0:
-                try:
-                    fix(p)
-                except Exception:
-                    traceback.print_exc(file=sys.stdout)
-            else:
-                p.parse_swissmodel()
-                p.dump()
 
 def how_many_empty(taxid=9606):
     from collections import Counter
@@ -389,6 +352,86 @@ def reparse_gene(name):
     p.parse_uniprot()
     print(p.sequence)
 
+def download_swissmodel():
+    for url in global_settings.addresses:
+        if 'swissmodel' in url:
+            global_settings._deal_w_url(url, refresh=True)
+
+def add_swissmodel(taxid=9606):
+        def fix(p):
+            global_settings.verbose = True
+            p.parse_all(mode='serial')
+            assert len(p.sequence) > 0, 'Darn. Sequence is zero AA long'
+            p.dump()
+            global_settings.verbose = False
+
+        print(f'************************ {taxid} *************************************')
+        path = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
+        for pf in os.listdir(path):
+            if os.path.splitext(pf)[1] != '.p':
+                continue
+            try:
+                p = ProteinGatherer().load(file=os.path.join(path, pf))
+            except:
+                p = ProteinGatherer(uniprot=pf.replace('.p',''))
+                fix(p)
+            if len(p.sequence) == 0:
+                try:
+                    fix(p)
+                except Exception:
+                    traceback.print_exc(file=sys.stdout)
+            else:
+                p.parse_swissmodel()
+                p.dump()
+
+def all_swiss(fx = add_swissmodel):
+    """
+    A posteriori fix to the fact that I had only human!
+    Note that it incorportates the recatching.
+
+    :return:
+    """
+    p = Pool(6)
+    global_settings.verbose = False
+    taxa = (3702, 6239, 7227, 10090, 36329, 83332, 83333, 93061, 190650, 208964, 284812, 559292, 9606)
+    p.map(fx, taxa)
+
+
+def hotfix_swiss(taxid=9606):
+    # The database stores the data differently to what the data in the indices say!
+    #https://swissmodel.expasy.org/repository/uniprot/P31946.pdb?from=1&to=232&template=2bq0&provider=pdb
+    #https://swissmodel.expasy.org/repository/uniprot/P31946.pdb?sort=seqsim&provider=pdb&template=2bq0&range=1-232
+    def fix(p):
+        global_settings.verbose = True
+        p.parse_all(mode='serial')
+        assert len(p.sequence) > 0, 'Darn. Sequence is zero AA long'
+        p.dump()
+        global_settings.verbose = False
+
+    print(f'************************ {taxid} *************************************')
+    path = os.path.join(global_settings.pickle_folder, f'taxid{taxid}')
+    for pf in os.listdir(path):
+        if os.path.splitext(pf)[1] != '.p':
+            continue
+        try:
+            p = ProteinGatherer().load(file=os.path.join(path, pf))
+        except:
+            p = ProteinGatherer(uniprot=pf.replace('.p', ''))
+            fix(p)
+        if len(p.sequence) == 0:
+            try:
+                fix(p)
+            except Exception:
+                traceback.print_exc(file=sys.stdout)
+        else:
+            for model in p.swissmodel:
+                model.url = re.sub(r'from\=(\d+)&to\=(\d+)', r'sort=seqsim&range=\1-\2', model.url)
+            p.dump()
+
+
+
+
+
 if __name__ == '__main__':
     global_settings.verbose = True #False
     global_settings.startup(data_folder='../protein-data')
@@ -406,9 +449,14 @@ if 1==1:
     #all_swiss()
     #fix_all_offsets()
     #p = ProteinCore(taxid='9606', uniprot='P01112').load()
-    p = ProteinCore(taxid='3562', uniprot='Q8GT36').load()
-    print(sum(p.properties['kd'])/len(p))
-    print(sum(p.properties['Flex']) / len(p))
+    #p = ProteinCore(taxid='3562', uniprot='Q8GT36').load()
+    #print(sum(p.properties['kd'])/len(p))
+    #print(sum(p.properties['Flex']) / len(p))
+    from create import message
+    print('done')
+    #download_swissmodel()
+    all_swiss(fx=hotfix_swiss)
+    message('Reswissed!')
 
 elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()

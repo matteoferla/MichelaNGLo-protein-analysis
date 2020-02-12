@@ -25,8 +25,16 @@ class StructureAnalyser:
         self.structure = structure
         self.model = None
         self.chain = 'A' #structure.chain get offset will change the chain to A.
-        self.coordinates = structure.get_offset_coordinates()
         self.code = structure.code
+        if len(self.code) == 4:
+            self.coordinates = structure.get_offset_coordinates()
+        elif '://' in self.code:
+            self.structure.type('www')
+            self.coordinates = structure.get_coordinates()
+        else:
+            self.structure.type = 'swissmodel'
+            self.coordinates  = structure.get_coordinates()
+        assert self.coordinates, 'There are no coordinates!!'
         # these two are very much for the ajax.
         self.chain_definitions = structure.chain_definitions  # seems redundant but str(structure) does not give these.
         self.history = {'code': self.code, 'changes': 'offset and made chain A'},
