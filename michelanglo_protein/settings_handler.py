@@ -243,7 +243,8 @@ class GlobalSettings(metaclass=Singleton):
                 'nextprot':'nextprot_refseq.txt',
                 'pdb_chain_uniprot': 'pdb_chain_uniprot.tsv',
                 'elm':'elm_classes.tsv',
-                'resolution': 'resolution.json'}
+                'resolution': 'resolution.json',
+                'ensembl-uniprot': 'Homo_sapiens.GRCh38.99.uniprot.tsv'}
         if 'swissmodel' in kind:
             taxid = kind.replace('swissmodel','')
             if taxid == '':
