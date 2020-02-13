@@ -210,6 +210,7 @@ class _UniprotMixin:
         :param entry: the entry element of the XML parsed by Element Tree.
         :return:
         """
+        self.features = {}
         self.uniprot_dataset = entry.get_attr('dataset')
         for elem in entry:
             if elem.is_tag('accession') and elem.text:

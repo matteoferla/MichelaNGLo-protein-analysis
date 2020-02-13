@@ -181,7 +181,8 @@ class ProteinCore:
         warn('You have triggered a fallback. If you know your filepath to load use it.')
         uniprot2species = json.load(open(os.path.join(self.settings.dictionary_folder, 'uniprot2species.json')))
         if self.uniprot in uniprot2species.keys():
-            return uniprot2species[self.uniprot]
+            self.organism['NCBI Taxonomy'] = uniprot2species[self.uniprot]
+            return self.organism['NCBI Taxonomy']
         else:
             raise ValueError('Cannot figure out species of uniprot to load it. Best bet is to fetch it.')
 

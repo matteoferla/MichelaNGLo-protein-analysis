@@ -48,6 +48,10 @@ class Mutator:
     def target_pdb2pose(self, target:Target) -> int:
         return self._pdb2pose(chain=target.chain, res=target.resi)
 
+    @staticmethod
+    def reinit():
+        pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
+
     def load_pose(self) -> pyrosetta.Pose:
         """
         Loading from str is a bit messy. this simply does that and returns a Pose

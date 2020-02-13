@@ -50,8 +50,7 @@ def mini_gene_data():
 
 
     data = {}
-    from pprint import PrettyPrinter
-    pprint = PrettyPrinter().pprint
+
     namedex = json.load(open('data/human_prot_namedex.json'))
     for uni in set(namedex.values()):
         g = ProteinGatherer(uniprot=uni).parse_uniprot()
@@ -447,16 +446,43 @@ if 1==1:
     #inspect_offsets('P01133')
     #touch_offsets()
     #all_swiss()
-    #fix_all_offsets()
+    fix_all_offsets()
     #p = ProteinCore(taxid='9606', uniprot='P01112').load()
     #p = ProteinCore(taxid='3562', uniprot='Q8GT36').load()
     #print(sum(p.properties['kd'])/len(p))
     #print(sum(p.properties['Flex']) / len(p))
-    from create import message
-    print('done')
+    #from create import message
     #download_swissmodel()
-    all_swiss(fx=hotfix_swiss)
-    message('Reswissed!')
+    #all_swiss(fx=hotfix_swiss)
+    #message('Reswissed!')
+
+
+    #fix_offsets('../protein-data/pickle/taxid9606/Q13586.p')
+
+    # print('**************************************')
+    # taxid = 9606
+    # gene = 'P04637' # TP53
+    # #describe(gene)
+    # p = ProteinCore(taxid=taxid, uniprot=gene).load()  # gnb1 P62873 gnb2 P62879
+    # #pprint(p.__dict__)
+    # t = [s for s in p.pdbs if s.code.lower() == '1a1u'][0]
+    # print(str(t))
+    # print(t.offset)
+    # print(t.chain_definitions)
+    # sifts = t._get_sifts()
+    # print(sifts)
+    # print(t.get_offset_from_PDB(sifts[0], p.sequence))
+
+
+    # p.parse_uniprot()
+    # p.parse_swissmodel()
+    # p.compute_params()
+    # p.parse_gnomAD()
+    # p.get_PTM()
+    # p.dump()
+    # print('**************************************')
+    # pprint(p.asdict())
+
 
 elif 1==9:
     p = ProteinGatherer(taxid='9606', uniprot='P62873').load()

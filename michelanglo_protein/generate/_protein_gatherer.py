@@ -431,6 +431,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         #
         # gnomAD().write('gnomAD')
         file = os.path.join(self.settings.temp_folder, 'gnomAD', self.uniprot +'.json')
+        self.gnomAD = []
         if os.path.exists(file):
             for snp in json.load(open(file)):
                 resi = snp['residue_index']
@@ -550,6 +551,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
 
         :return:
         """
+        self.swissmodel = []
         # entry: {"uniprot_seq_length": 246, "provider": "PDB", "seqid": "", "from": 3, "uniprot_ac": "P31946",
         # "uniprot_seq_md5": "c82f2efd57f939ee3c4e571708dd31a8", "url": "https://swissmodel.expasy.org/repository/uniprot/P31946.pdb?from=3&to=232&template=6byk&provider=pdb",
         # "to": 232, "template": "6byk", "iso_id": "P31946-1", "coordinate_id": "5be4a9c602efd0e456a7ffeb"}
@@ -692,6 +694,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         To run this requires ``Phosphosite().split().write()`` to have been run at some point...
         :return:
         """
+        self.features['PSP_modified_residues'] = []
         assert self.uniprot, 'Uniprot Acc. required. Kind of.'
         self.log(f'Getting PTM for {self.uniprot}')
         fp = os.path.join(self.settings.temp_folder,'phosphosite',self.uniprot+'.json')

@@ -7,6 +7,7 @@ from .mutation import Mutation
 import re
 import io, os
 from .analyse import StructureAnalyser, Mutator
+from multiprocessing import Process, Pipe # pyrosetta can throw segfaults.
 
 class ProteinAnalyser(ProteinCore):
     ptm_definitions = {'p': 'phosphorylated',
@@ -299,16 +300,29 @@ class ProteinAnalyser(ProteinCore):
             self.annotate_neighbours()
         return self
 
-    def analyse_FF(self):
+    def analyse_FF(self, spit_process=True):
         """
-        Calls the pyrosetta.
+        Calls the pyrosetta, which tends to raise segfaults.
 
         :return:
         """
         if self.structural is None:
             return None
-        mut = Mutator(pdbblock = self.structural.coordinates, target_resi = self.mutation.residue_index, target_chain = 'A', cycles = 1, radius = 3)
-        return mut.analyse_mutation(self.mutation.to_residue) #{ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
+        kwargs = dict(pdbblock = self.structural.coordinates, target_resi = self.mutation.residue_index, target_chain = 'A', cycles = 1, radius = 3)
+        if not spit_process:
+            mut = Mutator(**kwargs)
+            return mut.analyse_mutation(self.mutation.to_residue) #{ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
+        else:
+            def subpro(child_conn, **kwargs):
+                Mutator.reinit()
+                mut = Mutator(**kwargs)
+                data = mut.analyse_mutation(self.mutation.to_residue) #{ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
+                child_conn.send(data)
+
+            parent_conn, child_conn = Pipe()
+            p = Process(target=subpro, args=((child_conn),), kwargs=kwargs)
+            p.start()
+            return parent_conn.recv() ## This will hang forever if the process sends a Segfault
 
 
     def annotate_neighbours(self):

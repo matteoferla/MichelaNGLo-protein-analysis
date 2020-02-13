@@ -194,40 +194,65 @@ class Structure:
               'ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N',
               'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W',
               'ALA': 'A', 'VAL': 'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
+        begin = int(chain_detail['SP_BEG'])
+        end = int(chain_detail['SP_BEG'])
+        assert isinstance(chain_detail, dict), 'Chain detail is a Dict of the specific chain. Not whole protein.'
+        debugprint = lambda x: None
         with pymol2.PyMOL() as pymol:
+            ## Load file
             pymol.cmd.set('fetch_path', os.path.join(self.settings.temp_folder, 'PDB'))
             pymol.cmd.fetch(self.code)
-            target = sequence[chain_detail['SP_BEG'] - 1: chain_detail['SP_BEG'] + 50]
-            if len(target) == 0:
-                print(f'sequence is {len(sequence)}, while range is {chain_detail["SP_BEG"]}-{chain_detail["SP_END"]}')
-                return 0
-            atoms = pymol.cmd.get_model(f"chain {chain_detail['CHAIN']} and pepseq {target} and name CA")
-            prev = 'X'
-            prev_i = -999
-            for atom in atoms.atom:
-                if int(atom.resi) == prev_i:
+            ## Try different windows
+            for begin_offset in range(0,len(sequence) - begin, 10):
+                ## Try full size window
+                window = 50
+                target = sequence[begin - 1 + begin_offset : begin + window + begin_offset]
+                if len(target) == 0:
+                    # Under what conditions does this happen???
+                    debugprint(f'sequence is {len(sequence)}, while range is {begin+begin_offset}-{end+begin_offset}')
                     continue
-                if atom.resn in aa:
-                    ## Simplest case:
-                    # if aa[atom.resn] == target[0]:
-                    #     return chain_detail["SP_BEG"] - atom.resi
-                    ## In case there are missing parts.
-                    # for i in range(0, 20):
-                    #     if aa[atom.resn] == target[i]:
-                    #         return (i + chain_detail["SP_BEG"]) - atom.resi
-                    ## In case there are missing parts and repeated residues.
-                    #print(atom.resn, atom.resi, target)
-                    for i in range(1, 50): #in case there are missing parts.
-                        if aa[atom.resn] == target[i] and target[i - 1] == prev:
-                            #print(f'YATTA {(i + chain_detail["SP_BEG"]) - int(atom.resi)}')
-                            return (i + chain_detail["SP_BEG"]) - int(atom.resi)
-                    prev = aa[atom.resn]
-                else:
-                    prev = 'X'
-                prev_i = int(atom.resi)
-            else: #more than 50 aa without coordinates at the N terminus? Engineered residues.
-                print(f'{self.code} More than 50 AA without a match!! {target} {prev}')
-                return 0
+                sele_target = f"chain {chain_detail['CHAIN']} and pepseq {target} and name CA"
+                ## Shrink window to account for failed selection due to weird atoms or short peptides
+                while pymol.cmd.select(sele_target) == 0:
+                    window -= 10
+                    if window < 10:
+                        debugprint(f'{self.code} ({chain_detail}) does not contain this sequence ({target})')
+                        break #double continue
+                    target = sequence[begin +  begin_offset - 1: begin +  begin_offset + window]
+                    sele_target = f"chain {chain_detail['CHAIN']} and pepseq {target} and name CA"
+                ## double continue
+                if window < 10:
+                    continue
+                ## Iterate
+                atoms = pymol.cmd.get_model(sele_target)
+                prev = 'X'
+                prev_i = -999
+                for atom in atoms.atom:
+                    if int(atom.resi) == prev_i:
+                        continue
+                    if atom.resn in aa:
+                        ## Simplest case:
+                        # if aa[atom.resn] == target[0]:
+                        #     return chain_detail["SP_BEG"] - atom.resi
+                        ## In case there are missing parts.
+                        # for i in range(0, 20):
+                        #     if aa[atom.resn] == target[i]:
+                        #         return (i + chain_detail["SP_BEG"]) - atom.resi
+                        ## In case there are missing parts and repeated residues.
+                        #print(atom.resn, atom.resi, target)
+                        for i in range(1, window): #in case there are missing parts.
+                            if aa[atom.resn] == target[i] and target[i - 1] == prev:
+                                #print(f'YATTA {(i + chain_detail["SP_BEG"]) - int(atom.resi)}')
+                                return (i + int(chain_detail["SP_BEG"])) - int(atom.resi)
+                        prev = aa[atom.resn]
+                    else:
+                        prev = 'X'
+                    prev_i = int(atom.resi)
+                else: #more than 50 aa without coordinates at the N terminus? Engineered residues.
+                    debugprint(f'{self.code} More than {window} AA without a match!! {target} {prev}')
+                    continue
+            warn(f'UTTER FAILURE for {self.code}')
+            return 0
 
     def lookup_resolution(self):
         if self.type != 'rcsb':
