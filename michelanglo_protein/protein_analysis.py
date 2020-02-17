@@ -8,6 +8,7 @@ import re
 import io, os
 from .analyse import StructureAnalyser, Mutator
 from multiprocessing import Process, Pipe # pyrosetta can throw segfaults.
+from typing import Union, List, Dict
 
 class ProteinAnalyser(ProteinCore):
     ptm_definitions = {'p': 'phosphorylated',
@@ -29,7 +30,7 @@ class ProteinAnalyser(ProteinCore):
     _elmdata = []
 
     @property
-    def elmdata(self):
+    def elmdata(self) -> List[dict]:
         ### load only when needed basically...
         if not len(self._elmdata):
             with open(os.path.join(self.settings.reference_folder, 'elm_classes.tsv')) as fh:
@@ -50,7 +51,7 @@ class ProteinAnalyser(ProteinCore):
         else:
             self._mutation = mutation
 
-    mutation = property(lambda self:  self._mutation, _set_mutation)
+    mutation = property(lambda self: self._mutation, _set_mutation)
 
     # decorator no longer used.
     def _sanitise_position(fun):
@@ -109,6 +110,7 @@ class ProteinAnalyser(ProteinCore):
         """
         main entry point for analyses.
         Do note that there is another class called StructureAnalyser which deals with the model specific details.
+
         :return:
         """
         assert self.mutation, 'No mutation specified.'
@@ -128,10 +130,13 @@ class ProteinAnalyser(ProteinCore):
         else:
             return False  # call mutation_discrepancy to see why.
 
-    def mutation_discrepancy(self):
-        # returns a string explaining the `check_mutation` discrepancy error
+    def mutation_discrepancy(self) -> str:
+        """
+        Describes why ``check_mutation`` was False.
+
+        :return: a string explaining the `check_mutation` discrepancy error
+        """
         neighbours = ''
-        #print(self.mutation.residue_index, len(self.sequence), self.sequence[self.mutation.residue_index - 1], self.mutation.from_residue)
         if len(self.sequence) < self.mutation.residue_index:
             return 'Uniprot {g} is only {l} amino acids long, while user claimed a mutation at {i}.'.format(
                 g=self.uniprot,
@@ -159,6 +164,7 @@ class ProteinAnalyser(ProteinCore):
     def _rex_elm(self, neighbours:str, regex:str, starter:bool=False, ender:bool=False):
         """
         The padding in neighbours is to stop ^ and $ matching.
+
         :param neighbours: sequence around the mutation
         :type neighbours: str
         :param regex: ELM regex
@@ -216,7 +222,7 @@ class ProteinAnalyser(ProteinCore):
 
     ##################### Position queries.
 
-    def get_features_at_position(self, position=None):
+    def get_features_at_position(self, position=None) -> List[Dict]:
         """
         :param position: mutation, str or position
         :return: list of gnomAD mutations, which are dictionary e.g. {'id': 'gnomAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
@@ -300,10 +306,11 @@ class ProteinAnalyser(ProteinCore):
             self.annotate_neighbours()
         return self
 
-    def analyse_FF(self, spit_process=True):
+    def analyse_FF(self, spit_process=True) -> Dict:
         """
-        Calls the pyrosetta, which tends to raise segfaults.
+        Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
 
+        :param spit_process: run as a separate process to avoid segfaults?
         :return:
         """
         if self.structural is None:
@@ -313,16 +320,24 @@ class ProteinAnalyser(ProteinCore):
             mut = Mutator(**kwargs)
             return mut.analyse_mutation(self.mutation.to_residue) #{ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
         else:
-            def subpro(child_conn, **kwargs):
-                Mutator.reinit()
-                mut = Mutator(**kwargs)
-                data = mut.analyse_mutation(self.mutation.to_residue) #{ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
-                child_conn.send(data)
+            def subpro(child_conn, **kwargs) -> Union[dict, None]:
+                try:
+                    Mutator.reinit()
+                    mut = Mutator(**kwargs)
+                    data = mut.analyse_mutation(self.mutation.to_residue) #{ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
+                    child_conn.send(data)
+                except BaseException as error:
+                    child_conn.send({'error': f'{error.__class__.__name__}:{error}'})
 
             parent_conn, child_conn = Pipe()
             p = Process(target=subpro, args=((child_conn),), kwargs=kwargs)
             p.start()
-            return parent_conn.recv() ## This will hang forever if the process sends a Segfault
+            while 1:
+                if not p.is_alive():
+                    child_conn.send({'error': 'segmentation fault'})
+                    msg = parent_conn.recv()
+                    break
+            return msg
 
 
     def annotate_neighbours(self):
