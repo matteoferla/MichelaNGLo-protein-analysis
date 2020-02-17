@@ -1,6 +1,7 @@
 from ..structure import Structure
 from ..mutation import Mutation
-from michelanglo_transpiler import pymol2, PyMolTranspiler
+from michelanglo_transpiler import PyMolTranspiler
+import pymol2
 import math
 
 class StructureAnalyser:

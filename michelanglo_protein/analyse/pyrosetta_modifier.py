@@ -1,12 +1,19 @@
+__doc__ = """
+This file does all the pyrosetta operations. The energetical or ddG variable in the API of VENUS.
+
+It is called by ``ProteinAnalyser.analyse_FF``.
+To avoid segmentation faults it is run on a separate process byt this.
+
+Pyrosetta will throw a segmentation fault if anything is done incorrectly. Such as editing a non-existent atom.
+As a result ProteinAnalyser.analyse_FF uses multiprocessing to do the job on a different core.
+"""
+
+
 import pyrosetta, pymol2, re, os
 from typing import List, Dict #, TypedDict
 from collections import namedtuple
 
-"""
-Pyrosetta will throw a segmentation fault if anything is done incorrectly. Such as editing a non-existent atom.
-As a result ProteinAnalyser.analyse_FF uses multiprocessing to do the job on a different core.
 
-"""
 
 pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
 
@@ -21,7 +28,7 @@ class Mutator:
     * ``.neighbours`` list of neighbours
     * ``.pdbblock`` str pdb block
     * ``.pose`` pyrosetta.Pose
-    * ``._pdb2pose`` points to self.pose.pdb_info().pdb2pose, while target_pdb2pose accepts Target and gives back int
+    * ``._pdb2pose`` points to ``self.pose.pdb_info().pdb2pose``, while target_pdb2pose accepts Target and gives back int
     """
 
     def __init__(self, pdbblock: str, target_resi: int, target_chain: str = 'A', cycles: int = 1, radius: int = 4):

@@ -2,7 +2,8 @@ import pickle, os, re, json
 from datetime import datetime
 from .settings_handler import global_settings #the instance not the class.
 import gzip, requests
-from michelanglo_transpiler import PyMolTranspiler, pymol2
+from michelanglo_transpiler import PyMolTranspiler
+import pymol2
 
 from warnings import warn
 from .metadata_from_PDBe import PDBMeta
