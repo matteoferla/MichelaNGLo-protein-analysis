@@ -115,7 +115,7 @@ class Mutator:
         Save the score to ``.scores``
 
         :param label: scores is Dict. label is key.
-        :return:
+        :return: {ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
         """
         self.scores[label] = self.scorefxn(self.pose)
         return self.scores
