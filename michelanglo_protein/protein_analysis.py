@@ -118,8 +118,13 @@ class ProteinAnalyser(ProteinCore):
             if not self.check_mutation():
                 raise ValueError(self.mutation_discrepancy())
         self.check_elm()
-        affected = {}
-        affected['features'] = self.get_features_at_position()
+        #affected = {}
+        #affected['features'] = self.get_features_at_position()
+        #The following properties are defined stupidly. When functools.cached_property comes out I'll switch to that!
+        # {**jsonable(protein.mutation),
+        #  'features_near_mutation': protein.get_features_near_position(protein.mutation.residue_index),
+        #  'position_as_protein_percent': round(protein.mutation.residue_index / len(protein) * 100),
+        #  'gnomAD_near_mutation': protein.get_gnomAD_near_position()},
         #self.analyse_structure()
 
     def check_mutation(self):
@@ -320,7 +325,7 @@ class ProteinAnalyser(ProteinCore):
             mut = Mutator(**kwargs)
             return mut.analyse_mutation(self.mutation.to_residue) #{ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
         else:
-            def subpro(child_conn, **kwargs) -> Union[dict, None]:
+            def subpro(child_conn, **kwargs): # Pipe <- Union[dict, None]:
                 try:
                     Mutator.reinit()
                     mut = Mutator(**kwargs)
@@ -328,16 +333,20 @@ class ProteinAnalyser(ProteinCore):
                     child_conn.send(data)
                 except BaseException as error:
                     child_conn.send({'error': f'{error.__class__.__name__}:{error}'})
-
             parent_conn, child_conn = Pipe()
             p = Process(target=subpro, args=((child_conn),), kwargs=kwargs)
             p.start()
             while 1:
-                if not p.is_alive():
-                    child_conn.send({'error': 'segmentation fault'})
-                    msg = parent_conn.recv()
+                if parent_conn.poll():
+                    # p.terminate()
                     break
-            return msg
+                elif not p.is_alive():
+                    child_conn.send({'error': 'segmentation fault'})
+                    break
+                else:
+                    pass
+        msg = parent_conn.recv()
+        return msg
 
 
     def annotate_neighbours(self):

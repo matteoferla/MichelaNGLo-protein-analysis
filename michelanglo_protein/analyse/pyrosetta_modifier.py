@@ -62,8 +62,11 @@ class Mutator:
         return self._pdb2pose(chain=target.chain, res=target.resi)
 
     @staticmethod
-    def reinit():
-        pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
+    def reinit(verbose:bool =False):
+        if verbose:
+            pyrosetta.init(options='-ignore_unrecognized_res true')
+        else:
+            pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
 
     def load_pose(self) -> pyrosetta.Pose:
         """
@@ -106,7 +109,6 @@ class Mutator:
             n = self.target_pdb2pose(neigh)
             self.movemap.set_bb(n, True)
             self.movemap.set_chi(n, True)
-        # print(relax)
         self.relax.set_movemap(self.movemap)
         return self.relax
 
@@ -159,13 +161,13 @@ class Mutator:
                 }
 
 
-if __name__ == '__main__':
+def test():
     ## these are tests.
     import requests, time
-    #1SFT/A/A/HIS`166
+    # 1SFT/A/A/HIS`166
     pdbblock = requests.get('https://files.rcsb.org/download/1SFT.pdb').text
     tick = time.time()
-    m = Mutator(pdbblock = pdbblock, target_resi = 166, target_chain = 'A', cycles = 1, radius = 3)
+    m = Mutator(pdbblock=pdbblock, target_resi=166, target_chain='A', cycles=1, radius=3)
     tock = time.time()
     print('LOAD', tock - tick)
     m.do_relax()
@@ -181,6 +183,47 @@ if __name__ == '__main__':
     print('MutaRelax', teck - tack)
     print(m.scores)
     muta = m.target_pdb2pose(m.target)
-    print(pyrosetta.rosetta.core.scoring.CA_rmsd(native, m.pose, muta -1, muta +1))
+    print(pyrosetta.rosetta.core.scoring.CA_rmsd(native, m.pose, muta - 1, muta + 1))
     m.output()
+
+def paratest():
+    import requests, time
+    from multiprocessing import Pipe, Process
+    # 1SFT/A/A/HIS`166
+    pdbblock = requests.get('https://files.rcsb.org/download/1SFT.pdb').text
+    kwargs = dict(pdbblock=pdbblock, target_resi=166, target_chain='A', cycles=1, radius=3)
+    def subpro(child_conn, **kwargs):  # Pipe <- Union[dict, None]:
+        try:
+            print('started child')
+            Mutator.reinit()
+            mut = Mutator(**kwargs)
+            data = mut.analyse_mutation('W')  # {ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
+            print('done', len(data))
+            child_conn.send(data)
+            print('completed child')
+        except BaseException as error:
+            print('error child')
+            child_conn.send({'error': f'{error.__class__.__name__}:{error}'})
+
+    parent_conn, child_conn = Pipe()
+    p = Process(target=subpro, args=((child_conn),), kwargs=kwargs, name='pyrosetta')
+    p.start()
+
+    while 1:
+        time.sleep(5)
+        print(parent_conn.poll())
+        if parent_conn.poll():
+            #p.terminate()
+            break
+        elif not p.is_alive():
+            child_conn.send({'error': 'segmentation fault'})
+            break
+    msg = parent_conn.recv()
+    print('DONE!')
+
+if __name__ == '__main__':
+    #test()
+    paratest()
+
+
 
