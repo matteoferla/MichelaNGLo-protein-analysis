@@ -4,14 +4,11 @@ from .settings_handler import global_settings #the instance not the class.
 from collections import namedtuple
 import gzip
 from .structure import Structure
+from .gnomad_variant import Variant
 
 from warnings import warn
 from typing import Dict
 
-Variant = namedtuple('Variant', ['id', 'x', 'y', 'impact', 'description', 'homozygous'], defaults=(None, None, None, None, None, None))
-Variant.__doc__="""
-Stores the gnomAD data for easy use by FeatureViewer and co. Can be converted to Mutation.
-"""
 
 class ProteinCore:
     """

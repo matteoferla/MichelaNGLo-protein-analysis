@@ -3,12 +3,13 @@ The class ProteinAnalyser builds upon the ProteinLite core and expands it with
 """
 
 from .core import ProteinCore
+from .gnomad_variant import Variant
 from .mutation import Mutation
 import re
 import io, os
 from .analyse import StructureAnalyser, Mutator
 from multiprocessing import Process, Pipe # pyrosetta can throw segfaults.
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple
 
 class ProteinAnalyser(ProteinCore):
     ptm_definitions = {'p': 'phosphorylated',
@@ -241,14 +242,29 @@ class ProteinAnalyser(ProteinCore):
         for g in self.features:
             for f in self.features[g]:
                 if 'x' in f:
-                    if f['x'] - wobble < position and position < f['y'] + wobble:
-                        valid.append({**f, 'type': g})
-                elif 'residue_index':
-                    if f['residue_index'] - wobble < position and position < f['residue_index'] + wobble:
+                    if f['x'] - wobble <= position and position <= f['y'] + wobble:
+                        gnomad = self.get_gnomAD_in_range(f['x'], f['y'])
+                        valid.append({**f,
+                                      'type': g,
+                                      'gnomad':self._tally_gnomad(gnomad)})
+                elif 'residue_index' in f:  ## TODO FIX THIS DAMN DIFFERENT STANDARD.
+                    if f['residue_index'] - wobble <= position and position <= f['residue_index'] + wobble:
                         ## PTM from phosphosite plus are formatted differently. the feature viewer and the .structural known this.
-                        valid.append({'x': f['residue_index'], 'y': f['residue_index'], 'description': self.ptm_definitions[f['ptm']], 'type': 'Post translational'})
+                        gnomad = self.get_gnomAD_in_range(f['residue_index'], f['residue_index'])
+                        valid.append({'x': f['residue_index'],
+                                      'y': f['residue_index'],
+                                      'description': self.ptm_definitions[f['ptm']],
+                                      'type': 'Post translational',
+                                      'gnomad':self._tally_gnomad(gnomad)})
         svalid = sorted(valid, key=lambda v: int(v['y']) - int(v['x']))
         return svalid
+
+    def _tally_gnomad(self, variants:List[Variant]) -> Dict[str, int]:
+        # I want zero values which counter cannot offer.
+        tally = [variant.type for variant in variants]
+        return {'nonsense': len([v for v in tally if v == 'nonsense']),
+                'missense': len([v for v in tally if v == 'missense'])}
+
 
     def get_gnomAD_near_position(self, position=None, wobble=5):
         """
@@ -262,6 +278,17 @@ class ProteinAnalyser(ProteinCore):
         valid = {g.description: g for g in self.gnomAD if g.x - wobble < position < g.y + wobble}
         svalid = sorted(valid.values(), key=lambda v: v.x)
         return svalid
+
+    def get_gnomAD_in_range(self, x: int, y: int) -> List[Variant]:
+        """
+        Get the gnomad mutations.
+
+        :param x: begin
+        :param y: end
+        :return: list of gnomad mutations between x and y
+        """
+        return [variant for variant in self.gnomAD if x <= variant.x and y >= variant.y]
+
 
     # def _get_structures_with_position(self, position):
     #     """
