@@ -128,7 +128,7 @@ class Mutator:
     def do_relax(self):
         self.relax.apply(self.pose)
 
-    def output(self, tmpfile='temp.pdb'):
+    def output_pdbblock(self, tmpfile='temp.pdb'):
         """
         This is weird. I did not find the equivalent to ``pose_from_pdbstring``.
         Even though the std::osstream is one of the options for dump_pdb (``p.dump_pdb(stream)``), I cannot make one.
@@ -144,11 +144,39 @@ class Mutator:
             os.remove(tmpfile)
         return block
 
+    def get_diff_solubility(self) -> float:
+        """
+        Gets the difference in solubility (fa_sol) for the protein.
+        fa_sol = Gaussian exclusion implicit solvation energy between protein atoms in different residue
+        :return: fa_sol kcal/mol
+        """
+        n = self.scorefxn.score_by_scoretype(self.native, pyrosetta.rosetta.core.scoring.ScoreType.fa_sol)
+        m = self.scorefxn.score_by_scoretype(self.pose, pyrosetta.rosetta.core.scoring.ScoreType.fa_sol)
+        return m - n
+
+    def get_diff_res_score(self) -> float:
+        """
+        Gets the difference in score for that residue
+
+        :return: per_residue kcal/mol
+        """
+        #segfaults if score is not run globally first!
+        i = self.target_pdb2pose(self.target)
+        r = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector(i)
+        n = self.scorefxn.get_sub_score(self.native, r.apply(self.native))
+        m = self.scorefxn.get_sub_score(self.pose, r.apply(self.native))
+        return m - n
+
+    def get_res_score_terms(self, pose) -> dict:
+        data = pose.energies().residue_total_energies_array() #structured numpy array
+        i = self.target_pdb2pose(self.target) + 1
+        return {data.dtype.names[j]: data[i][j] for j in range(len(data.dtype))}
+
     def analyse_mutation(self, alt_resn:str) -> Dict:
         self.do_relax()
         self.mark('relaxed')
         self.native = self.pose.clone()
-        nblock = self.output()
+        nblock = self.output_pdbblock()
         self.mutate(alt_resn)
         self.mark('mutate')
         self.do_relax()
@@ -156,10 +184,17 @@ class Mutator:
         return {'ddG': self.scores['mutarelax'] - self.scores['relaxed'],
                 'scores': self.scores,
                 'native': nblock,
-                'mutant': self.output(),
-                'rmsd': pyrosetta.rosetta.core.scoring.CA_rmsd(self.native, self.pose)
+                'mutant': self.output_pdbblock(), ## pdbb
+                'rmsd': pyrosetta.rosetta.core.scoring.CA_rmsd(self.native, self.pose),
+                'dsol': self.get_diff_solubility(),
+                'score_fxn': self.scorefxn.get_name(),
+                'ddG_residue': self.get_diff_res_score(),
+                'native_residue_terms': self.get_res_score_terms(self.native),
+                'mutant_residue_terms': self.get_res_score_terms(self.pose)
                 }
 
+
+#######################################################################################################################
 
 def test():
     ## these are tests.
