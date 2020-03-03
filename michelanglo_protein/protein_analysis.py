@@ -367,6 +367,7 @@ class ProteinAnalyser(ProteinCore):
                 neigh['detail'] = ' / '.join(set(specials))
 
     ##################################### Mutator class calling.
+
     @property
     def _init_settings(self):
         """
@@ -381,6 +382,11 @@ class ProteinAnalyser(ProteinCore):
 
     @property
     def pdbblock(self) -> Union[str, None]:
+        """
+        Choose best pdbblock. Basically depends on the step.
+
+        :return: pdbblock
+        """
         if self.structural is None:
             return None
         if self.energetics:
@@ -389,6 +395,13 @@ class ProteinAnalyser(ProteinCore):
             return self.structural.coordinates
 
     def _subprocess_factory(self, fun, **kwargs):
+        """
+        Returns a function that requires a Connection to be run as a subprocess
+
+        :param fun:
+        :param kwargs:
+        :return:
+        """
         def subprocess(child_conn):  # Pipe <- Union[dict, None]:
             try:
                 data = fun(**kwargs)
@@ -399,6 +412,12 @@ class ProteinAnalyser(ProteinCore):
         return subprocess
 
     def _run_subprocess(self, subpro):
+        """
+        Run a function (subpro) and wait for it.
+
+        :param subpro: unbound function.
+        :return:
+        """
         parent_conn, child_conn = Pipe()
         p = Process(target=subpro, args=((child_conn),))
         p.start()
