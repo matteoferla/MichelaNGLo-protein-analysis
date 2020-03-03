@@ -209,14 +209,14 @@ class ProteinCore:
 
     @_ready_load
     def load(self, file):
-        self.__dict__ = pickle.load(open(file, 'rb'))
+        self.__dict__ = {**self.__dict__, **pickle.load(open(file, 'rb'))}
         self.log('Data from the pickled dictionary {}'.format(file))
         return self
 
     @_ready_load
     def gload(self, file):
         with gzip.GzipFile(file, 'r') as f:
-            self.__dict__ = pickle.load(f)
+            self.__dict__ = {**self.__dict__, **pickle.load(f)}
         self.log('Data from the gzipped pickled dictionary {}'.format(file))
         return self
 

@@ -8,8 +8,9 @@ from .mutation import Mutation
 import re
 import io, os
 from .analyse import StructureAnalyser, Mutator
-from multiprocessing import Process, Pipe # pyrosetta can throw segfaults.
+from multiprocessing import Process, Pipe  # pyrosetta can throw segfaults.
 from typing import Union, List, Dict, Tuple
+
 
 class ProteinAnalyser(ProteinCore):
     ptm_definitions = {'p': 'phosphorylated',
@@ -19,13 +20,15 @@ class ProteinAnalyser(ProteinCore):
                        'm2': 'dimethylated',
                        'm3': 'trimethylated'}
 
-    def __init__(self,*args,**kwargs):
-        super().__init__(*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         ### other ###
         ### mutation ###
         self._mutation = None
         ## structure
-        self.structure = None #StructureAnalyser instance
+        self.structural = None # StructureAnalyser instance
+        self.energetics = None
+        self.energetics_gnomAD = None
 
     ############## elm
     _elmdata = []
@@ -60,6 +63,7 @@ class ProteinAnalyser(ProteinCore):
         Decorator that makes sure that position is a number. It is a bit unnecassary for a one job task...
         :return: int,
         """
+
         def sanitiser(self, position):
             if isinstance(position, str):
                 position = int(position)
@@ -74,7 +78,6 @@ class ProteinAnalyser(ProteinCore):
             return fun(self, position)
 
         return sanitiser
-
 
     def _neighbours(self, midresidue, position, marker='*', span=10):
         """
@@ -119,19 +122,19 @@ class ProteinAnalyser(ProteinCore):
             if not self.check_mutation():
                 raise ValueError(self.mutation_discrepancy())
         self.check_elm()
-        #affected = {}
-        #affected['features'] = self.get_features_at_position()
-        #The following properties are defined stupidly. When functools.cached_property comes out I'll switch to that!
+        # affected = {}
+        # affected['features'] = self.get_features_at_position()
+        # The following properties are defined stupidly. When functools.cached_property comes out I'll switch to that!
         # {**jsonable(protein.mutation),
         #  'features_near_mutation': protein.get_features_near_position(protein.mutation.residue_index),
         #  'position_as_protein_percent': round(protein.mutation.residue_index / len(protein) * 100),
         #  'gnomAD_near_mutation': protein.get_gnomAD_near_position()},
-        #self.analyse_structure()
+        # self.analyse_structure()
 
     def check_mutation(self):
         if len(self.sequence) > self.mutation.residue_index and \
-            self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue and \
-            self.mutation.to_residue in 'ACDEFGHIKLMNPQRSTVWY':
+                self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue and \
+                self.mutation.to_residue in 'ACDEFGHIKLMNPQRSTVWY':
             return True
         else:
             return False  # call mutation_discrepancy to see why.
@@ -163,11 +166,12 @@ class ProteinAnalyser(ProteinCore):
         elif self.mutation.to_residue not in 'ACDEFGHIKLMNPQRSTVWY':
             return 'Analysis can only deal with missenses right now.'
         else:
-            raise ValueError(f'Unable to analyse {self.uniprot} for mysterious reasons (resi:{self.mutation.residue_index}, from:{self.mutation.from_residue}, to:{self.mutation.to_residue})')
+            raise ValueError(
+                f'Unable to analyse {self.uniprot} for mysterious reasons (resi:{self.mutation.residue_index}, from:{self.mutation.from_residue}, to:{self.mutation.to_residue})')
 
     ################################# ELM
 
-    def _rex_elm(self, neighbours:str, regex:str, starter:bool=False, ender:bool=False):
+    def _rex_elm(self, neighbours: str, regex: str, starter: bool = False, ender: bool = False):
         """
         The padding in neighbours is to stop ^ and $ matching.
 
@@ -184,7 +188,7 @@ class ProteinAnalyser(ProteinCore):
             rex = re.search(regex, neighbours + 'XXX')
         elif ender:
             offset = 3
-            rex = re.search(regex, 'X' * offset +neighbours)
+            rex = re.search(regex, 'X' * offset + neighbours)
         else:
             offset = 3
             rex = re.search(regex, 'X' * offset + neighbours + 'X' * offset)
@@ -246,7 +250,7 @@ class ProteinAnalyser(ProteinCore):
                         gnomad = self.get_gnomAD_in_range(f['x'], f['y'])
                         valid.append({**f,
                                       'type': g,
-                                      'gnomad':self._tally_gnomad(gnomad)})
+                                      'gnomad': self._tally_gnomad(gnomad)})
                 elif 'residue_index' in f:  ## TODO FIX THIS DAMN DIFFERENT STANDARD.
                     if f['residue_index'] - wobble <= position and position <= f['residue_index'] + wobble:
                         ## PTM from phosphosite plus are formatted differently. the feature viewer and the .structural known this.
@@ -255,16 +259,15 @@ class ProteinAnalyser(ProteinCore):
                                       'y': f['residue_index'],
                                       'description': self.ptm_definitions[f['ptm']],
                                       'type': 'Post translational',
-                                      'gnomad':self._tally_gnomad(gnomad)})
+                                      'gnomad': self._tally_gnomad(gnomad)})
         svalid = sorted(valid, key=lambda v: int(v['y']) - int(v['x']))
         return svalid
 
-    def _tally_gnomad(self, variants:List[Variant]) -> Dict[str, int]:
+    def _tally_gnomad(self, variants: List[Variant]) -> Dict[str, int]:
         # I want zero values which counter cannot offer.
         tally = [variant.type for variant in variants]
         return {'nonsense': len([v for v in tally if v == 'nonsense']),
                 'missense': len([v for v in tally if v == 'missense'])}
-
 
     def get_gnomAD_near_position(self, position=None, wobble=5):
         """
@@ -273,8 +276,8 @@ class ProteinAnalyser(ProteinCore):
         :return: list of gnomAD mutations, which are named touples e.g. {'id': 'gnomAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
         """
         position = position if position is not None else self.mutation.residue_index
-        #valid = [g for g in self.gnomAD if g.x - wobble < position < g.y + wobble]
-        #svalid = sorted(valid, key=lambda v: v.y - v.x)
+        # valid = [g for g in self.gnomAD if g.x - wobble < position < g.y + wobble]
+        # svalid = sorted(valid, key=lambda v: v.y - v.x)
         valid = {g.description: g for g in self.gnomAD if g.x - wobble < position < g.y + wobble}
         svalid = sorted(valid.values(), key=lambda v: v.x)
         return svalid
@@ -288,7 +291,6 @@ class ProteinAnalyser(ProteinCore):
         :return: list of gnomad mutations between x and y
         """
         return [variant for variant in self.gnomAD if x <= variant.x and y >= variant.y]
-
 
     # def _get_structures_with_position(self, position):
     #     """
@@ -309,25 +311,25 @@ class ProteinAnalyser(ProteinCore):
         for l in (self.pdbs, self.swissmodel):
             if l:
                 good = []
-                for model in l: #model is a structure object.
+                for model in l:  # model is a structure object.
                     if model.includes(self.mutation.residue_index):
                         good.append(model)
                 if good:
                     good.sort(key=lambda x: x.resolution)
                     return good[0]
-                else: # no models with mutation.
+                else:  # no models with mutation.
                     pass
-            else: #no models in group
+            else:  # no models in group
                 pass
         return None
 
     @property
     def property_at_mutation(self):
-        return {k: self.properties[k][self.mutation.residue_index -1] for k in self.properties}
+        return {k: self.properties[k][self.mutation.residue_index - 1] for k in self.properties}
 
     def analyse_structure(self):
         structure = self.get_best_model()
-        #structure is a michelanglo_protein.core.Structure object
+        # structure is a michelanglo_protein.core.Structure object
         if not structure:
             self.structural = None
             return self
@@ -337,44 +339,6 @@ class ProteinAnalyser(ProteinCore):
             self.mutation.surface_expose = 'buried' if self.structural.buried else 'surface'
             self.annotate_neighbours()
         return self
-
-    def analyse_FF(self, spit_process=True) -> Dict:
-        """
-        Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
-
-        :param spit_process: run as a separate process to avoid segfaults?
-        :return:
-        """
-        if self.structural is None:
-            return None
-        kwargs = dict(pdbblock = self.structural.coordinates, target_resi = self.mutation.residue_index, target_chain = 'A', cycles = 1, radius = 3)
-        if not spit_process:
-            mut = Mutator(**kwargs)
-            return mut.analyse_mutation(self.mutation.to_residue) #{ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
-        else:
-            def subpro(child_conn, **kwargs): # Pipe <- Union[dict, None]:
-                try:
-                    Mutator.reinit()
-                    mut = Mutator(**kwargs)
-                    data = mut.analyse_mutation(self.mutation.to_residue) #{ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
-                    child_conn.send(data)
-                except BaseException as error:
-                    child_conn.send({'error': f'{error.__class__.__name__}:{error}'})
-            parent_conn, child_conn = Pipe()
-            p = Process(target=subpro, args=((child_conn),), kwargs=kwargs)
-            p.start()
-            while 1:
-                if parent_conn.poll():
-                    # p.terminate()
-                    break
-                elif not p.is_alive():
-                    child_conn.send({'error': 'segmentation fault'})
-                    break
-                else:
-                    pass
-        msg = parent_conn.recv()
-        return msg
-
 
     def annotate_neighbours(self):
         """
@@ -400,11 +364,101 @@ class ProteinAnalyser(ProteinCore):
                     specials.extend(
                         ['PTM:' + self.ptm_definitions[m['ptm']] for m in self.features['PSP_modified_residues'] if
                          r == m['residue_index']])
-                neigh['detail'] = ' / '.join(specials)
+                neigh['detail'] = ' / '.join(set(specials))
+
+    ##################################### Mutator class calling.
+    @property
+    def _init_settings(self):
+        """
+        Initialisation settings for the Mutator instance, which runs on a different process.
+
+        :return: dict of paramaters for Mutator
+        """
+        return dict(pdbblock=self.pdbblock,
+                    target_resi=self.mutation.residue_index,
+                    target_chain='A', cycles=1,
+                    radius=3)
+
+    @property
+    def pdbblock(self) -> Union[str, None]:
+        if self.structural is None:
+            return None
+        if self.energetics:
+            return self.energetics['native']
+        else:
+            return self.structural.coordinates
+
+    def _subprocess_factory(self, fun, **kwargs):
+        def subprocess(child_conn):  # Pipe <- Union[dict, None]:
+            try:
+                data = fun(**kwargs)
+                child_conn.send(data)
+            except BaseException as error:
+                child_conn.send({'error': f'{error.__class__.__name__}:{error}'})
+
+        return subprocess
+
+    def _run_subprocess(self, subpro):
+        parent_conn, child_conn = Pipe()
+        p = Process(target=subpro, args=((child_conn),))
+        p.start()
+        while 1:
+            if parent_conn.poll():
+                break
+            elif not p.is_alive():
+                child_conn.send({'error': 'segmentation fault'})
+                break
+            else:
+                pass
+        return parent_conn.recv()
+
+    def analyse_FF(self, spit_process=True) -> Union[Dict, None]:
+        """
+        Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
+
+        :param spit_process: run as a separate process to avoid segfaults?
+        :return:
+        """
+        if self.pdbblock is None:
+            return None
+        ##### perpare.
+        init_settings = self._init_settings
+
+        def analysis(to_resn, init_settings):
+            mut = Mutator(**init_settings)
+            return mut.analyse_mutation(to_resn)
+
+        if not spit_process:
+            msg = analysis(init_settings=init_settings, to_resn=self.mutation.to_residue)
+        else:
+            msg = self._run_subprocess(
+                self._subprocess_factory(analysis, to_resn=self.mutation.to_residue, init_settings=init_settings))
+        self.energetics = msg
+        return msg
+
+    def analyse_gnomad_FF(self, spit_process=True) -> Union[Dict, None]:
+        """
+        Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
+
+        :param spit_process: run as a separate process to avoid segfaults?
+        :return:
+        """
+        if self.pdbblock is None:
+            return None
+        ##### perpare.
+        init_settings = self._init_settings
+
+        def analysis(gnomads, init_settings):
+            mut = Mutator(**init_settings)
+            return mut.score_gnomads(gnomads)
+
+        if not spit_process:
+            msg = analysis(init_settings=init_settings, gnomads=self.gnomAD)
+        else:
+            msg = self._run_subprocess(
+                self._subprocess_factory(analysis, gnomads=self.gnomAD, init_settings=init_settings))
+        self.energetics_gnomAD = msg
+        return msg
 
     # conservation score
     # disorder
-
-
-
-

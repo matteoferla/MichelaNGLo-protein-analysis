@@ -10,10 +10,10 @@ As a result ProteinAnalyser.analyse_FF uses multiprocessing to do the job on a d
 
 
 import pyrosetta, pymol2, re, os
-from typing import List, Dict #, TypedDict
+from typing import List, Dict, Optional #, TypedDict
 from collections import namedtuple
-
-
+from Bio.SeqUtils import seq3
+from ..gnomad_variant import Variant #solely for type hinting.
 
 pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
 
@@ -49,8 +49,8 @@ class Mutator:
         ## Load
         self.target = Target(target_resi, target_chain)
         self.pdbblock = pdbblock
-        self.load_pose()  # fills self.pose
-        self.mark('raw')
+        self.pose = self.load_pose()  # self.pose is intended as the damageable version.
+        self.mark('raw') # mark scores the self.pose
 
         ## Find neighbourhood
         self.calculate_neighbours(radius)  # fills self.neighbours
@@ -74,10 +74,10 @@ class Mutator:
 
         :return: self.pose
         """
-        self.pose = pyrosetta.Pose()
-        pyrosetta.rosetta.core.import_pose.pose_from_pdbstring(self.pose, self.pdbblock)
-        self._pdb2pose = self.pose.pdb_info().pdb2pose
-        return self.pose
+        pose = pyrosetta.Pose()
+        pyrosetta.rosetta.core.import_pose.pose_from_pdbstring(pose, self.pdbblock)
+        self._pdb2pose = pose.pdb_info().pdb2pose
+        return pose
 
     def calculate_neighbours(self, radius: int = 4) -> List[Target]:
         """
@@ -128,26 +128,24 @@ class Mutator:
     def do_relax(self):
         self.relax.apply(self.pose)
 
-    def output_pdbblock(self, tmpfile='temp.pdb'):
+    def output_pdbblock(self, target: Optional[pyrosetta.Pose]=None) -> str:
         """
         This is weird. I did not find the equivalent to ``pose_from_pdbstring``.
-        Even though the std::osstream is one of the options for dump_pdb (``p.dump_pdb(stream)``), I cannot make one.
-        Namely, ``stream = pyrosetta.rosetta.std.ostream()`` requires a ``pyrosetta.rosetta.std.streambuf`` object.
-        So I am doing it the stupid way.
+        But using buffer works.
 
-        :param tmpfile: filename
-        :return:
+        :return: PDBBlock
         """
-        self.pose.dump_pdb(tmpfile)
-        block = open(tmpfile,'r').read()
-        if os.path.exists(tmpfile):
-            os.remove(tmpfile)
-        return block
+        if target is None:
+            target = self.pose
+        buffer = pyrosetta.rosetta.std.stringbuf()
+        target.dump_pdb(pyrosetta.rosetta.std.ostream(buffer))
+        return buffer.str()
 
     def get_diff_solubility(self) -> float:
         """
         Gets the difference in solubility (fa_sol) for the protein.
         fa_sol = Gaussian exclusion implicit solvation energy between protein atoms in different residue
+
         :return: fa_sol kcal/mol
         """
         n = self.scorefxn.score_by_scoretype(self.native, pyrosetta.rosetta.core.scoring.ScoreType.fa_sol)
@@ -192,6 +190,92 @@ class Mutator:
                 'native_residue_terms': self.get_res_score_terms(self.native),
                 'mutant_residue_terms': self.get_res_score_terms(self.pose)
                 }
+
+    def make_phospho(self, ptms):
+        phospho = self.native.clone()
+        MutateResidue = pyrosetta.rosetta.protocols.simple_moves.MutateResidue
+        pose2pdb = phospho.pdb_info().pdb2pose
+        changes = 0
+        for record in ptms:
+            if record['ptm'] == 'ub':
+                continue  #What is a proxy for ubiquitination??
+            elif record['ptm'] == 'p':
+                patch = 'phosphorylated'
+            elif record['ptm'] == 'ac':
+                patch = 'acetylated'
+            elif record['ptm'] == 'm1':
+                patch = 'monomethylated'
+            elif record['ptm'] == 'm2':
+                patch = 'dimethylated'
+            elif record['ptm'] == 'm3':
+                patch = 'trimethylated'
+            else:
+                raise ValueError(f'What is {record["ptm"]}?')
+            new_res = f"{seq3(record['from_residue']).upper()}:{patch}"
+            r = pose2pdb(res=int(record['residue_index']), chain='A')
+            if r == 0: #missing density.
+                continue
+            MutateResidue(target=r, new_res=new_res).apply(phospho)
+        return self.output_pdbblock(target=phospho)
+
+    def repack(self, target:  Optional[pyrosetta.rosetta.core.pose.Pose]=None) -> None:
+        """
+        This actually seems to make stuff worse on big protein.
+        Not as good as ``pyrosetta.rosetta.protocols.minimization_packing.PackRotamersMover(scorefxn)``
+        But that is slower and less good than FastRelax...
+
+        :param target:
+        :return:
+        """
+        if target is None:
+            target = self.pose
+        packer_task = pyrosetta.rosetta.core.pack.task.TaskFactory.create_packer_task(target)
+        packer_task.restrict_to_repacking()
+        pyrosetta.rosetta.core.pack.pack_rotamers(target, self.scorefxn, packer_task)
+
+    def score_gnomads(self, gnomads: List[Variant]):
+        """
+        This is even more sloppy than the mutant scoring. FastRelax is too slow for a big protein.
+        Repacking globally returns a subpar score. Hence why each step has its own repack...
+
+        :param gnomads: list of gnomads.
+        :return:
+        """
+        #self.repack(self.pose)
+        self.native = self.pose.clone()
+        self.mark('wt')
+        pose2pdb = self.native.pdb_info().pdb2pose
+        ddG = {}
+        for record in gnomads:
+            if record.type == 'nonsense':
+                continue
+            n = pose2pdb(chain='A', res=record.x)
+            if n == 0:
+                continue
+            rex = re.match(r'(\w)(\d+)([\w])', record.description)
+            if rex is None:
+                continue
+            if rex.group(0) in ddG:
+                #print('duplicate mutation.')
+                continue
+            self.pose = self.native.clone()
+            ## local repack...
+            pyrosetta.toolbox.mutate_residue(self.pose,
+                                             mutant_position=n,
+                                             mutant_aa=rex.group(1),
+                                             pack_radius=4.0,
+                                             pack_scorefxn=self.scorefxn)
+            ref = self.scorefxn(self.pose)
+            pyrosetta.toolbox.mutate_residue(self.pose,
+                                             mutant_position=n,
+                                             mutant_aa=rex.group(3),
+                                             pack_radius=4.0,
+                                             pack_scorefxn=self.scorefxn)
+            ddG[rex.group(0)] = self.scorefxn(self.pose) - ref
+        return ddG
+
+
+
 
 
 #######################################################################################################################
