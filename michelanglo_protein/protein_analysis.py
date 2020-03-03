@@ -479,5 +479,50 @@ class ProteinAnalyser(ProteinCore):
         self.energetics_gnomAD = msg
         return msg
 
+    def analyse_other_FF(self, mutation: Union[Mutation, str], algorithm, spit_process=True) -> Union[Dict, None]:
+        ## sort out mutation
+        if isinstance(mutation, str):
+            mutation = Mutation(mutation)
+        elif isinstance(mutation, Mutation):
+            pass
+        else:
+            raise TypeError(f'whats {mutation}?')
+        ## avoid empty.
+        if self.pdbblock is None:
+            return None
+        ##### perpare.
+        init_settings = self._init_settings
+        init_settings['target_resi'] = mutation.residue_index
+
+        def relax(resi, from_resn, to_resn, init_settings):
+            mut = Mutator(**init_settings) ##altered target_residue from taht of the mutation!
+            results = mut.analyse_mutation(to_resn)
+            return {'coordinates': results['mutant'], 'ddg': results['ddG']}
+
+        def repack(resi, from_resn, to_resn, init_settings):
+            mut = Mutator(**init_settings)
+            return mut.repack_other(resi, from_resn, to_resn)
+
+        if algorithm == 'relax':
+            analysis = relax
+        elif algorithm == 'repack':
+            analysis = repack
+        else:
+            ValueError(f'What is this {algorithm}')
+        if not spit_process:
+            msg = analysis(init_settings=init_settings,
+                           to_resn=mutation.to_residue,
+                           from_resn=mutation.from_residue,
+                           resi=mutation.residue_index)
+        else:
+            msg = self._run_subprocess(
+                self._subprocess_factory(analysis,
+                                         to_resn=mutation.to_residue,
+                                         from_resn=mutation.from_residue,
+                                         resi=mutation.residue_index,
+                                         init_settings=init_settings))
+        return msg
+
+
     # conservation score
     # disorder

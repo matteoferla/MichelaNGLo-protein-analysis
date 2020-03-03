@@ -128,17 +128,17 @@ class Mutator:
     def do_relax(self):
         self.relax.apply(self.pose)
 
-    def output_pdbblock(self, target: Optional[pyrosetta.Pose]=None) -> str:
+    def output_pdbblock(self, pose: Optional[pyrosetta.Pose]=None) -> str:
         """
         This is weird. I did not find the equivalent to ``pose_from_pdbstring``.
         But using buffer works.
 
         :return: PDBBlock
         """
-        if target is None:
-            target = self.pose
+        if pose is None:
+            pose = self.pose
         buffer = pyrosetta.rosetta.std.stringbuf()
-        target.dump_pdb(pyrosetta.rosetta.std.ostream(buffer))
+        pose.dump_pdb(pyrosetta.rosetta.std.ostream(buffer))
         return buffer.str()
 
     def get_diff_solubility(self) -> float:
@@ -167,7 +167,7 @@ class Mutator:
 
     def get_res_score_terms(self, pose) -> dict:
         data = pose.energies().residue_total_energies_array() #structured numpy array
-        i = self.target_pdb2pose(self.target) + 1
+        i = self.target_pdb2pose(self.target) - 1 ##pose numbering is fortran style. while python is C++
         return {data.dtype.names[j]: data[i][j] for j in range(len(data.dtype))}
 
     def analyse_mutation(self, alt_resn:str) -> Dict:
@@ -233,6 +233,29 @@ class Mutator:
         packer_task.restrict_to_repacking()
         pyrosetta.rosetta.core.pack.pack_rotamers(target, self.scorefxn, packer_task)
 
+    def _repack_gnomad(self, pose_idx, from_resi, to_resi) -> int:
+        self.pose = self.native.clone()
+        ## local repack...
+        pyrosetta.toolbox.mutate_residue(self.pose,
+                                         mutant_position=pose_idx,
+                                         mutant_aa=from_resi,
+                                         pack_radius=4.0,
+                                         pack_scorefxn=self.scorefxn)
+        ref = self.scorefxn(self.pose)
+        pyrosetta.toolbox.mutate_residue(self.pose,
+                                         mutant_position=pose_idx,
+                                         mutant_aa=to_resi,
+                                         pack_radius=4.0,
+                                         pack_scorefxn=self.scorefxn)
+        return self.scorefxn(self.pose) - ref
+
+    def repack_other(self, residue_index, from_residue, to_residue):
+        self.native = self.pose.clone()
+        pose2pdb = self.native.pdb_info().pdb2pose
+        pose_idx = pose2pdb(chain='A', res=residue_index)
+        return {'ddg': self._repack_gnomad(pose_idx, from_residue, to_residue),
+                'coordinates': self.output_pdbblock(self.pose)}
+
     def score_gnomads(self, gnomads: List[Variant]):
         """
         This is even more sloppy than the mutant scoring. FastRelax is too slow for a big protein.
@@ -258,20 +281,7 @@ class Mutator:
             if rex.group(0) in ddG:
                 #print('duplicate mutation.')
                 continue
-            self.pose = self.native.clone()
-            ## local repack...
-            pyrosetta.toolbox.mutate_residue(self.pose,
-                                             mutant_position=n,
-                                             mutant_aa=rex.group(1),
-                                             pack_radius=4.0,
-                                             pack_scorefxn=self.scorefxn)
-            ref = self.scorefxn(self.pose)
-            pyrosetta.toolbox.mutate_residue(self.pose,
-                                             mutant_position=n,
-                                             mutant_aa=rex.group(3),
-                                             pack_radius=4.0,
-                                             pack_scorefxn=self.scorefxn)
-            ddG[rex.group(0)] = self.scorefxn(self.pose) - ref
+            ddG[rex.group(0)] = self._repack_gnomad(n, rex.group(1), rex.group(3))
         return ddG
 
 
