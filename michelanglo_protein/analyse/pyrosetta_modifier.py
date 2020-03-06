@@ -216,7 +216,7 @@ class Mutator:
             if r == 0: #missing density.
                 continue
             MutateResidue(target=r, new_res=new_res).apply(phospho)
-        return self.output_pdbblock(target=phospho)
+        return self.output_pdbblock(phospho)
 
     def repack(self, target:  Optional[pyrosetta.rosetta.core.pose.Pose]=None) -> None:
         """
