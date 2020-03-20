@@ -464,7 +464,11 @@ if 1==1:
     gene = 'P04637' # TP53
     #describe(gene)
     p = ProteinCore(taxid=taxid, uniprot=gene).load()  # gnb1 P62873 gnb2 P62879
-    print(p.gnomAD)
+    print(p.features.keys())
+    print(p.features['PSP_modified_residues'])
+
+
+    exit()
     # #pprint(p.__dict__)
     # t = [s for s in p.pdbs if s.code.lower() == '1a1u'][0]
     # print(str(t))

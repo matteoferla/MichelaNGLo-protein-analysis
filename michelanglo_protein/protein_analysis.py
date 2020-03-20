@@ -523,6 +523,35 @@ class ProteinAnalyser(ProteinCore):
                                          init_settings=init_settings))
         return msg
 
+    def phosphorylate_FF(self, spit_process=True) -> Union[str, None]:
+        """
+                Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
+
+                :param spit_process: run as a separate process to avoid segfaults?
+                :return:
+                """
+        if self.pdbblock is None:
+            print('no self.pdbblock')
+            return None
+        elif 'PSP_modified_residues' not in self.features:
+            print('no features')
+            return None
+        elif not self.features['PSP_modified_residues']:
+            print('no features2')
+            return None
+        ##### perpare.
+        init_settings = self._init_settings
+
+        def analysis(ptms, init_settings):
+            mut = Mutator(**init_settings)
+            return mut. make_phospho(ptms)
+        if not spit_process:
+            msg = analysis(init_settings=init_settings, ptms=self.features['PSP_modified_residues'])
+        else:
+            msg = self._run_subprocess(
+                self._subprocess_factory(analysis, ptms=self.features['PSP_modified_residues'], init_settings=init_settings))
+        #self.phosphorylated_pdbblcok = msg
+        return msg
 
     # conservation score
     # disorder

@@ -8,12 +8,11 @@ Pyrosetta will throw a segmentation fault if anything is done incorrectly. Such 
 As a result ProteinAnalyser.analyse_FF uses multiprocessing to do the job on a different core.
 """
 
-
 import pyrosetta, pymol2, re, os
-from typing import List, Dict, Optional #, TypedDict
+from typing import List, Dict, Optional  # , TypedDict
 from collections import namedtuple
 from Bio.SeqUtils import seq3
-from ..gnomad_variant import Variant #solely for type hinting.
+from ..gnomad_variant import Variant  # solely for type hinting.
 
 pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
 
@@ -45,12 +44,12 @@ class Mutator:
         :param radius: (opt) angstrom to expand around
         """
         self.scorefxn = pyrosetta.get_fa_scorefxn()
-        self.scores = {} #gets filled by .mark()
+        self.scores = {}  # gets filled by .mark()
         ## Load
         self.target = Target(target_resi, target_chain)
         self.pdbblock = pdbblock
         self.pose = self.load_pose()  # self.pose is intended as the damageable version.
-        self.mark('raw') # mark scores the self.pose
+        self.mark('raw')  # mark scores the self.pose
 
         ## Find neighbourhood
         self.calculate_neighbours(radius)  # fills self.neighbours
@@ -58,11 +57,11 @@ class Mutator:
         ## Read relax
         self.ready_relax(cycles)
 
-    def target_pdb2pose(self, target:Target) -> int:
+    def target_pdb2pose(self, target: Target) -> int:
         return self._pdb2pose(chain=target.chain, res=target.resi)
 
     @staticmethod
-    def reinit(verbose:bool =False):
+    def reinit(verbose: bool = False):
         if verbose:
             pyrosetta.init(options='-ignore_unrecognized_res true')
         else:
@@ -128,7 +127,7 @@ class Mutator:
     def do_relax(self):
         self.relax.apply(self.pose)
 
-    def output_pdbblock(self, pose: Optional[pyrosetta.Pose]=None) -> str:
+    def output_pdbblock(self, pose: Optional[pyrosetta.Pose] = None) -> str:
         """
         This is weird. I did not find the equivalent to ``pose_from_pdbstring``.
         But using buffer works.
@@ -158,7 +157,7 @@ class Mutator:
 
         :return: per_residue kcal/mol
         """
-        #segfaults if score is not run globally first!
+        # segfaults if score is not run globally first!
         i = self.target_pdb2pose(self.target)
         r = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector(i)
         n = self.scorefxn.get_sub_score(self.native, r.apply(self.native))
@@ -166,11 +165,11 @@ class Mutator:
         return m - n
 
     def get_res_score_terms(self, pose) -> dict:
-        data = pose.energies().residue_total_energies_array() #structured numpy array
-        i = self.target_pdb2pose(self.target) - 1 ##pose numbering is fortran style. while python is C++
+        data = pose.energies().residue_total_energies_array()  # structured numpy array
+        i = self.target_pdb2pose(self.target) - 1  ##pose numbering is fortran style. while python is C++
         return {data.dtype.names[j]: data[i][j] for j in range(len(data.dtype))}
 
-    def analyse_mutation(self, alt_resn:str) -> Dict:
+    def analyse_mutation(self, alt_resn: str) -> Dict:
         self.do_relax()
         self.mark('relaxed')
         self.native = self.pose.clone()
@@ -182,7 +181,7 @@ class Mutator:
         return {'ddG': self.scores['mutarelax'] - self.scores['relaxed'],
                 'scores': self.scores,
                 'native': nblock,
-                'mutant': self.output_pdbblock(), ## pdbb
+                'mutant': self.output_pdbblock(),  ## pdbb
                 'rmsd': pyrosetta.rosetta.core.scoring.CA_rmsd(self.native, self.pose),
                 'dsol': self.get_diff_solubility(),
                 'score_fxn': self.scorefxn.get_name(),
@@ -192,13 +191,13 @@ class Mutator:
                 }
 
     def make_phospho(self, ptms):
-        phospho = self.native.clone()
+        phospho = self.pose.clone()
         MutateResidue = pyrosetta.rosetta.protocols.simple_moves.MutateResidue
         pose2pdb = phospho.pdb_info().pdb2pose
         changes = 0
         for record in ptms:
             if record['ptm'] == 'ub':
-                continue  #What is a proxy for ubiquitination??
+                continue  # What is a proxy for ubiquitination??
             elif record['ptm'] == 'p':
                 patch = 'phosphorylated'
             elif record['ptm'] == 'ac':
@@ -213,12 +212,12 @@ class Mutator:
                 raise ValueError(f'What is {record["ptm"]}?')
             new_res = f"{seq3(record['from_residue']).upper()}:{patch}"
             r = pose2pdb(res=int(record['residue_index']), chain='A')
-            if r == 0: #missing density.
+            if r == 0:  # missing density.
                 continue
             MutateResidue(target=r, new_res=new_res).apply(phospho)
         return self.output_pdbblock(phospho)
 
-    def repack(self, target:  Optional[pyrosetta.rosetta.core.pose.Pose]=None) -> None:
+    def repack(self, target: Optional[pyrosetta.rosetta.core.pose.Pose] = None) -> None:
         """
         This actually seems to make stuff worse on big protein.
         Not as good as ``pyrosetta.rosetta.protocols.minimization_packing.PackRotamersMover(scorefxn)``
@@ -264,7 +263,7 @@ class Mutator:
         :param gnomads: list of gnomads.
         :return:
         """
-        #self.repack(self.pose)
+        # self.repack(self.pose)
         self.native = self.pose.clone()
         self.mark('wt')
         pose2pdb = self.native.pdb_info().pdb2pose
@@ -279,13 +278,10 @@ class Mutator:
             if rex is None:
                 continue
             if rex.group(0) in ddG:
-                #print('duplicate mutation.')
+                # print('duplicate mutation.')
                 continue
             ddG[rex.group(0)] = self._repack_gnomad(n, rex.group(1), rex.group(3))
         return ddG
-
-
-
 
 
 #######################################################################################################################
@@ -315,12 +311,14 @@ def test():
     print(pyrosetta.rosetta.core.scoring.CA_rmsd(native, m.pose, muta - 1, muta + 1))
     m.output()
 
+
 def paratest():
     import requests, time
     from multiprocessing import Pipe, Process
     # 1SFT/A/A/HIS`166
     pdbblock = requests.get('https://files.rcsb.org/download/1SFT.pdb').text
     kwargs = dict(pdbblock=pdbblock, target_resi=166, target_chain='A', cycles=1, radius=3)
+
     def subpro(child_conn, **kwargs):  # Pipe <- Union[dict, None]:
         try:
             print('started child')
@@ -342,7 +340,7 @@ def paratest():
         time.sleep(5)
         print(parent_conn.poll())
         if parent_conn.poll():
-            #p.terminate()
+            # p.terminate()
             break
         elif not p.is_alive():
             child_conn.send({'error': 'segmentation fault'})
@@ -350,9 +348,7 @@ def paratest():
     msg = parent_conn.recv()
     print('DONE!')
 
+
 if __name__ == '__main__':
-    #test()
+    # test()
     paratest()
-
-
-
