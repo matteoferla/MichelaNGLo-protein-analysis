@@ -209,7 +209,8 @@ class Mutator:
             elif record['ptm'] == 'm3':
                 patch = 'trimethylated'
             else:
-                raise ValueError(f'What is {record["ptm"]}?')
+                pass #no Gal
+                #raise ValueError(f'What is {record["ptm"]}?')
             new_res = f"{seq3(record['from_residue']).upper()}:{patch}"
             r = pose2pdb(res=int(record['residue_index']), chain='A')
             if r == 0:  # missing density.
