@@ -333,6 +333,24 @@ class ProteinAnalyser(ProteinCore):
         if not structure:
             self.structural = None
             return self
+        if not structure.chain_definitions:
+            # this is not supposed to happen! Swissmodel.
+            print(f'definitionless structure: {structure.code}')
+            if structure.chain == '*':
+                chain = 'A'
+            else:
+                chain = structure.chain
+            # chain definition is used heavily clientside.
+            structure.chain_definitions = [{'chain': chain,
+                                            'uniprot': self.uniprot,
+                                            'x': structure.x,
+                                            'y': structure.y,
+                                            'offset': 0,
+                                            'range': f'{structure.x}-{structure.y}',
+                                            'description': structure.description,
+                                            'name': self.gene_name,
+                                            'note': 'Retroactively filled data. May be wrong.'
+                                            }]
         self.structural = StructureAnalyser(structure, self.mutation)
         if self.structural and self.structural.neighbours:
             ## see mutation.exposure_effect
