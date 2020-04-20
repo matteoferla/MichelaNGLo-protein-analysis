@@ -109,6 +109,7 @@ class Mutator:
             self.movemap.set_bb(n, True)
             self.movemap.set_chi(n, True)
         self.relax.set_movemap(self.movemap)
+        self.relax.set_movemap_disables_packing_of_fixed_chi_positions(True)
         return self.relax
 
     def mark(self, label: str) -> Dict:
