@@ -112,7 +112,9 @@ class Mutator:
         if hasattr(self.relax, 'set_movemap_disables_packing_of_fixed_chi_positions'):
             self.relax.set_movemap_disables_packing_of_fixed_chi_positions(True)
         else:
-            print("UPDATE YOUR DAMN PYROSETTA NOW.") #TODO I need to update pyrosetta serverside. But residential internet is being a pain.
+            print("UPDATE YOUR DAMN PYROSETTA NOW.")
+            #TODO I need to update pyrosetta serverside. But residential internet is being a pain.
+            # This is due to different versions of pyrosetta and affects the quality of the score.
         return self.relax
 
     def mark(self, label: str) -> Dict:
