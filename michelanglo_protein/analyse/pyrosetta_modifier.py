@@ -109,7 +109,10 @@ class Mutator:
             self.movemap.set_bb(n, True)
             self.movemap.set_chi(n, True)
         self.relax.set_movemap(self.movemap)
-        self.relax.set_movemap_disables_packing_of_fixed_chi_positions(True)
+        if hasattr(self.relax, 'set_movemap_disables_packing_of_fixed_chi_positions'):
+            self.relax.set_movemap_disables_packing_of_fixed_chi_positions(True)
+        else:
+            print("UPDATE YOUR DAMN PYROSETTA NOW.") #TODO I need to update pyrosetta serverside. But residential internet is being a pain.
         return self.relax
 
     def mark(self, label: str) -> Dict:
