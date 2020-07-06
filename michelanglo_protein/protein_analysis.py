@@ -5,11 +5,12 @@ The class ProteinAnalyser builds upon the ProteinLite core and expands it with
 from .core import ProteinCore
 from .gnomad_variant import Variant
 from .mutation import Mutation
+from .structure import Structure
 import re
 import io, os
 from .analyse import StructureAnalyser, Mutator
 from multiprocessing import Process, Pipe  # pyrosetta can throw segfaults.
-from typing import Union, List, Dict, Tuple
+from typing import Union, List, Dict, Tuple, Optional
 
 
 class ProteinAnalyser(ProteinCore):
@@ -302,7 +303,7 @@ class ProteinAnalyser(ProteinCore):
     #     raise DeprecationWarning
     #     return [pdb for pdb in self.pdbs + self.swissmodel + self.pdb_matches if int(pdb['x']) < position < int(pdb['y'])]
 
-    def get_best_model(self):
+    def get_best_model(self) -> Structure:
         """
         This currently just gets the first PDB based on resolution. It ought to check what is the best properly.
         it checks pdbs first, then swissmodel.
@@ -327,13 +328,15 @@ class ProteinAnalyser(ProteinCore):
     def property_at_mutation(self):
         return {k: self.properties[k][self.mutation.residue_index - 1] for k in self.properties}
 
-    def analyse_structure(self):
-        structure = self.get_best_model()
-        # structure is a michelanglo_protein.core.Structure object
+    def analyse_structure(self, structure: Optional[Structure]=None):
+        # fetch structure if not provided
+        if structure is None:
+            structure = self.get_best_model()
+        # however the best model may not exists.
         if not structure:
             self.structural = None
             return self
-        if not structure.chain_definitions:
+        if not structure.chain_definitions and structure.type != 'custom':
             # this is not supposed to happen! Swissmodel.
             print(f'definitionless structure: {structure.code}')
             if structure.chain == '*':

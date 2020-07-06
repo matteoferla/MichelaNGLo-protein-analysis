@@ -3,6 +3,7 @@ from datetime import datetime
 from .settings_handler import global_settings #the instance not the class.
 import gzip, requests
 from michelanglo_transpiler import PyMolTranspiler
+from collections import defaultdict
 import pymol2
 
 from warnings import warn
@@ -37,7 +38,7 @@ class Structure:
         self.resolution = 0 #: crystal resolution. 0 or lower will trigger special cases
         self.code = code
         self.chain_definitions = [] #filled by SIFT. This is a list with a Dict per chain.
-        self.type = type.lower() #: str: rcsb | swissmodel | homologue | www | local
+        self.type = type.lower() #: str: rcsb | swissmodel | homologue | www | local | custom
         self.chain = chain #: type str: chain letter or * (all)
         if extra is None:
             self.extra = {}
@@ -46,6 +47,36 @@ class Structure:
         self.coordinates = coordinates #: PDBblock
         self.url = url  ## for type = www or local or swissmodel
         # https://files.rcsb.org/download/{self.code}.pdb does not work (often) while the url is something odd.
+
+    def is_satisfactory(self, resi:int):
+        with pymol2.PyMOL() as pymol:
+            pymol.cmd.read_pdbstr(self.coordinates, 'given_protein')
+            residex = defaultdict(list)
+            note = 'custom protein'
+            for atom in pymol.cmd.get_model('name CA').atom:
+                residex[atom.chain].append(atom.resi)
+            if len(residex) == 1 and 'A' not in residex:
+                note += ' - chain moved to A'
+                pymol.cmd.alter('given_protein', 'chain="A"')
+                pymol.cmd.sort()
+                move = list(residex.values())[0]
+                residex = {'A': move}
+                self.coordinates = pymol.cmd.get_pdbstr()
+            if not self.chain_definitions:
+                self.chain_definitions = [{'chain': chain,
+                                      'uniprot': "XXX",
+                                      'x': min(residex[chain]),
+                                      'y': max(residex[chain]),
+                                      'offset': 0,
+                                      'range': f'0-9999',
+                                      'name': self.code,
+                                      'description': note} for chain in residex]
+            assert pymol.cmd.select('given_protein'), 'Given protein had no valid data to load'
+            assert pymol.cmd.select('chain A'), 'Given protein has no chain A'
+            assert pymol.cmd.select(f'chain A and resi {resi}'), f'Given protein has no residue {resi} in chain A'
+            for name in ('N', 'CA', 'C'):
+                assert pymol.cmd.select(
+                    f'chain A and resi {resi} and name {name}'), f'Given protein has no {name} atom in residue {resi} in chain A'
 
     def to_dict(self) -> Dict:
         return {'x': self.x, 'y': self.y, 'id': self.id, 'description': self.description}
@@ -62,11 +93,17 @@ class Structure:
         if self.type == 'rcsb':
             r = requests.get(f'https://files.rcsb.org/download/{self.code}.pdb')
         elif self.type == 'swissmodel':
+            assert self.url, 'No URL provided for SWISSMODEL retrieval'
             r = requests.get(self.url, allow_redirects=True)
         elif self.type == 'www':
+            assert self.url, 'No URL provided for www retrieval'
             r = requests.get(self.url)
         elif self.type == 'local':
+            assert self.url, 'No filepath provided for local retrieval'
             self.coordinates = open(self.url).read()
+            return self.coordinates
+        elif self.type == 'custom': # provided.
+            assert self.coordinates, 'No coordinates provided for custom retrieval'
             return self.coordinates
         else:
             raise ValueError(f'Model type {self.type}  for {self.id} could not be recognised.')
