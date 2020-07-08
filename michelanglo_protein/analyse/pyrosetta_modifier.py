@@ -30,7 +30,7 @@ class Mutator:
     * ``._pdb2pose`` points to ``self.pose.pdb_info().pdb2pose``, while target_pdb2pose accepts Target and gives back int
     """
 
-    def __init__(self, pdbblock: str, target_resi: int, target_chain: str = 'A', cycles: int = 1, radius: int = 4):
+    def __init__(self, pdbblock: str, target_resi: int, target_chain: str = 'A', cycles: int = 1, radius: int = 4, params_filenames: List[str]=()):
         """
         Load.
 
@@ -42,12 +42,14 @@ class Mutator:
         :type target_chain: str
         :param cycles: (opt) cycles of relax.
         :param radius: (opt) angstrom to expand around
+        :param params_filenames: list of filenames of params files (rosetta topology files)
         """
         self.scorefxn = pyrosetta.get_fa_scorefxn()
         self.scores = {}  # gets filled by .mark()
         ## Load
         self.target = Target(target_resi, target_chain)
         self.pdbblock = pdbblock
+        self.params_filenames = params_filenames
         self.pose = self.load_pose()  # self.pose is intended as the damageable version.
         self.mark('raw')  # mark scores the self.pose
 
@@ -74,6 +76,10 @@ class Mutator:
         :return: self.pose
         """
         pose = pyrosetta.Pose()
+        if self.params_filenames:
+            params_paths = pyrosetta.rosetta.utility.vector1_string()
+            params_paths.extend(self.params_filenames)
+            pyrosetta.generate_nonstandard_residue_set(pose, params_paths)
         pyrosetta.rosetta.core.import_pose.pose_from_pdbstring(pose, self.pdbblock)
         self._pdb2pose = pose.pdb_info().pdb2pose
         return pose
@@ -199,7 +205,7 @@ class Mutator:
     def make_phospho(self, ptms):
         phospho = self.pose.clone()
         MutateResidue = pyrosetta.rosetta.protocols.simple_moves.MutateResidue
-        pose2pdb = phospho.pdb_info().pdb2pose
+        pdb2pose = phospho.pdb_info().pdb2pose
         changes = 0
         for record in ptms:
             if record['ptm'] == 'ub':
@@ -218,7 +224,7 @@ class Mutator:
                 pass #no Gal
                 #raise ValueError(f'What is {record["ptm"]}?')
             new_res = f"{seq3(record['from_residue']).upper()}:{patch}"
-            r = pose2pdb(res=int(record['residue_index']), chain='A')
+            r = pdb2pose(res=int(record['residue_index']), chain='A')
             if r == 0:  # missing density.
                 continue
             MutateResidue(target=r, new_res=new_res).apply(phospho)

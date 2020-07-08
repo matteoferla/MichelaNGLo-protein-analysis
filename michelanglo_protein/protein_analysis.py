@@ -29,6 +29,7 @@ class ProteinAnalyser(ProteinCore):
         ## structure
         self.structural = None # StructureAnalyser instance
         self.energetics = None
+        self.rosetta_params_filenames = []
         self.energetics_gnomAD = None
 
     ############## elm
@@ -328,7 +329,7 @@ class ProteinAnalyser(ProteinCore):
     def property_at_mutation(self):
         return {k: self.properties[k][self.mutation.residue_index - 1] for k in self.properties}
 
-    def analyse_structure(self, structure: Optional[Structure]=None):
+    def analyse_structure(self, structure: Optional[Structure]=None, params: List[str]=[]):
         # fetch structure if not provided
         if structure is None:
             structure = self.get_best_model()
@@ -399,6 +400,7 @@ class ProteinAnalyser(ProteinCore):
         return dict(pdbblock=self.pdbblock,
                     target_resi=self.mutation.residue_index,
                     target_chain='A', cycles=1,
+                    params_filenames=self.rosetta_params_filenames,
                     radius=3)
 
     @property
