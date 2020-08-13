@@ -158,7 +158,7 @@ class ProteinAnalyser(ProteinCore):
             neighbours = self._neighbours(midresidue=self.sequence[self.mutation.residue_index - 1],
                                           position=self.mutation.residue_index,
                                           marker='*')
-            return 'Residue {i} is {n} in Uniprot {g}, while user claimed it was {f}. (neighbouring residues: {s}'.format(
+            return 'Residue {i} is {n} in Uniprot {g}, while user claimed it was {f}. (neighbouring residues: {s})'.format(
                 i=self.mutation.residue_index,
                 n=self.sequence[self.mutation.residue_index - 1],
                 g=self.uniprot,
