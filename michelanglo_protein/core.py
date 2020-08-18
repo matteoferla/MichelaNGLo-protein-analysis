@@ -175,7 +175,7 @@ class ProteinCore:
         self.log('Data saved to {} as gzipped pickled dictionary'.format(file))
 
     def get_species_for_uniprot(self):
-        warn('You have triggered a fallback. If you know your filepath to load use it.')
+        warn('You have triggered a fallback. If you know your filepath (taxid) to load use it.')
         uniprot2species = json.load(open(os.path.join(self.settings.dictionary_folder, 'uniprot2species.json')))
         if self.uniprot in uniprot2species.keys():
             self.organism['NCBI Taxonomy'] = uniprot2species[self.uniprot]
