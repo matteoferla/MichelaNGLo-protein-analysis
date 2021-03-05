@@ -1,7 +1,7 @@
 from Bio.SeqUtils import ProtParam, ProtParamData
 from warnings import warn
 
-## mod for DIWV
+# mod for DIWV
 def mod(sequence):
     """
     This is a not implemented function. It is a fix for ProtParam.ProteinAnalysis().protein_scale and the DIWV scale.

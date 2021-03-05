@@ -1,5 +1,5 @@
 import setuptools
-##from setuptools.command.install import install
+#from setuptools.command.install import install
 
 #with open("README.md", "r") as fh:
 #    long_description = fh.read()
@@ -27,7 +27,7 @@ setuptools.setup(
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
     def run(self):
-        ###
+        ##
         install.run(self)
 
 '''

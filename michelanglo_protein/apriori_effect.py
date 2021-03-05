@@ -64,10 +64,10 @@ class Changedex:
 
     def fill(self):
         for a in self.aa:
-            self[a, 'G'] = 'S'  ## glycine is smallest
-            if a != 'G':  ## glycine followed by alaine in smallness
+            self[a, 'G'] = 'S'  # glycine is smallest
+            if a != 'G':  # glycine followed by alaine in smallness
                 self[a, 'A'] = 'S'
-                if a != 'A':  ## then serine
+                if a != 'A':  # then serine
                     self[a, 'P'] = 'S'
                     if a != 'P':
                         self[a, 'SC'] = 'S'
@@ -100,8 +100,8 @@ class Changedex:
                 if not self[a, b]:
                     self[a, b] = 'D'
             # fill flex
-            self[a, 'P'].add('F')  ## proline is most flexible.
-            if a != 'P':  ##followed by glycine in flex
+            self[a, 'P'].add('F')  # proline is most flexible.
+            if a != 'P':  #followed by glycine in flex
                 self[a, 'G'].add('F')
                 if a not in 'PG':
                     self[a, 'S'].add('F')

@@ -11,7 +11,7 @@ class ProteinManual(ProteinCore):
 
     def add_manual_data(self):
         man = {x['Gene']: x for x in csv.DictReader(open(os.path.join(self.settings.manual_folder, 'manual.csv')))}
-        ### PDB
+        ## PDB
         pdb_candidate = os.path.join(self.settings.manual_folder, self.uniprot + '.pdb')
         if os.path.isfile(pdb_candidate):
             pdb_man_file = pdb_candidate
@@ -29,7 +29,7 @@ class ProteinManual(ProteinCore):
             self.pdb_resi = 0  # self.resi - int(man[self.gene]['PDB_offset'])
             if not os.path.isfile(self.pdb_file):  # make the html copy
                 copyfile(pdb_man_file, self.pdb_file)
-        ### MD
+        ## MD
         txt_candidate = os.path.join(self.settings.manual_folder, self.uniprot + '.md')
         if os.path.isfile(txt_candidate):
             txt = txt_candidate

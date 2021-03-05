@@ -36,7 +36,7 @@ wget https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/exomes/gnoma
 wget https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/exomes/gnomad.exomes.r2.1.1.sites.X.vcf.bgz;
 wget https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/exomes/gnomad.exomes.r2.1.1.sites.Y.vcf.bgz;'''
 
-################################
+################
 
 def gwrap(file):
     from michelanglo_protein.generate.split_gnomAD import gnomAD
@@ -56,7 +56,7 @@ def gwrap(file):
     message(f'{file} parsed!')
 
 
-#####################################
+###################
 import os
 from multiprocessing import Pool
 

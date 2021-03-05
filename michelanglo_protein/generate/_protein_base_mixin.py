@@ -1,4 +1,4 @@
-## _BaseMixin contains __getattr__ and _failsafe decorator
+# _BaseMixin contains __getattr__ and _failsafe decorator
 from warnings import warn
 from michelanglo_protein.settings_handler import global_settings #the instance not the class.
 
@@ -29,7 +29,7 @@ class _BaseMixin:
     def __getattr__(self, item):
         if self.settings.missing_attribute_tolerant:
             if item not in self.__dict__:
-                if item in self.other:  ## it is in the trash!
+                if item in self.other:  # it is in the trash!
                     warn('Accessed attribute in other list. Thanks for proving the key:value pair. But please dont abuse this backdoor!')
                     self.__dict__[item] = self.other[item]
                 else:

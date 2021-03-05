@@ -1,4 +1,4 @@
-############################# UNIPROT PARSING METHODS #############################
+############### UNIPROT PARSING METHODS ###############
 from michelanglo_protein.generate._protein_base_mixin import _BaseMixin
 # this class requires mixin classes from `_protein_*_mixin.py`. The XML parser for Uniprot requires a special ET from `.ET_monkeypatched`.
 from ..core import Structure
@@ -35,7 +35,7 @@ class _UniprotMixin:
             pass
         elif elem.has_attr('type','PDB'):
             chain = elem.get_sub_by_type('chains')
-            if chain is not None:  ## this is so unpredictable. It needs to be done by blast.
+            if chain is not None:  # this is so unpredictable. It needs to be done by blast.
                 loca=chain.attrib['value'].split('=')[1].split('-')
                 if loca[0] != '':
                     chainid=chain.attrib['value'].split('=')[0].split('/')[0]
@@ -52,7 +52,7 @@ class _UniprotMixin:
             for subelem in elem:
                 if subelem.is_tag('molecule'):
                     if subelem.attrib['id'][-2:] != '-1':
-                        return None ## this is not the isoform 1 !!!
+                        return None # this is not the isoform 1 !!!
                 elif subelem.has_attr('type', 'protein sequence ID'):
                     self.ENSP = subelem.attrib['value']
                 elif subelem.has_attr('type', 'gene ID'):
@@ -78,7 +78,7 @@ class _UniprotMixin:
                     partner = subelem.get_subtag('label')
                     if partner is not None:
                         self.partners['interactant'].append(partner.text)
-                elif subelem.is_tag('text'):  ## some entries are badly annotated and have only a text line..
+                elif subelem.is_tag('text'):  # some entries are badly annotated and have only a text line..
                     self.partners['interactant'].append(subelem.text)
         elif elem.has_attr('type','disease'):
             for subelem in elem:
@@ -143,7 +143,7 @@ class _UniprotMixin:
         * unsure residue
         * zinc finger region
         * intramembrane region"""
-        if elem.attrib['type'] not in self.features:  ##avoiding defaultdictionary to avoid JSON issue.
+        if elem.attrib['type'] not in self.features:  #avoiding defaultdictionary to avoid JSON issue.
             self.features[elem.attrib['type']]=[]
         locadex=self._get_location(elem)
         if locadex:
@@ -151,8 +151,8 @@ class _UniprotMixin:
         elif elem.has_attr('type', 'chain'):
             pass
         else:
-            ##print('no location?') TODO fix this!
-            ##print(elem.attrib)
+            #print('no location?') TODO fix this!
+            #print(elem.attrib)
             pass
         return self
 
@@ -198,8 +198,8 @@ class _UniprotMixin:
         elif elem.has_attr('type', 'chain'):
             return None #pointless chain.
         else:
-            ##print('Unexpected location entry') TODO fix this!
-            ##print(elem.attrib, position, start, end)
+            #print('Unexpected location entry') TODO fix this!
+            #print(elem.attrib, position, start, end)
             return None
 
     def _parse_uniprot_xml(self, entry):
@@ -233,10 +233,10 @@ class _UniprotMixin:
                 self._parse_protein_comment(elem)
             elif elem.is_tag('keyword'):
                 pass
-        ## Ater all the parsing some weirdnesses can arise
+        # Ater all the parsing some weirdnesses can arise
         for group in self.features:
             for i in range(len(self.features[group])):
-                self.features[group][i]['type'] = group  ## in case of flattening.
+                self.features[group][i]['type'] = group  # in case of flattening.
                 if 'description' in self.features[group][i] and self.features[group][i]['description'] == '-':
                     self.features[group][i]['description'] = group
         if self.uniprot == '':

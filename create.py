@@ -32,10 +32,10 @@ if __name__ == '__main__':
     global_settings.error_tolerant = True
     global_settings.startup(data_folder='../protein-data')
     global_settings.retrieve_references(ask=False, refresh=False)
-    ## Phosphosite
+    # Phosphosite
     #Phosphosite().split().write()
     message('Phosphosite split')
-    ## Uniprot
+    # Uniprot
     UniprotMasterReader(first_n_protein=0)
     message('Uniprot split')
     # gnomAD data needs to be split up after that the dictionaries are made.

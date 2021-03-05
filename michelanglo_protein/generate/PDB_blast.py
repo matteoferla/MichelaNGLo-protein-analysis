@@ -117,7 +117,7 @@ class Blaster:
                     with open(os.path.join(global_settings.temp_folder, outfolder, file.replace('.xml','.json')),'w') as w:
                         json.dump(matches,w)
                 except ValueError as err:
-                    warn(f'Value error for {file}: {err}')  ##why art thou so empty?
+                    warn(f'Value error for {file}: {err}')  #why art thou so empty?
 
     @staticmethod
     def _test_describe():

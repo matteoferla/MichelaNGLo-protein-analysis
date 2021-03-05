@@ -46,17 +46,17 @@ class Mutator:
         """
         self.scorefxn = pyrosetta.get_fa_scorefxn()
         self.scores = {}  # gets filled by .mark()
-        ## Load
+        # Load
         self.target = Target(target_resi, target_chain)
         self.pdbblock = pdbblock
         self.params_filenames = params_filenames
         self.pose = self.load_pose()  # self.pose is intended as the damageable version.
         self.mark('raw')  # mark scores the self.pose
 
-        ## Find neighbourhood
+        # Find neighbourhood
         self.calculate_neighbours(radius)  # fills self.neighbours
 
-        ## Read relax
+        # Read relax
         self.ready_relax(cycles)
 
     def target_pdb2pose(self, target: Target) -> int:
@@ -178,7 +178,7 @@ class Mutator:
 
     def get_res_score_terms(self, pose) -> dict:
         data = pose.energies().residue_total_energies_array()  # structured numpy array
-        i = self.target_pdb2pose(self.target) - 1  ##pose numbering is fortran style. while python is C++
+        i = self.target_pdb2pose(self.target) - 1  #pose numbering is fortran style. while python is C++
         return {data.dtype.names[j]: data[i][j] for j in range(len(data.dtype))}
 
     def analyse_mutation(self, alt_resn: str) -> Dict:
@@ -193,7 +193,7 @@ class Mutator:
         return {'ddG': self.scores['mutarelax'] - self.scores['relaxed'],
                 'scores': self.scores,
                 'native': nblock,
-                'mutant': self.output_pdbblock(),  ## pdbb
+                'mutant': self.output_pdbblock(),  # pdbb
                 'rmsd': pyrosetta.rosetta.core.scoring.CA_rmsd(self.native, self.pose),
                 'dsol': self.get_diff_solubility(),
                 'score_fxn': self.scorefxn.get_name(),
@@ -247,7 +247,7 @@ class Mutator:
 
     def _repack_gnomad(self, pose_idx, from_resi, to_resi) -> int:
         self.pose = self.native.clone()
-        ## local repack...
+        # local repack...
         pyrosetta.toolbox.mutate_residue(self.pose,
                                          mutant_position=pose_idx,
                                          mutant_aa=from_resi,
@@ -297,10 +297,10 @@ class Mutator:
         return ddG
 
 
-#######################################################################################################################
+############################################################
 
 def test():
-    ## these are tests.
+    # these are tests.
     import requests, time
     # 1SFT/A/A/HIS`166
     pdbblock = requests.get('https://files.rcsb.org/download/1SFT.pdb').text

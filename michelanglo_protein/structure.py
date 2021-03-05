@@ -32,7 +32,7 @@ class Structure:
         self.x = int(x)  #: resi in the whole uniprot protein
         self.y = int(y)  #: end resi in the whole uniprot protein
         self.offset = int(offset) #: offset is the number *subtracted* from the PDB index to make it match the position in Uniprot.
-        self.offsets = {} if chain == '*' else {chain: int(offset)} ### this is going to be the only one.
+        self.offsets = {} if chain == '*' else {chain: int(offset)} ## this is going to be the only one.
         self.pdb_start = None  # no longer used. TO be deleted.
         self.pdb_end = None   # ditto.
         self.resolution = 0 #: crystal resolution. 0 or lower will trigger special cases
@@ -45,7 +45,7 @@ class Structure:
         else:
             self.extra = extra
         self.coordinates = coordinates #: PDBblock
-        self.url = url  ## for type = www or local or swissmodel
+        self.url = url  # for type = www or local or swissmodel
         # https://files.rcsb.org/download/{self.code}.pdb does not work (often) while the url is something odd.
 
     def is_satisfactory(self, resi:int):
@@ -122,7 +122,7 @@ class Structure:
             self.lookup_sifts()
         self.coordinates = PyMolTranspiler().renumber(self.get_coordinates(), self.chain_definitions, make_A=self.chain).raw_pdb
         if self.chain != 'A':
-            ### fix this horror.
+            ## fix this horror.
             for i, c in enumerate(self.chain_definitions):
                 if self.chain_definitions[i]['chain'] == 'A':
                     self.chain_definitions[i]['chain'] = 'XXX'
@@ -166,7 +166,7 @@ class Structure:
         if not self.chain_definitions:
             details = self._get_sifts()
             for detail in details:
-                ## clean rows
+                # clean rows
                 for k in ('PDB_BEG','PDB_END', 'RES_END', 'RES_BEG', 'SP_BEG','SP_END'):
                     if k == 'None' or k is None:
                         detail[k] = None
@@ -178,8 +178,8 @@ class Structure:
                             detail[k] = None
                         else:
                             detail[k] = int(r.group(1)) #yes. py int is signed
-                ## get offset
-                if detail['PDB_BEG'] is not None:  ##nice.
+                # get offset
+                if detail['PDB_BEG'] is not None:  #nice.
                     offset = detail['SP_BEG'] - detail['PDB_BEG']
                 elif detail['PDB_END'] is not None:
                     offset = detail['SP_BEG'] - ( detail['PDB_END'] - (detail['SP_END'] - detail['SP_BEG']))
@@ -237,12 +237,12 @@ class Structure:
         assert isinstance(chain_detail, dict), 'Chain detail is a Dict of the specific chain. Not whole protein.'
         debugprint = lambda x: None
         with pymol2.PyMOL() as pymol:
-            ## Load file
+            # Load file
             pymol.cmd.set('fetch_path', os.path.join(self.settings.temp_folder, 'PDB'))
             pymol.cmd.fetch(self.code)
-            ## Try different windows
+            # Try different windows
             for begin_offset in range(0,len(sequence) - begin, 10):
-                ## Try full size window
+                # Try full size window
                 window = 50
                 target = sequence[begin - 1 + begin_offset : begin + window + begin_offset]
                 if len(target) == 0:
@@ -250,7 +250,7 @@ class Structure:
                     debugprint(f'sequence is {len(sequence)}, while range is {begin+begin_offset}-{end+begin_offset}')
                     continue
                 sele_target = f"chain {chain_detail['CHAIN']} and pepseq {target} and name CA"
-                ## Shrink window to account for failed selection due to weird atoms or short peptides
+                # Shrink window to account for failed selection due to weird atoms or short peptides
                 while pymol.cmd.select(sele_target) == 0:
                     window -= 10
                     if window < 10:
@@ -258,10 +258,10 @@ class Structure:
                         break #double continue
                     target = sequence[begin +  begin_offset - 1: begin +  begin_offset + window]
                     sele_target = f"chain {chain_detail['CHAIN']} and pepseq {target} and name CA"
-                ## double continue
+                # double continue
                 if window < 10:
                     continue
-                ## Iterate
+                # Iterate
                 atoms = pymol.cmd.get_model(sele_target)
                 prev = 'X'
                 prev_i = -999
@@ -269,14 +269,14 @@ class Structure:
                     if int(atom.resi) == prev_i:
                         continue
                     if atom.resn in aa:
-                        ## Simplest case:
+                        # Simplest case:
                         # if aa[atom.resn] == target[0]:
                         #     return chain_detail["SP_BEG"] - atom.resi
-                        ## In case there are missing parts.
+                        # In case there are missing parts.
                         # for i in range(0, 20):
                         #     if aa[atom.resn] == target[i]:
                         #         return (i + chain_detail["SP_BEG"]) - atom.resi
-                        ## In case there are missing parts and repeated residues.
+                        # In case there are missing parts and repeated residues.
                         #print(atom.resn, atom.resi, target)
                         for i in range(1, window): #in case there are missing parts.
                             if aa[atom.resn] == target[i] and target[i - 1] == prev:

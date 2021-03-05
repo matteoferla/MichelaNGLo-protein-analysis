@@ -15,7 +15,7 @@ from michelanglo_protein.generate.split_gnomAD import gnomAD
 
 from collections import defaultdict
 
-##### Uniprot reader
+### Uniprot reader
 class UniprotMasterReader:
     """
     see generator iter_human
@@ -92,7 +92,7 @@ class UniprotMasterReader:
                 break
             prot = Protein.from_uniprot(entry)
             chosen_name = prot.accession_list[0] #ideally prot.uniprot_name or the first acc id. But for code usage going for gene name.
-            ## fill namedex
+            # fill namedex
             greater_namedex[prot.uniprot_name] = chosen_name
             greater_namedex[prot.recommended_name] = chosen_name
             greater_namedex[prot.gene_name] = chosen_name
@@ -101,20 +101,20 @@ class UniprotMasterReader:
                     if re.match('[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+',name):
                         continue # no EC numbers!
                     lesser_namedex[name] = chosen_name
-            ## fill seqdex
+            # fill seqdex
             seqdex[chosen_name] = prot.sequence
             genedex[chosen_name] = prot.gene_name
-            ## save
+            # save
             prot.write_uniprot(os.path.join(Protein.settings.uniprot_folder, chosen_name+'_uniprot.xml'))
             # prot.
         namedex = {**lesser_namedex, **greater_namedex}
-        ## cleanup
+        # cleanup
         for k in ('\n      ', '\n     ', '\n    ', '\n   ', '', '\n', ' '):
             if k in namedex:
                 del namedex[k]
-        json.dump(namedex, open(os.path.join(Protein.settings.data_folder, 'human_prot_namedex.json'), 'w'))  ## name to uniprot
-        #json.dump(genedex, open(os.path.join(Protein.settings.temp_folder, 'human_prot_genedex.json'), 'w'))  ## uniprot to name. not needed.
-        #json.dump(seqdex, open(os.path.join(Protein.settings.temp_folder, 'human_prot_seqdex.json'), 'w'))    ## not needed.
+        json.dump(namedex, open(os.path.join(Protein.settings.data_folder, 'human_prot_namedex.json'), 'w'))  # name to uniprot
+        #json.dump(genedex, open(os.path.join(Protein.settings.temp_folder, 'human_prot_genedex.json'), 'w'))  # uniprot to name. not needed.
+        #json.dump(seqdex, open(os.path.join(Protein.settings.temp_folder, 'human_prot_seqdex.json'), 'w'))    # not needed.
         open(os.path.join(Protein.settings.temp_folder, 'human.fa'), 'w').writelines(['>{i}\n{s}\n\n'.format(s=seqdex[k], i=k) for k in seqdex])
 
     def __init__(self, uniprot_master_file=None, first_n_protein=0, chosen_attribute='uniprot'):
@@ -148,7 +148,7 @@ class UniprotMasterReader:
             resolutions = {entry['IDCODE']: float(entry['RESOLUTION']) for entry in json.load(fh) if
                            entry['RESOLUTION'].strip()}
         self.resolutions = resolutions
-        ## run
+        # run
         for entry in self.iter_all():
             Thread(target=self.parse, args=[entry]).start()
             while active_count() > 50:
@@ -158,19 +158,19 @@ class UniprotMasterReader:
             print(self._lock)
             print(self._semaphore)
             time.sleep(1)
-        ## final touches to the whole sets...
+        # final touches to the whole sets...
         for org in list(self._organism_greater_namedex.keys()):
             namedex = {**self._organism_lesser_namedex[org], **self._organism_greater_namedex[org]}
-            ## cleanup
+            # cleanup
             for k in ('\n      ', '\n     ', '\n    ', '\n   ', '', '\n', ' '):
                 if k in namedex:
                     del namedex[k]
             #namedex = {k.lower(): namedex[k] for k in namedex}
             fn = os.path.join(Protein.settings.dictionary_folder, f'taxid{org}-names2{chosen_attribute}.json')
-            json.dump(namedex, open(fn, 'w'))  ## name to pdbs
+            json.dump(namedex, open(fn, 'w'))  # name to pdbs
         fn = os.path.join(Protein.settings.dictionary_folder, f'organism.json')
-        json.dump(self._organismdex, open(fn, 'w'))  ## organism to taxid
-        ## lighten
+        json.dump(self._organismdex, open(fn, 'w'))  # organism to taxid
+        # lighten
         for dex, fn in ((self._uniprot_pdbdex, 'uniprot2pdb.json'),
                         (self._uniprot_namedex, 'uniprot2name.json'),
                         (self._uniprot_speciesdex, 'uniprot2species.json')):
@@ -178,7 +178,7 @@ class UniprotMasterReader:
             json.dump({k: dex[k] for k in dex if dex[k]}, open(fp, 'w'))
 
     def parse(self, entry):
-        ### parser...
+        ## parser...
         #print('waiting for semaphore')
         self._semaphore.acquire()
         #print('waited for semaphore')
@@ -195,7 +195,7 @@ class UniprotMasterReader:
             prot.parse_swissmodel()
             pass
         prot.compute_params()
-        ### dict
+        ## dict
         chosen_name = getattr(prot, self.chosen_attribute)
         # update the organism dex
         org = prot.organism['NCBI Taxonomy']
@@ -208,7 +208,7 @@ class UniprotMasterReader:
             if org not in self._organismdex:
                 for k in prot.organism:
                     self._organismdex[prot.organism[k]] = org
-            ## make dictionaries...
+            # make dictionaries...
             self._uniprot_datasetdex[prot.uniprot] = prot.uniprot_dataset
             self._uniprot_pdbdex[prot.uniprot].extend([p.id for p in prot.pdbs])
             if prot.gene_name and prot.gene_name in self._organism_greater_namedex[org]:

@@ -23,21 +23,21 @@ class ProteinAnalyser(ProteinCore):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        ### other ###
-        ### mutation ###
+        ## other ##
+        ## mutation ##
         self._mutation = None
-        ## structure
+        # structure
         self.structural = None # StructureAnalyser instance
         self.energetics = None
         self.rosetta_params_filenames = []
         self.energetics_gnomAD = None
 
-    ############## elm
+    ####### elm
     _elmdata = []
 
     @property
     def elmdata(self) -> List[dict]:
-        ### load only when needed basically...
+        ## load only when needed basically...
         if not len(self._elmdata):
             with open(os.path.join(self.settings.reference_folder, 'elm_classes.tsv')) as fh:
                 header = ("Accession", "ELMIdentifier", "FunctionalSiteName", "Description", "Regex", "Probability",
@@ -48,7 +48,7 @@ class ProteinAnalyser(ProteinCore):
                     if "Accession" in line:
                         continue
                     self._elmdata.append(dict(zip(header, line.replace('"', '').split('\t'))))
-            self.__class__._elmdata = self._elmdata  ## change the class attribute too!
+            self.__class__._elmdata = self._elmdata  # change the class attribute too!
         return self._elmdata
 
     def _set_mutation(self, mutation):
@@ -111,7 +111,7 @@ class ProteinAnalyser(ProteinCore):
             neighbours = 'ERROR.'
         return neighbours
 
-    ################### mutant related
+    ########## mutant related
     def predict_effect(self):
         """
         main entry point for analyses.
@@ -171,7 +171,7 @@ class ProteinAnalyser(ProteinCore):
             raise ValueError(
                 f'Unable to analyse {self.uniprot} for mysterious reasons (resi:{self.mutation.residue_index}, from:{self.mutation.from_residue}, to:{self.mutation.to_residue})')
 
-    ################################# ELM
+    ################# ELM
 
     def _rex_elm(self, neighbours: str, regex: str, starter: bool = False, ender: bool = False):
         """
@@ -232,7 +232,7 @@ class ProteinAnalyser(ProteinCore):
         self.mutation.elm = sorted(results, key=lambda m: m['probability'] + int(m['status'] == 'kept'))
         return self
 
-    ##################### Position queries.
+    ########### Position queries.
 
     def get_features_at_position(self, position=None) -> List[Dict]:
         """
@@ -253,9 +253,9 @@ class ProteinAnalyser(ProteinCore):
                         valid.append({**f,
                                       'type': g,
                                       'gnomad': self._tally_gnomad(gnomad)})
-                elif 'residue_index' in f:  ## TODO FIX THIS DAMN DIFFERENT STANDARD.
+                elif 'residue_index' in f:  # TODO FIX THIS DAMN DIFFERENT STANDARD.
                     if f['residue_index'] - wobble <= position and position <= f['residue_index'] + wobble:
-                        ## PTM from phosphosite plus are formatted differently. the feature viewer and the .structural known this.
+                        # PTM from phosphosite plus are formatted differently. the feature viewer and the .structural known this.
                         gnomad = self.get_gnomAD_in_range(f['residue_index'], f['residue_index'])
                         valid.append({'x': f['residue_index'],
                                       'y': f['residue_index'],
@@ -357,7 +357,7 @@ class ProteinAnalyser(ProteinCore):
                                             }]
         self.structural = StructureAnalyser(structure, self.mutation)
         if self.structural and self.structural.neighbours:
-            ## see mutation.exposure_effect
+            # see mutation.exposure_effect
             self.mutation.surface_expose = 'buried' if self.structural.buried else 'surface'
             self.annotate_neighbours()
         return self
@@ -388,7 +388,7 @@ class ProteinAnalyser(ProteinCore):
                          r == m['residue_index']])
                 neigh['detail'] = ' / '.join(set(specials))
 
-    ##################################### Mutator class calling.
+    ################### Mutator class calling.
 
     @property
     def _init_settings(self):
@@ -463,7 +463,7 @@ class ProteinAnalyser(ProteinCore):
         """
         if self.pdbblock is None:
             return None
-        ##### perpare.
+        ### perpare.
         init_settings = self._init_settings
 
         def analysis(to_resn, init_settings):
@@ -487,7 +487,7 @@ class ProteinAnalyser(ProteinCore):
         """
         if self.pdbblock is None:
             return None
-        ##### perpare.
+        ### perpare.
         init_settings = self._init_settings
 
         def analysis(gnomads, init_settings):
@@ -503,22 +503,22 @@ class ProteinAnalyser(ProteinCore):
         return msg
 
     def analyse_other_FF(self, mutation: Union[Mutation, str], algorithm, spit_process=True) -> Union[Dict, None]:
-        ## sort out mutation
+        # sort out mutation
         if isinstance(mutation, str):
             mutation = Mutation(mutation)
         elif isinstance(mutation, Mutation):
             pass
         else:
             raise TypeError(f'whats {mutation}?')
-        ## avoid empty.
+        # avoid empty.
         if self.pdbblock is None:
             return None
-        ##### perpare.
+        ### perpare.
         init_settings = self._init_settings
         init_settings['target_resi'] = mutation.residue_index
 
         def relax(resi, from_resn, to_resn, init_settings):
-            mut = Mutator(**init_settings) ##altered target_residue from taht of the mutation!
+            mut = Mutator(**init_settings) #altered target_residue from taht of the mutation!
             results = mut.analyse_mutation(to_resn)
             return {'coordinates': results['mutant'], 'ddg': results['ddG']}
 
@@ -562,7 +562,7 @@ class ProteinAnalyser(ProteinCore):
         elif not self.features['PSP_modified_residues']:
             print('no features2')
             return None
-        ##### perpare.
+        ### perpare.
         init_settings = self._init_settings
 
         def analysis(ptms, init_settings):
@@ -578,3 +578,6 @@ class ProteinAnalyser(ProteinCore):
 
     # conservation score
     # disorder
+
+    def conclude(self):
+        pass

@@ -460,7 +460,7 @@ class Mutation:
 
     #raise NotImplementedError('Under upgrade')
     def parse_mutation(self, mutation):
-        ##### clean
+        ### clean
         assert mutation.find('.c') == -1, 'Chromosome mutation not accepted. Use Protein.'
         # remove the p.
         mutation = mutation.replace('p.', '').replace('P.', '')
@@ -468,7 +468,7 @@ class Mutation:
             if mutation.find(triple) != -1 or mutation.find(triple.lower()) != -1 or mutation.find(triple.upper()):
                 mutation = mutation.replace(triple, single).replace(triple.upper(), single).replace(triple.lower(), single)
         self.mutation = mutation
-        ###### split
+        ### split
         if self.mutation.find('fs') != -1 or self.mutation.find('*') != -1:
             rex = re.match('(\w)(\d+)', self.mutation)
             if rex:
@@ -508,7 +508,7 @@ class Mutation:
             else:
                 raise ValueError(self.mutation + ' is an odd_mutation')
 
-        ### classify apriori effect
+        ## classify apriori effect
         """
         {'S': 'smaller',
          'B': 'bigger',

@@ -55,22 +55,29 @@ class ProteinCore:
     settings = global_settings
     version = 1.0 #this is for pickled file migration/maintenance.
 
-    def __init__(self, gene_name='', uniprot = '', uniprot_name = '', sequence='', organism = None, taxid=None, **other):
-        ### predeclaration (and cheatsheet)
+    def __init__(self,
+                 gene_name='',
+                 uniprot = '',
+                 uniprot_name = '',
+                 sequence='',
+                 organism = None,
+                 taxid: int=None,
+                 **other):
+        ## predeclaration (and cheatsheet)
         if organism: # dictionary with keys common scientific and NCBI Taxonomy
             self.organism = organism
         else:
-            self.organism = {'common': 'NA', 'scientific': 'NA', 'NCBI Taxonomy': 'NA', 'other': 'NA'} ##obs? ignore for human purposes.
+            self.organism = {'common': 'NA', 'scientific': 'NA', 'NCBI Taxonomy': 'NA', 'other': 'NA'} #obs? ignore for human purposes.
         if taxid:
-            self.organism['NCBI Taxonomy'] = taxid
+            self.organism['NCBI Taxonomy'] = int(taxid)
         self.gene_name = gene_name
-        self.uniprot_name = uniprot_name.strip() ## S39AD_HUMAN
-        #### uniprot derivved
-        self.uniprot = uniprot.strip() ## uniprot accession
-        self.uniprot_dataset = '' ## Swiss-Prot good, TrEMBL bad.
+        self.uniprot_name = uniprot_name.strip() # S39AD_HUMAN
+        ## uniprot derivved
+        self.uniprot = uniprot.strip() # uniprot accession
+        self.uniprot_dataset = '' # Swiss-Prot good, TrEMBL bad.
         self.alt_gene_name_list = []
-        self.accession_list = [] ## Q96H72 etc.
-        self.sequence = sequence  ###called seq in early version causing eror.rs
+        self.accession_list = [] # Q96H72 etc.
+        self.sequence = sequence  ##called seq in early version causing eror.rs
         self.recommended_name = '' #Zinc transporter ZIP13
         self.alternative_fullname_list = []
         self.alternative_shortname_list = []
@@ -90,25 +97,25 @@ class ProteinCore:
         self.ENSP = ''
         self.ENST = ''
         self.ENSG = ''
-        ### ExAC
+        ## ExAC
         self.gnomAD = [] #formerlly alleles
         #self.ExAC_type (property= 'Unparsed' # Dominant | Recessive | None | Unknown (=???)
         self.pLI = -1
         self.pRec = -1
         self.pNull = -1
-        ### pdb
+        ## pdb
         self.pdb_matches =[] #{'match': align.title[0:50], 'match_score': hsp.score, 'match_start': hsp.query_start, 'match_length': hsp.align_length, 'match_identity': hsp.identities / hsp.align_length}
         self.swissmodel = [] #parse_swissmodel() fills it.
         self.percent_modelled = -1
-        ### junk
-        self.other = other ### this is a garbage bin. But a handy one.
+        ## junk
+        self.other = other ## this is a garbage bin. But a handy one.
         self.logbook = [] # debug purposes only. See self.log()
         self._threads = {}
         self.timestamp = datetime.now()
         #not needed for ProteinLite
         self.xml = None
 
-    ############################## property objects
+    ############### property objects
 
     @property
     def ExAC_type(self):
@@ -123,7 +130,7 @@ class ProteinCore:
         else:
             return 'Unknown'
 
-    ############################# IO #############################
+    ############### IO ###############
     def _get_species_folder(self):
         if self.organism['NCBI Taxonomy'] == 'NA':
             self.log(f'NA Species??! {self.organism} for {self.uniprot_name}')
@@ -220,8 +227,8 @@ class ProteinCore:
         self.log('Data from the gzipped pickled dictionary {}'.format(file))
         return self
 
-    ####################### Misc Magic methods ##################
-    def __len__(self):  ## sequence lenght
+    ############ Misc Magic methods #########
+    def __len__(self):  # sequence lenght
         return len(self.sequence)
 
     def log(self, text):

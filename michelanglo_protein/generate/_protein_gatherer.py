@@ -1,4 +1,4 @@
-__doc__="""
+__doc__ = """
 Protein inherits _UniprotMixin, which in turn inherits _BaseMixin
 `.settings` class attribute is global_settings from settings_handler.py and is added by _BaseMixin.
 _BaseMixin is inherited by _UniprotMixin contains _failsafe decorator, __getattr__ and settings
@@ -11,7 +11,7 @@ import csv
 import json
 import time
 import markdown
-#import xmlschema
+# import xmlschema
 import threading
 from collections import defaultdict
 from warnings import warn
@@ -25,6 +25,7 @@ from ._protein_base_mixin import _BaseMixin
 from ._protein_disused_mixin import _DisusedMixin
 from ..core import ProteinCore, Variant, Structure
 from Bio.SeqUtils import ProtParam, ProtParamData
+
 
 class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     """
@@ -58,34 +59,33 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
 
         return wrapper
 
-    ############################# INIT #############################
+    ############### INIT ###############
     @classmethod
     def from_uniprot(cls, entry):
         '''This requires a xml entry'''
-        self=cls()
+        self = cls()
         self.xml = entry
         self._parse_uniprot_xml(entry)
         return self
 
     def write_uniprot(self, file=None):
         if not file:
-            file=self.uniprot_name+'.xml'
-        with open(file,'w') as w:
+            file = self.uniprot_name + '.xml'
+        with open(file, 'w') as w:
             w.write(
                 '<?xml version="1.0" encoding="UTF-8"?><uniprot xmlns="http://uniprot.org/uniprot" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
                 'xsi:schemaLocation="http://uniprot.org/uniprot http://www.uniprot.org/docs/uniprot.xsd">')
-            if isinstance(self.xml,str):
+            if isinstance(self.xml, str):
                 w.write(self.xml)
             else:
                 w.write(ET.tostring(self.xml).decode())
             w.write('</uniprot>')
 
-    ############################# Data gathering #############################
+    ############### Data gathering ###############
     def _assert_fetchable(self, text):
         if not self.settings.fetch:
             raise FileNotFoundError(
                 text + ' failed previously (or never run previously) and `.settings.fetch` is enabled')
-
 
     def xml_fetcher(self, mode):  # mode = uniprot or pfam
         file = os.path.join(self.settings.get_folder_of(mode), self.uniprot + '_' + mode + '.xml')
@@ -97,7 +97,8 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             warn('Missing file {0}'.format(file))
             self._assert_fetchable(mode)
             if mode == 'uniprot':
-                requestURL = 'https://www.ebi.ac.uk/proteins/api/proteins?offset=0&size=100&accession={acc}'.format(  # &taxid=9606
+                requestURL = 'https://www.ebi.ac.uk/proteins/api/proteins?offset=0&size=100&accession={acc}'.format(
+                    # &taxid=9606
                     acc=self.uniprot)
             elif mode == 'pfam':
                 requestURL = 'https://pfam.xfam.org/protein?output=xml&acc={acc}'.format(acc=self.uniprot)
@@ -207,7 +208,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             with open(file) as f:
                 self.partners = json.load(f)
         else:
-            ###################### SSL http://slorth.biochem.sussex.ac.uk/download/h.sapiens_ssl_predictions.csv
+            ########### SSL http://slorth.biochem.sussex.ac.uk/download/h.sapiens_ssl_predictions.csv
             self.log('parsing SSL...')
             for row in self.settings.open('ssl'):
                 # CHEK1	MTOR	ENSG00000149554	ENSG00000198793	H. sapiens	BioGRID	2208318, 2342099, 2342170	3
@@ -217,9 +218,10 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                     if len(protein_set) == 1:
                         self.partners['SSL'].append(protein_set.pop())
                     else:  # most likely a partial match. maybe???
-                        warn('Impossible SSL '+row)
-                        warn('{0} after discarding {1} erroneously became {2}'.format(protein_set, self.gene_name, set(row.split('\t')[:2])))
-            ###################### HURI cat.psi
+                        warn('Impossible SSL ' + row)
+                        warn('{0} after discarding {1} erroneously became {2}'.format(protein_set, self.gene_name,
+                                                                                      set(row.split('\t')[:2])))
+            ########### HURI cat.psi
             self.log('parsing HURI...')
             for row in self.settings.open('huri'):
                 # Unique identifier for interactor A	Unique identifier for interactor B	Alternative identifier for interactor A	Alternative identifier for interactor B	Aliases for A	Aliases for B	Interaction detection methods	First author	Identifier of the publication	NCBI Taxonomy identifier for interactor A	NCBI Taxonomy identifier for interactor B	Interaction types	Source databases	Interaction identifier(s)	Confidence score	Complex expansion	Biological role A	Biological role B	Experimental role A	Experimental role B	Interactor type A	Interactor type B	Xref for interactor A	Xref for interactor B	Xref for the interaction	Annotations for interactor A	Annotations for interactor B	Annotations for the interaction	NCBI Taxonomy identifier for the host organism	Parameters of the interaction	Creation date	Update date	Checksum for interactor A	Checksum for interactor B	Checksum for interaction	negative	Feature(s) for interactor A	Feature(s) for interactor B	Stoichiometry for interactor A	Stoichiometry for interactor B	Participant identification method for interactor A	Participant identification method for interactor B
@@ -231,15 +233,18 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                         protein_set.discard(self.gene_name)
                         if len(protein_set) == 1:
                             self.partners['HuRI'].append(protein_set.pop())
-                        elif len(protein_set) == 0: ### multimeric
+                        elif len(protein_set) == 0:  ## multimeric
                             pass
                         else:
                             warn('Impossible HURI ' + row)
-                            warn('{0} after discarding {1} erroneously became {2}'.format(protein_set, self.gene_name, re.findall('\:(\w+)\(gene name\)', row)))
+                            warn('{0} after discarding {1} erroneously became {2}'.format(protein_set, self.gene_name,
+                                                                                          re.findall(
+                                                                                              '\:(\w+)\(gene name\)',
+                                                                                              row)))
 
                     else:
                         warn('Impossible HURI ' + row)
-            ###################### biogrid https://downloads.thebiogrid.org/Download/BioGRID/Release-Archive/BIOGRID-3.5.166/BIOGRID-ALL-3.5.166.mitab.zip
+            ########### biogrid https://downloads.thebiogrid.org/Download/BioGRID/Release-Archive/BIOGRID-3.5.166/BIOGRID-ALL-3.5.166.mitab.zip
             self.log('parsing biogrid...')
             for row in self.settings.open('biogrid'):
                 # ID Interactor A	ID Interactor B	Alt IDs Interactor A	Alt IDs Interactor B	Aliases Interactor A	Aliases Interactor B	Interaction Detection Method	Publication 1st Author	Publication Identifiers	Taxid Interactor A	Taxid Interactor B	Interaction Types	Source Database	Interaction Identifiers	Confidence Values
@@ -252,13 +257,13 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                             protein_set.add(rex.group(1))
                         else:
                             pass
-                            #warn('locuslink not found in {}'.format(e.replace('\n', '')))
+                            # warn('locuslink not found in {}'.format(e.replace('\n', '')))
                     protein_set.discard(self.gene_name)
                     if len(protein_set) == 1:
                         matched_protein = protein_set.pop()
                         self.partners['BioGRID'].append(matched_protein)
             if len(self.ENSP) > 10:
-                ###################### biogrid https://stringdb-static.org/download/protein.links.v10.5/9606.protein.links.v10.5.txt.gz
+                ########### biogrid https://stringdb-static.org/download/protein.links.v10.5/9606.protein.links.v10.5.txt.gz
                 self.log('parsing string...')
                 with self.settings.open('string') as ref:
                     for row in ref:
@@ -314,14 +319,15 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             response = req.text
             open(file, 'w').write(response)
         data = list(csv.DictReader(open(file, 'r'), delimiter='\t'))
-        self.ELM = [(entry['start'],entry['stop'],entry['elm_identifier']) for entry in data if
+        self.ELM = [(entry['start'], entry['stop'], entry['elm_identifier']) for entry in data if
                     entry['is_filtered'] == 'FALSE' or entry['is_filtered'] == 'False']
 
     def query_ELM_for_mutant(self):
         raise NotImplementedError
-        #todo implement better.
+        # todo implement better.
         # Variant
-        mfile = os.path.join(self.settings.ELM_variant_folder, self.uniprot + '_' + self.file_friendly_mutation + '_ELM_variant.tsv')
+        mfile = os.path.join(self.settings.ELM_variant_folder,
+                             self.uniprot + '_' + self.file_friendly_mutation + '_ELM_variant.tsv')
         if os.path.isfile(mfile):
             self.log('Reading ELM variant data from file')
         else:
@@ -375,7 +381,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             warn('Unknown Ensembl protein id for ' + self.gene_name)
         return self
 
-
     @_failsafe
     def query_ELM(self):
         assert self.uniprot, 'No uniprot entry for ELM to parse...'
@@ -400,7 +405,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             open(file, 'w').write(response)
         with open(file, 'r') as fh:
             data = list(csv.DictReader(fh, delimiter='\t'))
-            self.ELM = [(entry['start'],entry['stop'],entry['elm_identifier']) for entry in data if
+            self.ELM = [(entry['start'], entry['stop'], entry['elm_identifier']) for entry in data if
                         entry['is_filtered'] == 'FALSE' or entry['is_filtered'] == 'False']
         return self
 
@@ -409,9 +414,12 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         for line in csv.DictReader(self.settings.open('ExAC_pLI'), delimiter='\t'):
             # transcript	gene	chr	n_exons	cds_start	cds_end	bp	mu_syn	mu_mis	mu_lof	n_syn	n_mis	n_lof	exp_syn	exp_mis	exp_lof	syn_z	mis_z	lof_z	pLI	pRec	pNull
             if self.gene_name == line['gene']:
-                self.pLI = float(line['pLI'])  # intolerant of a single loss-of-function variant (like haploinsufficient genes, observed ~ 0.1*expected)
-                self.pRec = float(line['pRec'])  # intolerant of two loss-of-function variants (like recessive genes, observed ~ 0.5*expected)
-                self.pNull = float(line['pNull'])  # completely tolerant of loss-of-function variation (observed = expected)
+                self.pLI = float(line[
+                                     'pLI'])  # intolerant of a single loss-of-function variant (like haploinsufficient genes, observed ~ 0.1*expected)
+                self.pRec = float(line[
+                                      'pRec'])  # intolerant of two loss-of-function variants (like recessive genes, observed ~ 0.5*expected)
+                self.pNull = float(
+                    line['pNull'])  # completely tolerant of loss-of-function variation (observed = expected)
                 self.log('pLI: {pLI}, pRec {pRec}, pNull {pNull}'.format(**line))
                 break
         else:
@@ -430,23 +438,24 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         #
         #
         # gnomAD().write('gnomAD')
-        file = os.path.join(self.settings.temp_folder, 'gnomAD', self.uniprot +'.json')
+        file = os.path.join(self.settings.temp_folder, 'gnomAD', self.uniprot + '.json')
         self.gnomAD = []
         if os.path.exists(file):
             for snp in json.load(open(file)):
                 resi = snp['residue_index']
                 if isinstance(resi, str):
                     resi = int(resi.split('-')[0])
-                #print('HERE', snp)
+                # print('HERE', snp)
                 variant = Variant(id=f'gnomAD_{resi}_{resi}_{snp["id"]}',
-                                description='{from_residue}{residue_index}{to_residue} ({id})'.format(**snp),
-                                x=resi, y=resi,
-                                impact=snp['impact'],
-                                homozygous=snp['homozygous'])
+                                  description='{from_residue}{residue_index}{to_residue} ({id})'.format(**snp),
+                                  x=resi, y=resi,
+                                  impact=snp['impact'],
+                                  homozygous=snp['homozygous'])
                 self.gnomAD.append(variant)
         else:
             self.gnomAD = []
-            warn('No gnomAD data from {0} {1}? Have your run michelanglo_protein.generate.split_gnomAD?'.format(self.gene_name, self.uniprot))
+            warn('No gnomAD data from {0} {1}? Have your run michelanglo_protein.generate.split_gnomAD?'.format(
+                self.gene_name, self.uniprot))
         self.log('gnomAD mutations: {0}'.format(len(self.gnomAD)))
         return self
 
@@ -493,28 +502,29 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         :param mode: parallel | background (=parallel but not complete) | serial (or anything else)
         :return:
         """
-        ### Sanity check
+        ## Sanity check
         if not self.uniprot:
             warn('There is no uniprot value in this entry!')
-            self.uniprot = json.load(open(os.path.join(self.settings.data_folder,'human_prot_namedex.json')))[self.gene_name]
+            self.uniprot = json.load(open(os.path.join(self.settings.data_folder, 'human_prot_namedex.json')))[
+                self.gene_name]
         if not self.gene_name:
-            self.parse_uniprot()  #this runs off the web.
-        ### fetch!
+            self.parse_uniprot()  # this runs off the web.
+        ## fetch!
         tasks = {
-                 'Swissmodel': self.parse_swissmodel,
-                 'pLI': self.parse_pLI,
-                 'param': self.compute_params,
-                 'gnomAD': self.parse_gnomAD,
-                 'ptm': self.get_PTM
-                 #'parse_pdb_blast': self.parse_pdb_blast
-                 #'manual': self.add_manual_data,
-                 #'Binding partners': self.fetch_binders
-                }
-        #prot.get_percent_modelled()
-        #prot.parse_ExAC_type()
-        #prot.dump()
-        #tasks = {'Uniprot': self.parse_uniprot}
-        if mode in ('parallel','background'):
+            'Swissmodel': self.parse_swissmodel,
+            'pLI': self.parse_pLI,
+            'param': self.compute_params,
+            'gnomAD': self.parse_gnomAD,
+            'ptm': self.get_PTM
+            # 'parse_pdb_blast': self.parse_pdb_blast
+            # 'manual': self.add_manual_data,
+            # 'Binding partners': self.fetch_binders
+        }
+        # prot.get_percent_modelled()
+        # prot.parse_ExAC_type()
+        # prot.dump()
+        # tasks = {'Uniprot': self.parse_uniprot}
+        if mode in ('parallel', 'background'):
             threads = {}
             for k, fn in tasks.items():
                 t = threading.Thread(target=fn)
@@ -527,7 +537,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             else:
                 self._threads = threads
                 return self
-        else:  #serial
+        else:  # serial
             for task_fn in tasks.values():
                 task_fn()
         return self
@@ -537,9 +547,12 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         for line in csv.DictReader(self.settings.open('ExAC_pLI'), delimiter='\t'):
             # transcript	gene	chr	n_exons	cds_start	cds_end	bp	mu_syn	mu_mis	mu_lof	n_syn	n_mis	n_lof	exp_syn	exp_mis	exp_lof	syn_z	mis_z	lof_z	pLI	pRec	pNull
             if self.gene_name == line['gene']:
-                self.pLI = float(line['pLI'])  # intolerant of a single loss-of-function variant (like haploinsufficient genes, observed ~ 0.1*expected)
-                self.pRec = float(line['pRec'])  # intolerant of two loss-of-function variants (like recessive genes, observed ~ 0.5*expected)
-                self.pNull = float(line['pNull'])  # completely tolerant of loss-of-function variation (observed = expected)
+                self.pLI = float(line[
+                                     'pLI'])  # intolerant of a single loss-of-function variant (like haploinsufficient genes, observed ~ 0.1*expected)
+                self.pRec = float(line[
+                                      'pRec'])  # intolerant of two loss-of-function variants (like recessive genes, observed ~ 0.5*expected)
+                self.pNull = float(
+                    line['pNull'])  # completely tolerant of loss-of-function variation (observed = expected)
                 break
         else:
             warn('Gene {} not found in ExAC table.'.format(self.gene_name))
@@ -555,15 +568,16 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         # entry: {"uniprot_seq_length": 246, "provider": "PDB", "seqid": "", "from": 3, "uniprot_ac": "P31946",
         # "uniprot_seq_md5": "c82f2efd57f939ee3c4e571708dd31a8", "url": "https://swissmodel.expasy.org/repository/uniprot/P31946.pdb?from=3&to=232&template=6byk&provider=pdb",
         # "to": 232, "template": "6byk", "iso_id": "P31946-1", "coordinate_id": "5be4a9c602efd0e456a7ffeb"}
-        ## figure what animal it is. fix missing.
+        # figure what animal it is. fix missing.
         if self.organism['NCBI Taxonomy'] == 'NA':
             self.organism['NCBI Taxonomy'] = self.get_species_for_uniprot()
-        ## Now. figure what animal it is.
-        if self.organism['NCBI Taxonomy'] in (9606, 3702, 6239, 7227, 10090, 36329, 83332, 83333, 93061, 190650, 208964, 284812, 559292):
-            reffile = 'swissmodel'+self.organism['NCBI Taxonomy']
+        # Now. figure what animal it is.
+        model_organisms = (9606, 3702, 6239, 7227, 10090, 36329, 83332, 83333, 93061, 190650, 208964, 284812, 559292)
+        if int(self.organism['NCBI Taxonomy']) in model_organisms:
+            reffile = 'swissmodel' + self.organism['NCBI Taxonomy']
         else:
             return self
-        models=json.load(self.settings.open(reffile))['index']
+        models = json.load(self.settings.open(reffile))['index']
         for model in models:
             if self.uniprot == model['uniprot_ac']:
                 if model['provider'] == 'PDB':
@@ -572,20 +586,18 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
                     warn('Odd entry')
                     model['seqid'] = 0
                 self.swissmodel.append(
-                                        Structure(description='{template} (identity:{seqid:.0f}%)'.format(**model),
-                                                   id=model['coordinate_id'],
-                                                   chain='A',
-                                                   code=model['coordinate_id'],
-                                                   url=model['url'], ##is this wise? this url is junk
-                                                   x=int(model['from']),
-                                                   y=int(model['to']),
-                                                   type='swissmodel'
-                                                 )
-                                       )
-
+                    Structure(description='{template} (identity:{seqid:.0f}%)'.format(**model),
+                              id=model['coordinate_id'],
+                              chain='A',
+                              code=model['coordinate_id'],
+                              url=model['url'],  #is this wise? this url is junk
+                              x=int(model['from']),
+                              y=int(model['to']),
+                              type='swissmodel'
+                              )
+                )
         self.log('Swissmodel has {0} models.'.format(len(self.swissmodel)))
         return self
-
 
     def get_percent_modelled(self):
         """Returns the [0,1] fraction of the protein length that is modelled (repeats arent recounted)"""
@@ -600,11 +612,11 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             if len(self) == 0:
                 return 0
             state = [False for i in range(len(self))]
-            for dataset in (self.swissmodel,self.pdbs):
+            for dataset in (self.swissmodel, self.pdbs):
                 for model in dataset:
-                    for i in range(clean(model.x),clean(model.y)):
-                        state[i]=True
-            self.percent_modelled = sum(state)/len(self)
+                    for i in range(clean(model.x), clean(model.y)):
+                        state[i] = True
+            self.percent_modelled = sum(state) / len(self)
         except Exception as err:
             warn(f'error arose in %modelled...{err}')
             self.percent_modelled = -1
@@ -618,7 +630,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             warn('No PDB blast data from {0} {1}?'.format(self.gene_name, self.uniprot))
         return self
 
-    ####################### model checks.
+    ############ model checks.
     def get_offsets(self):
         for m in self.pdbs:
             m.lookup_sifts()
@@ -628,7 +640,6 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         for m in self.pdbs:
             m.lookup_resolution()
         return self
-
 
     def augment_pdb_w_offset(self):
         """
@@ -643,10 +654,11 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         for i in range(len(self.pdbs)):
             model = self.pdbs[i]
             details = self.lookup_pdb_chain_uniprot(model.url, model.chain)
-            detail = details[0] #offset should be the same for all.. check_discrepancy_in_pdb_chain_uniprot() not needed
+            detail = details[
+                0]  # offset should be the same for all.. check_discrepancy_in_pdb_chain_uniprot() not needed
             if detail['PDB_BEG'] != detail['SP_BEG'] or detail['PDB_END'] != detail['SP_END']:
                 model.offset = int(detail['PDB_BEG']) - int(detail['SP_BEG'])
-                self.pdbs[i] = model # remnant from when it was a new namedtuple
+                self.pdbs[i] = model  # remnant from when it was a new namedtuple
         return self
 
     # pdb_chain_uniprot.tsv
@@ -675,14 +687,14 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
 
     # figure out which is best model
     def get_best_model(self):
-        #So ideally making a multidomain concatenation would be best. But that is hard as it must not be overlapping spacially and sequentially.
-        #figuring out what works best is key
-        smodels = sorted(self.pdbs, key=lambda x: int(x['y'])-int(x['x']), reverse=True)
+        # So ideally making a multidomain concatenation would be best. But that is hard as it must not be overlapping spacially and sequentially.
+        # figuring out what works best is key
+        smodels = sorted(self.pdbs, key=lambda x: int(x['y']) - int(x['x']), reverse=True)
         for smodel in smodels:
             details = self.lookup_pdb_chain_uniprot(smodel['id'].split('_')[0], smodel['id'].split('_')[1])
             if self.check_discrepancy_in_pdb_chain_uniprot(details):
                 return smodel
-        smodels = sorted(self.swissmodel, key=lambda x: int(x['y'])-int(x['x']), reverse=True)
+        smodels = sorted(self.swissmodel, key=lambda x: int(x['y']) - int(x['x']), reverse=True)
         if smodels:
             return smodels[0]
         else:
@@ -697,7 +709,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         self.features['PSP_modified_residues'] = []
         assert self.uniprot, 'Uniprot Acc. required. Kind of.'
         self.log(f'Getting PTM for {self.uniprot}')
-        fp = os.path.join(self.settings.temp_folder,'phosphosite',self.uniprot+'.json')
+        fp = os.path.join(self.settings.temp_folder, 'phosphosite', self.uniprot + '.json')
         if os.path.exists(fp):
             with open(fp) as fh:
                 self.features['PSP_modified_residues'] = json.load(fh)
@@ -711,11 +723,15 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
         self.sequence = self.sequence.replace(' ', '').replace('X', '')
         p = ProtParam.ProteinAnalysis(self.sequence)
         self.properties = {}
-        self.properties['kd'] = p.protein_scale(ProtParamData.kd, window=9, edge=.4) # Kyte & Doolittle index of hydrophobicity J. Mol. Biol. 157:105-132(1982).
-        self.properties['Flex'] = p.protein_scale(ProtParamData.Flex, window=9, edge=.4) # Flexibility Normalized flexibility parameters (B-values), average Vihinen M., Torkkila E., Riikonen P. Proteins. 19(2):141-9(1994).
-        self.properties['hw'] = p.protein_scale(ProtParamData.hw, window=9, edge=.4) # Hydrophilicity Hopp & Wood Proc. Natl. Acad. Sci. U.S.A. 78:3824-3828(1981)
-        self.properties['em'] = p.protein_scale(ProtParamData.em, window=9, edge=.4) # Surface accessibility Vergoten G & Theophanides T, Biomolecular Structure and Dynamics, pg.138 (1997).
-        self.properties['ja'] = p.protein_scale(ProtParamData.ja, window=9, edge=.4) # Janin Interior to surface transfer energy scale
-        #DIWV requires a mod.
+        self.properties['kd'] = p.protein_scale(ProtParamData.kd, window=9,
+                                                edge=.4)  # Kyte & Doolittle index of hydrophobicity J. Mol. Biol. 157:105-132(1982).
+        self.properties['Flex'] = p.protein_scale(ProtParamData.Flex, window=9,
+                                                  edge=.4)  # Flexibility Normalized flexibility parameters (B-values), average Vihinen M., Torkkila E., Riikonen P. Proteins. 19(2):141-9(1994).
+        self.properties['hw'] = p.protein_scale(ProtParamData.hw, window=9,
+                                                edge=.4)  # Hydrophilicity Hopp & Wood Proc. Natl. Acad. Sci. U.S.A. 78:3824-3828(1981)
+        self.properties['em'] = p.protein_scale(ProtParamData.em, window=9,
+                                                edge=.4)  # Surface accessibility Vergoten G & Theophanides T, Biomolecular Structure and Dynamics, pg.138 (1997).
+        self.properties['ja'] = p.protein_scale(ProtParamData.ja, window=9,
+                                                edge=.4)  # Janin Interior to surface transfer energy scale
+        # DIWV requires a mod.
         return self
-

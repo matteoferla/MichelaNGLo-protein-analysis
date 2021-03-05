@@ -21,9 +21,9 @@ The old code was slow:
                     next(fh)  # licence
                     next(fh)  # blankline
                     for row in csv.DictReader(fh, delimiter='\t'):
-                        if row['ACC_ID'] == self.uniprot: ## this will not pick up mice!
+                        if row['ACC_ID'] == self.uniprot: # this will not pick up mice!
                             modified_residues.append(row["MOD_RSD"])
-        self.features['PSP_modified_residues'] = modified_residues ## list of str (e.g. 'K30-m2')
+        self.features['PSP_modified_residues'] = modified_residues # list of str (e.g. 'K30-m2')
         
         """+licence_note
 
@@ -48,14 +48,14 @@ class Phosphosite:
                         break
                 for row in csv.DictReader(fh, delimiter='\t'):
                     if row['ORGANISM'] == 'human' and '-' in row['MOD_RSD']:
-                        ## PSP contains residue info that may not be changes in human, while are in mice.
+                        # PSP contains residue info that may not be changes in human, while are in mice.
                         res, ptm = row['MOD_RSD'].split('-')
                         self.data[row['ACC_ID']].append({'symbol': row['GENE'],
                                                     'residue_index': int(res[1:]),
                                                     'from_residue': res[0],
                                                     'ptm': ptm,
                                                     'count': sum([int(row[k]) if row[k] != '' else 0 for k in ('LT_LIT', 'MS_LIT', 'MS_CST')])})
-                    #if row['ACC_ID'] == self.uniprot:  ## this will not pick up mice!
+                    #if row['ACC_ID'] == self.uniprot:  # this will not pick up mice!
                     #    modified_residues.append(row["MOD_RSD"])
         return self
 

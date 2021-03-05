@@ -102,7 +102,7 @@ class StructureAnalyser:
 
 
     def get_distance_to_closest_chain(self):
-        ## this is CA only.
+        # this is CA only.
         assert self.pymol is not None, 'Can only be called within a PyMOL session'
         my_dict = {'chains': set(), 'target': {}, 'others': {}}
         self.pymol.cmd.iterate(f'name CA', "chains.add(chain)", space=my_dict)

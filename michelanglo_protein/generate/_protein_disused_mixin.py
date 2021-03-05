@@ -57,7 +57,7 @@ class _DisusedMixin:
             self.log('UNCRYSTALLISED MUTATION')
         return self
 
-    ## depraction zone.
+    # depraction zone.
     def write(self, file=None):
         raise Exception('DEPRACATED. use write_uniprot')
 

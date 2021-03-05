@@ -10,7 +10,7 @@ The key parts are:
 Note that the folder pages (.pages_folder) was for when it was not for a server. say .wipe_html() clears them.
 This is old code.
 """
-################## Environment ###########################
+######### Environment ##############
 
 import os, json
 import zipfile
@@ -33,8 +33,8 @@ class Singleton(type): #https://stackoverflow.com/questions/6760685/creating-a-s
             warn('Attempt to initialise another instance of a singleton. Returning original.')
         return cls._instances[cls]
 
-### Some reference files have to be fetched manually...
-### this is for humans/will need to be updated below.
+## Some reference files have to be fetched manually...
+## this is for humans/will need to be updated below.
 _refs = (
     'ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/ExAC.r1.sites.vep.vcf.gz',
     'http://geneontology.org/gene-associations/goa_human.gaf.gz',
@@ -47,6 +47,9 @@ _refs = (
     'ftp://ftp.nextprot.org/pub/current_release/mapping/nextprot_refseq.txt',
     'https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/genomes/gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz'
     'ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/flatfiles/tsv/pdb_chain_uniprot.tsv.gz')
+
+# http://www.sbg.bio.ic.ac.uk/~missense3d/download/all_dataset.xlsx
+# http://www.sbg.bio.ic.ac.uk/~missense3d/download/1052_hom_str.zip
 
 
 class GlobalSettings(metaclass=Singleton):
@@ -72,7 +75,7 @@ class GlobalSettings(metaclass=Singleton):
                  'http://www.sbg.bio.ic.ac.uk/~missense3d/download/1052_hom_str.zip'] #from http://www.sbg.bio.ic.ac.uk/~missense3d/dataset.html
     for _s in (9606, 3702, 6239, 7227, 10090, 36329, 83332, 83333, 93061, 190650, 208964, 284812, 559292):
         addresses.append(f'https://swissmodel.expasy.org/repository/download/core_species/{_s}_meta.tar.gz')
-    manual_task_note = """'## Manual TASKS\nRemember that user has manually downloaded _site_dataset.gz files from https://www.phosphosite.org/staticDownloads at phosphosite.'"""
+    manual_task_note = """'# Manual TASKS\nRemember that user has manually downloaded _site_dataset.gz files from https://www.phosphosite.org/staticDownloads at phosphosite.'"""
 
     # getter of data_folder
     def _get_datafolder(self):
@@ -156,7 +159,7 @@ class GlobalSettings(metaclass=Singleton):
                 exit()
         for url in self.addresses:
             self._deal_w_url(url, refresh)
-        ## convert dodgy ones.
+        # convert dodgy ones.
         self.create_json_from_idx('resolu.idx', 'resolution.json')
         print(self.manual_task_note)
 
@@ -226,7 +229,7 @@ class GlobalSettings(metaclass=Singleton):
             return open(fullfile, 'w')
         elif not os.path.isfile(fullfile):
             self.retrieve_references(issue = fullfile)
-        ## handle compression
+        # handle compression
         return open(fullfile)
 
     def open(self, kind):

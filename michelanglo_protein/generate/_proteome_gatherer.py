@@ -35,13 +35,13 @@ class ProteomeGathererOLD:
         :param skip: boolean, if true it runs parse_proteome
         """
         warn('This script is depractated in favour of uniprot_master_parser.UniprotMasterReader', category=DeprecationWarning)
-        ################ FETCH ALL RAW FILES #################################################
+        ######## FETCH ALL RAW FILES #########################
         ProteinGatherer.settings.verbose = True
         announce('Retrieving references')
         if not skip:
             ProteinGatherer.settings.retrieve_references(ask=False)
 
-        ################ PARSE UNIPROT #######################################################
+        ######## PARSE UNIPROT ############################
         self.master_file = os.path.join(ProteinGatherer.settings.temp_folder, 'uniprot_sprot.xml')
         # This class parses the uniprot FTP file and can do various things. such as making a small one that is only human.
         # But mainly the `UniprotMasterReader.convert('uniprot_sprot.xml')` method whcih generates the JSON files required.
@@ -51,7 +51,7 @@ class ProteomeGathererOLD:
             #UniprotMasterReader.convert(uniprot_master_file = self.master_file, first_n_protein=0)
             UniprotMasterReader()
 
-        ################ BLAST PDB #######################################################
+        ######## BLAST PDB ############################
         # uncompresses the pdbaa
         announce('Extracting blast db')
         if not skip:
@@ -64,14 +64,14 @@ class ProteomeGathererOLD:
         announce('Parsing blast output')
         if not skip:
             Blaster.parse('blastpdb','blastpdb2')
-        ################ ASSEMBLE #######################################################
+        ######## ASSEMBLE ############################
         announce('Assembing proteome')
         ProteinGatherer.settings.fetch = False
         ProteinGatherer.settings.error_tolerant = False
         ProteinGatherer.settings.missing_attribute_tolerant = False
         ProteinGatherer.settings.verbose = True
         uniprot_ids = list(set(json.load(open(os.path.join(ProteinGatherer.settings.data_folder,'human_prot_namedex.json'))).values()))
-        random.shuffle(uniprot_ids)   ## debug...
+        random.shuffle(uniprot_ids)   # debug...
         for acc in uniprot_ids:
             prot = ProteinGatherer(uniprot=acc)
             if not remake_pickles:
@@ -89,13 +89,12 @@ class ProteomeGathererOLD:
 class ProteomeGatherer:
     settings = global_settings
 
-    def __init__(self):
-        ################ FETCH ALL RAW FILES #################################################
+    def __init__(self, data_folder: str):
+        ######## FETCH ALL RAW FILES #########################
         self.settings.verbose = True
         announce('Retrieving references')
         self.settings.verbose = True  # False
-        self.settings.startup(data_folder='../MichelaNGLo-protein-data')
-        self.settings.startup(data_folder='../MichelaNGLo-data')
+        self.settings.startup(data_folder=data_folder)
         self.settings.retrieve_references(ask=False, refresh=False)
         self.settings.error_tolerant = True
         announce('Parsing Uniprot')

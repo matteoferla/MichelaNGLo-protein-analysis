@@ -1,4 +1,4 @@
-### This code is not part of the module, it is unlinked.
+## This code is not part of the module, it is unlinked.
 
 import requests
 
@@ -36,7 +36,7 @@ class PDBMeta:
                 s = mappings[0]['start']['residue_number']
                 e = mappings[0]['end']['residue_number']
                 return (s, e)
-            else: ## synthetic.
+            else: # synthetic.
                 return (1, len(entity['sequence']))
         else:
             raise ValueError('This is not a peptide')
