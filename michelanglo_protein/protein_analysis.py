@@ -16,10 +16,13 @@ from typing import Union, List, Dict, Tuple, Optional
 class ProteinAnalyser(ProteinCore):
     ptm_definitions = {'p': 'phosphorylated',
                        'ub': 'ubiquitinated',
+                       'sm': 'sumoylated',
                        'ga': 'O-galactosylated',
+                       'gl': 'glucosylated',
                        'm1': 'methylated',
                        'm2': 'dimethylated',
-                       'm3': 'trimethylated'}
+                       'm3': 'trimethylated',
+                       'me': 'methylated'}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
