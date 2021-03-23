@@ -2,7 +2,7 @@ from ..structure import Structure
 from ..mutation import Mutation
 from michelanglo_transpiler import PyMolTranspiler
 import pymol2
-import math
+import math, re
 
 class StructureAnalyser:
     """
@@ -33,7 +33,10 @@ class StructureAnalyser:
             self.coordinates = structure.get_offset_coordinates()
         else:
             self.structure.type = 'swissmodel'
-            self.coordinates = structure.get_coordinates()
+            chain = re.match('\w{4}\.\w+\.(\w)', structure.description).group(1)
+            self.coordinates = PyMolTranspiler().renumber(pdb=structure.get_coordinates(),
+                                                          definitions=structure.chain_definitions,
+                                                          make_A=chain).raw_pdb
         assert self.coordinates, 'There are no coordinates!!'
         # these two are very much for the ajax.
         self.chain_definitions = structure.chain_definitions  # seems redundant but str(structure) does not give these.
@@ -128,19 +131,24 @@ class StructureAnalyser:
         """
         assert self.pymol is not None, 'Can only be called within a PyMOL session'
         my_dict = {'target': {}, 'ligands': {}}
+        #assert self.pymol.cmd.select(self.target_selection) != 0, f'selection {self.target_selection} is invalid'
         self.pymol.cmd.iterate_state(1, f'{self.target_selection}', "target[resi+'.'+name+':'+chain] =(x,y,z)", space=my_dict)
         if not self.ligand_list:
             return {'target': None, 'closest': None, 'distance': None}
+        # self.ligand_list = {'GDP'}
+        # my_dict['ligands'] = {'[GDP]4.PA:_': (2.3580000400543213, -11.11400032043457, 49.12099838256836), ...}
         for lig in self.ligand_list:
-            self.pymol.cmd.iterate_state(1, f'resn {lig}', "ligands['['+resn+']'+resi+'.'+name+':'+chain] = (x,y,z)", space=my_dict)
+            # NGL selection
+            filler = "ligands['['+resn+']'+resi+'.'+name+':'+chain] = (x,y,z)"
+            self.pymol.cmd.iterate_state(1, f'resn {lig}', filler, space=my_dict)
         closest_t = ''
         closest_l = ''
         closest_d = 99999
         for l in my_dict['ligands']:
-            for t in my_dict['target']:
-                d = self.euclidean(my_dict['ligands'][l], my_dict['target'][t])
+            for target_name, target_coords in my_dict['target'].items():
+                d = self.euclidean(my_dict['ligands'][l], target_coords)
                 if d < closest_d:
-                    closest_t = t
+                    closest_t = target_name
                     closest_l = l
                     closest_d = d
         return {'target': closest_t, 'closest': closest_l, 'distance': closest_d}
