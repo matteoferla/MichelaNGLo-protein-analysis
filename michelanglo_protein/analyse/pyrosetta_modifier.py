@@ -134,7 +134,10 @@ class Mutator:
         return self.scores
 
     def mutate(self, aa):
-        pyrosetta.toolbox.mutate_residue(self.pose, self.target_pdb2pose(self.target), aa)
+        res = self.target_pdb2pose(self.target)
+        if res == 0:
+            raise ValueError('Residue not in structure')
+        pyrosetta.toolbox.mutate_residue(self.pose, res, aa)
 
     def do_relax(self):
         self.relax.apply(self.pose)
