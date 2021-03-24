@@ -34,7 +34,8 @@ class StructureAnalyser:
         else:
             self.structure.type = 'swissmodel'
             chain = re.match('\w{4}\.\w+\.(\w)', structure.description).group(1)
-            self.coordinates = PyMolTranspiler().renumber(pdb=structure.get_coordinates(),
+            pdbblock = structure.get_coordinates()
+            self.coordinates = PyMolTranspiler().renumber(pdb=pdbblock,
                                                           definitions=structure.chain_definitions,
                                                           make_A=chain).raw_pdb
         assert self.coordinates, 'There are no coordinates!!'

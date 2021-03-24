@@ -110,7 +110,7 @@ class Structure:
         if r.status_code == 200:
             self.coordinates = r.text
         else:
-            warn(f'Model {self.code} ({self.url}) failed.')
+            raise ConnectionError(f'Model {self.code} ({self.url}) failed.')
         return self.coordinates
 
     def get_offset_coordinates(self):
