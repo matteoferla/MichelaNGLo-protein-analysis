@@ -26,12 +26,12 @@ Glutamine       Gln     Q       C5H10N2O3       O=C(N)CCC(N)C(=O)O      polar   
 Glycine Gly     G       C2H5NO2 C(C(=O)O)N      nonpolar        neutral −0.4    nonessential    6.06    2.35    9.78
 Histidine       His     H       C6H9N3O2        O=C(C(CC1=CNC=N1)N)O polar   neutral(90%)−3.2        essential       7.60    1.80    9.33
 Isoleucine      Ile     I       C6H13NO2        CC[C@H](C)C(C(=O)O)N       nonpolar        neutral 4.5     essential       6.05    2.32    9.76
-Leucine Leu     L       C6H13NO2        CC(C)C[C@@H](C(=O)O)N   nonpolar        neutral 3.8     essential       6.01    2.33    9.74
+Leucine Leu     L       C6H13NO2        CC(C)CC(C(=O)O)N   nonpolar        neutral 3.8     essential       6.01    2.33    9.74
 Lysine  Lys     K       C6H14N2O2       C(CC[NH3+])CC(C(=O)O)N       polar   positive        −3.9    essential       9.60    2.16    9.06
 Methionine      Met     M       C5H11NO2S       CSCCC(C(=O)O)N  nonpolar        neutral 1.9     essential       5.74    2.13    9.28
 Phenylalanine   Phe     F       C9H11NO2        c1ccc(cc1)CC(C(=O)O)N      nonpolar        neutral 2.8     essential       5.49    2.20    9.31
 Proline Pro     P       C5H9NO2 C1CC(NC1)C(=O)O nonpolar        neutral −1.6    nonessential    6.30    1.95    10.64
-Serine  Ser     S       C3H7NO3 C([C@@H](C(=O)O)N)O     polar   neutral −0.8    nonessential    5.68    2.19    9.21
+Serine  Ser     S       C3H7NO3 C(C(C(=O)O)N)O     polar   neutral −0.8    nonessential    5.68    2.19    9.21
 Threonine       Thr     T       C4H9NO3 C[C@H](C(C(=O)O)N)O        polar   neutral −0.7    essential       2.09    2.09    9.10
 Tryptophan      Trp     W       C11H12N2O2      c1ccc2c(c1)c(c[nH]2)CC(C(=O)O)N    nonpolar        neutral −0.9    essential       5.89    2.46    9.41
 Tyrosine        Tyr     Y       C9H11NO3        NC(Cc1ccc(O)cc1)C(O)=O     polar   neutral −1.3    nonessential    5.64    2.20    9.21
@@ -88,21 +88,33 @@ Valine  Val     V       C5H11NO2        CC(C)C(C(=O)O)N    nonpolar        neutr
         #mols = [mod(k) for k in (ab, ad)]
         mols = [self.aminoacids[k] for k in (ab, ad)]
         # mod atoms
-        res=Chem.rdFMCS.FindMCS(mols,
-                                ringMatchesRingOnly=True,
-                                completeRingsOnly=True,
-                                #matchValences=True,
-                                matchChiralTag=True,
-                                bondCompare=Chem.rdFMCS.BondCompare.CompareOrderExact
-                                #atomCompare=Chem.rdFMCS.AtomCompare.CompareIsotopes
-                               )
+        if 'P' not in (ab, ad):
+            res=Chem.rdFMCS.FindMCS(mols,
+                                    #ringMatchesRingOnly=True,
+                                    #completeRingsOnly=True,
+                                    matchValences=True,
+                                    #matchChiralTag=True,
+                                    bondCompare=Chem.rdFMCS.BondCompare.CompareOrderExact
+                                    #atomCompare=Chem.rdFMCS.AtomCompare.CompareIsotopes
+                                   )
+        else:
+            res=Chem.rdFMCS.FindMCS(mols,
+                                    ringMatchesRingOnly=True,
+                                    completeRingsOnly=True,
+                                    matchValences=True,
+                                    #matchChiralTag=True,
+                                    bondCompare=Chem.rdFMCS.BondCompare.CompareOrderExact
+                                    #atomCompare=Chem.rdFMCS.AtomCompare.CompareIsotopes
+                                   )
         common = Chem.MolFromSmarts(res.smartsString)
         drawer = rdMolDraw2D.MolDraw2DSVG(400,200)
         # remove the Calpha C-14 dodginess
         #mols[0].GetAtomsMatchingQuery(Chem.rdqueries.IsotopeEqualsQueryAtom(14))[0].SetIsotope(0)
         #mols[0].GetAtomsMatchingQuery(Chem.rdqueries.AtomNumEqualsQueryAtom(0))[0].SetAtomicNum(6)
         #rdDepictor.Compute2DCoords(mols[0])
-        unconserved = [i for i in range(mols[0].GetNumAtoms()) if i not in mols[0].GetSubstructMatch(common)]
+        match = mols[0].GetSubstructMatch(common)
+        backbone = self.get_backbone(mols[0])
+        unconserved = [i for i in range(mols[0].GetNumAtoms()) if i not in match and i not in backbone]
         drawer.DrawMolecule(mols[0], highlightAtoms=unconserved)
         drawer.FinishDrawing()
         return drawer.GetDrawingText()
@@ -123,7 +135,7 @@ Valine  Val     V       C5H11NO2        CC(C)C(C(=O)O)N    nonpolar        neutr
         for ab in self.aminoacids:
             for ad in self.aminoacids:
                 svg = self.get_svg(ab, ad)
-                with open(f'{folder}/{ab}{ad}.svg','w') as fh:
+                with open(f'{folder}/{ab}{ad}.svg', 'w') as fh:
                     fh.write(svg)
 
     def sizes(self):
