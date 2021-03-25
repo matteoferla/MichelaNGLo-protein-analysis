@@ -583,4 +583,23 @@ class ProteinAnalyser(ProteinCore):
     # disorder
 
     def conclude(self):
-        pass
+        pass   # JS side.
+
+    def correct_definitions(self):
+        # in some case there are multiple chain definitions.
+        for structure in self.pdbs:
+            mod_chain_definitions = {}  # dict not list
+            for chain_definition in structure.chain_definitions:
+                chain = chain_definition['chain']
+                if chain not in mod_chain_definitions:
+                    mod_chain_definitions[chain] = chain_definition
+                # keep least offset definition.
+                elif mod_chain_definitions[chain]['uniprot'] == self.uniprot:
+                    pass
+                elif chain_definition['uniprot'] == self.uniprot:
+                    mod_chain_definitions[chain] = chain_definition
+                elif abs(chain_definition['offset']) > abs(mod_chain_definitions[chain]['offset']):
+                    mod_chain_definitions[chain] = chain_definition
+                else:
+                    pass
+            structure.chain_definitions = list(mod_chain_definitions.values())

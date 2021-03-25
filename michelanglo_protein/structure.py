@@ -165,6 +165,7 @@ class Structure:
 
         if not self.chain_definitions:
             details = self._get_sifts()
+            offset = 0
             for detail in details:
                 # clean rows
                 for k in ('PDB_BEG','PDB_END', 'RES_END', 'RES_BEG', 'SP_BEG','SP_END'):
