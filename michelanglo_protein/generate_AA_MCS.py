@@ -112,10 +112,22 @@ Valine  Val     V       C5H11NO2        CC(C)C(C(=O)O)N    nonpolar        neutr
         #mols[0].GetAtomsMatchingQuery(Chem.rdqueries.IsotopeEqualsQueryAtom(14))[0].SetIsotope(0)
         #mols[0].GetAtomsMatchingQuery(Chem.rdqueries.AtomNumEqualsQueryAtom(0))[0].SetAtomicNum(6)
         #rdDepictor.Compute2DCoords(mols[0])
-        match = mols[0].GetSubstructMatch(common)
-        backbone = self.get_backbone(mols[0])
-        unconserved = [i for i in range(mols[0].GetNumAtoms()) if i not in match and i not in backbone]
-        drawer.DrawMolecule(mols[0], highlightAtoms=unconserved)
+        mol = mols[0]
+        match = mol.GetSubstructMatch(common)
+        backbone = self.get_backbone(mol)
+        unconserved = [i for i in range(mol.GetNumAtoms()) if i not in match and i not in backbone]
+        coral = (1, 0.498, 0.314)
+        robin_egg = (0.122, 0.808, 0.796)
+        pale_turquoise = (0.65, 0.90, 0.88)
+        azure_mist = (0.941, 1., 1.)
+        atom_highlights = {**{atom_idx: [coral] for atom_idx in unconserved},
+                           **{atom_idx: [pale_turquoise] for atom_idx in backbone}}
+        bond_filter = lambda bond, atoms: bond.GetBeginAtomIdx() in atoms and bond.GetEndAtomIdx() in atoms
+        bond_highlights = {**{bond.GetIdx(): [coral] for bond in mol.GetBonds() if bond_filter(bond, unconserved)},
+                          **{bond.GetIdx(): [pale_turquoise] for bond in mol.GetBonds() if bond_filter(bond,   backbone)}}
+        drawer.DrawMoleculeWithHighlights(mol,
+                                          '', atom_highlights, bond_highlights,
+                                          {},{})
         drawer.FinishDrawing()
         return drawer.GetDrawingText()
 
