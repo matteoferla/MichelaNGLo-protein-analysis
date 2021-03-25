@@ -687,6 +687,7 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
 
     # figure out which is best model
     def get_best_model(self):
+        self.correct_definitions()
         # So ideally making a multidomain concatenation would be best. But that is hard as it must not be overlapping spacially and sequentially.
         # figuring out what works best is key
         smodels = sorted(self.pdbs, key=lambda x: int(x['y']) - int(x['x']), reverse=True)
