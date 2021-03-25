@@ -49,6 +49,12 @@ class StructureAnalyser:
         with pymol2.PyMOL() as self.pymol:
             self.pymol.cmd.read_pdbstr(self.coordinates, self._obj_name)
             self.N_atoms = self.pymol.cmd.select(self.target_selection)
+            # --- verify okay
+            if self.N_atoms == 0:
+                raise ValueError('Residue is in missing density')
+            elif self.N_atoms == 1:
+                raise ValueError('Structure is likely an Calpha trace')
+            # --- analyses
             self.has_all_heavy_atoms = self.N_atoms >= self.normal_HA[self.mutation.from_residue]
             self.pymol.cmd.h_add()
             self.neighbours = self.get_neighbours()
