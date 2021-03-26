@@ -3,6 +3,7 @@ from ..mutation import Mutation
 from michelanglo_transpiler import PyMolTranspiler
 import pymol2
 import math, re
+from typing import *
 
 class StructureAnalyser:
     """
@@ -15,7 +16,7 @@ class StructureAnalyser:
     # I think PyMOL has H,S,L only?
     ss_types = {'H': 'Helix','S': 'Sheet', 'L': 'Loop', 'G': '3_10 helix', 'I': 'Pi helix', 'T': 'Turn', 'C': 'Coil', 'E': 'Sheet', 'B': 'Beta bridge', '-': 'Unassigned'}
 
-    def __init__(self, structure: Structure, mutation: Mutation):
+    def __init__(self, structure: Structure, mutation: Mutation, sequence: Optional[str] = None):
         """
 
         :param structure: a instance of Structure, a former namedtuple and is in core.py
@@ -33,11 +34,19 @@ class StructureAnalyser:
             self.coordinates = structure.get_offset_coordinates()
         else:
             self.structure.type = 'swissmodel'
-            chain = re.match('\w{4}\.\w+\.(\w)', structure.description).group(1)
+            if self.structure.chain:
+                chain = self.structure.chain
+            else:
+                # retrieve from Swissmodel does not have template in description
+                # (see Structure.from_swissmodel_query)
+                # but the old pregen stuff did!
+                chain = re.match('\w{4}\.\w+\.(\w)', structure.description).group(1)
             pdbblock = structure.get_coordinates()
             self.coordinates = PyMolTranspiler().renumber(pdb=pdbblock,
                                                           definitions=structure.chain_definitions,
-                                                          make_A=chain).raw_pdb
+                                                          make_A=chain,
+                                                          sequence=sequence
+                                                          ).raw_pdb
         assert self.coordinates, 'There are no coordinates!!'
         # these two are very much for the ajax.
         self.chain_definitions = structure.chain_definitions  # seems redundant but str(structure) does not give these.

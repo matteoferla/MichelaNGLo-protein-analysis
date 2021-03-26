@@ -358,7 +358,7 @@ class ProteinAnalyser(ProteinCore):
                                             'name': self.gene_name,
                                             'note': 'Retroactively filled data. May be wrong.'
                                             }]
-        self.structural = StructureAnalyser(structure, self.mutation)
+        self.structural = StructureAnalyser(structure, self.mutation, sequence=self.sequence)
         if self.structural and self.structural.neighbours:
             # see mutation.exposure_effect
             self.mutation.surface_expose = 'buried' if self.structural.buried else 'surface'
