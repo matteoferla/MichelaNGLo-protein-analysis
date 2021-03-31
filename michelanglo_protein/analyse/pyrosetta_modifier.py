@@ -30,7 +30,14 @@ class Mutator:
     * ``._pdb2pose`` points to ``self.pose.pdb_info().pdb2pose``, while target_pdb2pose accepts Target and gives back int
     """
 
-    def __init__(self, pdbblock: str, target_resi: int, target_chain: str = 'A', cycles: int = 1, radius: int = 4, params_filenames: List[str]=()):
+    def __init__(self,
+                 pdbblock: str,
+                 target_resi: int,
+                 target_chain: str = 'A',
+                 cycles: int = 1,
+                 radius: int = 4,
+                 params_filenames: List[str]=(),
+                 scorefxn_name:str = 'ref2015'):
         """
         Load.
 
@@ -44,7 +51,14 @@ class Mutator:
         :param radius: (opt) angstrom to expand around
         :param params_filenames: list of filenames of params files (rosetta topology files)
         """
-        self.scorefxn = pyrosetta.get_fa_scorefxn()
+        if 'beta_july15' in scorefxn_name or 'beta_nov15' in scorefxn_name:
+            pyrosetta.rosetta.basic.options.set_boolean_option('corrections:beta_july15', True)
+        elif 'beta_nov16' in scorefxn_name:
+            pyrosetta.rosetta.basic.options.set_boolean_option('corrections:beta_nov16', True)
+        elif 'genpot' in scorefxn_name:
+            pyrosetta.rosetta.basic.options.set_boolean_option('corrections:gen_potential', True)
+        # there are a few other fixes. Such as franklin2019 and spades.
+        self.scorefxn = pyrosetta.create_score_function(scorefxn_name)
         self.scores = {}  # gets filled by .mark()
         # Load
         self.target = Target(target_resi, target_chain)
@@ -115,7 +129,13 @@ class Mutator:
             self.movemap.set_bb(n, True)
             self.movemap.set_chi(n, True)
         self.relax.set_movemap(self.movemap)
+        if self.scorefxn.get_weight(pyrosetta.rosetta.core.scoring.ScoreType.cart_bonded) > 0:
+            # it's cartesian!
+            self.relax.cartesian(True)
+            self.relax.minimize_bond_angles(True)
+            self.relax.minimize_bond_lengths(True)
         if hasattr(self.relax, 'set_movemap_disables_packing_of_fixed_chi_positions'):
+            # this is relatively new
             self.relax.set_movemap_disables_packing_of_fixed_chi_positions(True)
         else:
             print("UPDATE YOUR DAMN PYROSETTA NOW.")

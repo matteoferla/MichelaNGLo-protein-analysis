@@ -34,6 +34,7 @@ class ProteinAnalyser(ProteinCore):
         self.energetics = None
         self.rosetta_params_filenames = []
         self.energetics_gnomAD = None
+        self.scorefxn_name = 'ref2015'
 
     ####### elm
     _elmdata = []
@@ -402,9 +403,11 @@ class ProteinAnalyser(ProteinCore):
         """
         return dict(pdbblock=self.pdbblock,
                     target_resi=self.mutation.residue_index,
-                    target_chain='A', cycles=1,
+                    target_chain='A',
+                    cycles=1,
                     params_filenames=self.rosetta_params_filenames,
-                    radius=3)
+                    radius=3,
+                    scorefxn_name=self.scorefxn_name)
 
     @property
     def pdbblock(self) -> Union[str, None]:
