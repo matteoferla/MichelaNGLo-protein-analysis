@@ -407,7 +407,7 @@ class ProteinAnalyser(ProteinCore):
                     cycles=1,
                     params_filenames=self.rosetta_params_filenames,
                     radius=3,  # the radius via PyMol radius=3
-                    use_pymol_for_neighbors= False,
+                    use_pymol_for_neighbours= False,
                     scorefxn_name=self.scorefxn_name)
 
     @property

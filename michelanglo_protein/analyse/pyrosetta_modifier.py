@@ -38,7 +38,7 @@ class Mutator:
                  radius: int = 4,
                  params_filenames: List[str]=(),
                  scorefxn_name:str = 'ref2015',
-                 use_pymol_for_neighbors:bool=True):
+                 use_pymol_for_neighbours:bool=True):
         """
         Load.
 
@@ -69,11 +69,11 @@ class Mutator:
         self.mark('raw')  # mark scores the self.pose
 
         # Find neighbourhood (pyrosetta.rosetta.utility.vector1_bool)
-        if use_pymol_for_neighbors:
+        if use_pymol_for_neighbours:
             neighbours = self.calculate_neighbours_in_pymol(radius)
-            self.neighbor_vector = self.targets2vector(neighbours)
+            self.neighbour_vector = self.targets2vector(neighbours)
         else:
-            self.neighbor_vector = self.calculate_neighbours_in_pyrosetta(radius)
+            self.neighbour_vector = self.calculate_neighbours_in_pyrosetta(radius)
             raise NotImplementedError
 
         # Read relax
@@ -107,9 +107,9 @@ class Mutator:
     def calculate_neighbours_in_pymol(self, radius: int = 4) -> List[Target]:
         """
         Gets the residues within the radius of target. THis method uses PyMOL!
-        It it is to fills self.neighbor_vector and returns it.
+        It it is to fills self.neighbour_vector and returns it.
 
-        :return: self.neighbor_vector
+        :return: self.neighbour_vector
         :rtype: []
         """
         with pymol2.PyMOL() as pymol:
@@ -132,9 +132,9 @@ class Mutator:
     def calculate_neighbours_in_pyrosetta(self, radius: int = 12) -> List[Target]:
         """
         Gets the residues within the radius of target. THis method uses PyMOL!
-        It fills self.neighbor_vector and returns it.
+        It fills self.neighbour_vector and returns it.
 
-        :return: self.neighbor_vector
+        :return: self.neighbour_vector
         :rtype: List[Target]
         """
         raise NotImplementedError
@@ -148,8 +148,8 @@ class Mutator:
         """
         self.relax = pyrosetta.rosetta.protocols.relax.FastRelax(self.scorefxn, cycles)
         self.movemap = pyrosetta.MoveMap()
-        self.movemap.set_bb(self.neighbor_vector)
-        self.movemap.set_chi(self.neighbor_vector)
+        self.movemap.set_bb(self.neighbour_vector)
+        self.movemap.set_chi(self.neighbour_vector)
         self.relax.set_movemap(self.movemap)
         if self.scorefxn.get_weight(pyrosetta.rosetta.core.scoring.ScoreType.cart_bonded) > 0:
             # it's cartesian!
