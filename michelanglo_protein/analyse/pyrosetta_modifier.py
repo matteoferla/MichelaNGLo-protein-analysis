@@ -8,6 +8,10 @@ Pyrosetta will throw a segmentation fault if anything is done incorrectly. Such 
 As a result ProteinAnalyser.analyse_FF uses multiprocessing to do the job on a different core.
 """
 
+# NB. Do not change the spelling of Neighbours to Neighbors as the front end uses it too.
+# I did not realise that the Americans spell it without a ``u`` until it was too embedded.
+# ``colour`` is correctly spelt ``color`` throughout.
+
 import pyrosetta, pymol2, re, os
 from typing import List, Dict, Optional  # , TypedDict
 from collections import namedtuple
@@ -74,7 +78,6 @@ class Mutator:
             self.neighbour_vector = self.targets2vector(neighbours)
         else:
             self.neighbour_vector = self.calculate_neighbours_in_pyrosetta(radius)
-            raise NotImplementedError
 
         # Read relax
         self.ready_relax(cycles)
@@ -107,10 +110,10 @@ class Mutator:
     def calculate_neighbours_in_pymol(self, radius: int = 4) -> List[Target]:
         """
         Gets the residues within the radius of target. THis method uses PyMOL!
-        It it is to fills self.neighbour_vector and returns it.
+        It is for filling self.neighbour_vector, but via self.targets2vector()
 
-        :return: self.neighbour_vector
-        :rtype: []
+        :return: the targets
+        :rtype: List[Target]
         """
         with pymol2.PyMOL() as pymol:
             pymol.cmd.read_pdbstr(self.pdbblock, 'blockprotein')
@@ -129,16 +132,18 @@ class Mutator:
             neighbours[r] = True
         return neighbours
 
-    def calculate_neighbours_in_pyrosetta(self, radius: int = 12) -> List[Target]:
+    def calculate_neighbours_in_pyrosetta(self, radius: int = 12) -> pyrosetta.rosetta.utility.vector1_bool:
         """
-        Gets the residues within the radius of target. THis method uses PyMOL!
-        It fills self.neighbour_vector and returns it.
+        Gets the residues within the radius of target. THis method uses pyrosetta.
+        It is for filling self.neighbour_vector
 
         :return: self.neighbour_vector
-        :rtype: List[Target]
+        :rtype: pyrosetta.rosetta.utility.vector1_bool
         """
-        raise NotImplementedError
-        return neighbours
+        r = self.target_pdb2pose(self.target)
+        resi_sele = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector(r)
+        neigh_sele = pyrosetta.rosetta.core.select.residue_selector.NeighborhoodResidueSelector(resi_sele, radius, True)
+        return neigh_sele.apply(self.pose)
 
     def ready_relax(self, cycles: int = 1) -> pyrosetta.rosetta.protocols.moves.Mover:
         """
