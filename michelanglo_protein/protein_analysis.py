@@ -406,7 +406,8 @@ class ProteinAnalyser(ProteinCore):
                     target_chain='A',
                     cycles=1,
                     params_filenames=self.rosetta_params_filenames,
-                    radius=3,
+                    radius=3,  # the radius via PyMol radius=3
+                    use_pymol_for_neighbors= False,
                     scorefxn_name=self.scorefxn_name)
 
     @property
@@ -468,6 +469,7 @@ class ProteinAnalyser(ProteinCore):
         :return:
         """
         if self.pdbblock is None:
+            # to do remember what kind of logging happens down here...
             return None
         ### perpare.
         init_settings = self._init_settings

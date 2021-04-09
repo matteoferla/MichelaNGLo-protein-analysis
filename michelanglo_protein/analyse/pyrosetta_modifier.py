@@ -37,7 +37,8 @@ class Mutator:
                  cycles: int = 1,
                  radius: int = 4,
                  params_filenames: List[str]=(),
-                 scorefxn_name:str = 'ref2015'):
+                 scorefxn_name:str = 'ref2015',
+                 use_pymol_for_neighbors:bool=True):
         """
         Load.
 
@@ -67,8 +68,13 @@ class Mutator:
         self.pose = self.load_pose()  # self.pose is intended as the damageable version.
         self.mark('raw')  # mark scores the self.pose
 
-        # Find neighbourhood
-        self.calculate_neighbours(radius)  # fills self.neighbours
+        # Find neighbourhood (pyrosetta.rosetta.utility.vector1_bool)
+        if use_pymol_for_neighbors:
+            neighbours = self.calculate_neighbours_in_pymol(radius)
+            self.neighbor_vector = self.targets2vector(neighbours)
+        else:
+            self.neighbor_vector = self.calculate_neighbours_in_pyrosetta(radius)
+            raise NotImplementedError
 
         # Read relax
         self.ready_relax(cycles)
@@ -98,23 +104,41 @@ class Mutator:
         self._pdb2pose = pose.pdb_info().pdb2pose
         return pose
 
-    def calculate_neighbours(self, radius: int = 4) -> List[Target]:
+    def calculate_neighbours_in_pymol(self, radius: int = 4) -> List[Target]:
         """
         Gets the residues within the radius of target. THis method uses PyMOL!
-        It fills self.neighbours and returns it.
+        It it is to fills self.neighbor_vector and returns it.
 
-        :return: self.neighbours
-        :rtype: List[Target]
+        :return: self.neighbor_vector
+        :rtype: []
         """
         with pymol2.PyMOL() as pymol:
             pymol.cmd.read_pdbstr(self.pdbblock, 'blockprotein')
             sele = f"name CA and (byres chain {self.target.chain} and resi {self.target.resi} around {radius})"
             atoms = pymol.cmd.get_model(sele)
-            self.neighbours = []
+            neighbours = []
             for atom in atoms.atom:
                 res = int(re.match('\d+', atom.resi).group())
-                self.neighbours.append(Target(resi=res, chain=atom.chain))
-        return self.neighbours
+                neighbours.append(Target(resi=res, chain=atom.chain))
+        return neighbours
+
+    def targets2vector(self, targets: List[Target]) -> pyrosetta.rosetta.utility.vector1_bool:
+        neighbours = pyrosetta.rosetta.utility.vector1_bool(self.pose.total_residue())
+        for target in targets:
+            r = self.target_pdb2pose(target)
+            neighbours[r] = True
+        return neighbours
+
+    def calculate_neighbours_in_pyrosetta(self, radius: int = 12) -> List[Target]:
+        """
+        Gets the residues within the radius of target. THis method uses PyMOL!
+        It fills self.neighbor_vector and returns it.
+
+        :return: self.neighbor_vector
+        :rtype: List[Target]
+        """
+        raise NotImplementedError
+        return neighbours
 
     def ready_relax(self, cycles: int = 1) -> pyrosetta.rosetta.protocols.moves.Mover:
         """
@@ -124,10 +148,8 @@ class Mutator:
         """
         self.relax = pyrosetta.rosetta.protocols.relax.FastRelax(self.scorefxn, cycles)
         self.movemap = pyrosetta.MoveMap()
-        for neigh in self.neighbours:
-            n = self.target_pdb2pose(neigh)
-            self.movemap.set_bb(n, True)
-            self.movemap.set_chi(n, True)
+        self.movemap.set_bb(self.neighbor_vector)
+        self.movemap.set_chi(self.neighbor_vector)
         self.relax.set_movemap(self.movemap)
         if self.scorefxn.get_weight(pyrosetta.rosetta.core.scoring.ScoreType.cart_bonded) > 0:
             # it's cartesian!
@@ -138,9 +160,7 @@ class Mutator:
             # this is relatively new
             self.relax.set_movemap_disables_packing_of_fixed_chi_positions(True)
         else:
-            print("UPDATE YOUR DAMN PYROSETTA NOW.")
-            #TODO I need to update pyrosetta serverside. But residential internet is being a pain.
-            # This is due to different versions of pyrosetta and affects the quality of the score.
+            print("UPDATE YOUR PYROSETTA NOW.")
         return self.relax
 
     def mark(self, label: str) -> Dict:
