@@ -71,7 +71,6 @@ class Mutator:
         self.params_filenames = params_filenames
         self.pose = self.load_pose()  # self.pose is intended as the damageable version.
         self.mark('raw')  # mark scores the self.pose
-
         # Find neighbourhood (pyrosetta.rosetta.utility.vector1_bool)
         if use_pymol_for_neighbours:
             neighbours = self.calculate_neighbours_in_pymol(radius)
@@ -247,8 +246,14 @@ class Mutator:
                 'score_fxn': self.scorefxn.get_name(),
                 'ddG_residue': self.get_diff_res_score(),
                 'native_residue_terms': self.get_res_score_terms(self.native),
-                'mutant_residue_terms': self.get_res_score_terms(self.pose)
+                'mutant_residue_terms': self.get_res_score_terms(self.pose),
+                'neighbours': self.get_pdb_neighbours()
                 }
+
+    def get_pdb_neighbours(self):
+        neighs = pyrosetta.rosetta.core.select.residue_selector.ResidueVector(self.neighbour_vector)
+        pose2pdb = self.pose.pdb_info().pose2pdb
+        return [pose2pdb(r) for r in neighs]
 
     def make_phospho(self, ptms):
         phospho = self.pose.clone()
