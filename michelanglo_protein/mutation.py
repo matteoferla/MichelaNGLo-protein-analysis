@@ -455,7 +455,7 @@ class Mutation:
             self.parse_mutation(mutation)
 
     def __str__(self):
-        # note taht this is not file-safe
+        # note that this is not file-safe
         return self.from_residue+str(self.residue_index)+self.to_residue
 
     #raise NotImplementedError('Under upgrade')
