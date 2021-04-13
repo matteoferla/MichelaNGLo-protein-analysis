@@ -35,8 +35,8 @@ class ProteinAnalyser(ProteinCore):
         self.rosetta_params_filenames = []
         self.energetics_gnomAD = None
         self.scorefxn_name = 'ref2015'
-        self.radius = 3 # the radius via PyMol radius=3
-        self.use_pymol_for_neighbours = True
+        self.radius = 12  # the radius via PyMol radius=3
+        self.use_pymol_for_neighbours = False
 
     ####### elm
     _elmdata = []
