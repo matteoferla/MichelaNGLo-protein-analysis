@@ -1,5 +1,7 @@
 __doc__ = """
-The script michelanglo_protein.aprior_effect generates the dictionary that is used to say what the apriori effect are. Namely, what amino acid is smaller etc.
+The script michelanglo_protein.aprior_effect generates the dictionary that is used to say what the apriori effect are. 
+Namely, what amino acid is smaller etc.
+
 >>> from michelanglo_protein.apriori_effect import Changedex
 >>> pprint(Changedex().fill().to_dict())
 
@@ -46,6 +48,11 @@ class Changedex:
         for i in items[0]:
             for j in items[1]:
                 self._data['{0}>{1}'.format(i, j)].add(value)
+
+    def remove(self, items, value):
+        for i in items[0]:
+            for j in items[1]:
+                self._data['{0}>{1}'.format(i, j)].discard(value)
 
     def to_dict(self):
         return {k: '|'.join([self.full[i] for i in self._data[k]]) for k in self._data}
