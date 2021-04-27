@@ -140,7 +140,7 @@ class ProteinAnalyser(ProteinCore):
         # self.analyse_structure()
 
     def check_mutation(self):
-        if len(self.sequence) > self.mutation.residue_index and \
+        if len(self.sequence) >= self.mutation.residue_index and \
                 self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue and \
                 self.mutation.to_residue in 'ACDEFGHIKLMNPQRSTVWY':
             return True
