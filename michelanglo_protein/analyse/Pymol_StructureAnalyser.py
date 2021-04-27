@@ -11,7 +11,7 @@ class StructureAnalyser:
     """
     #Wikipedia Tien et al. 2013 (emp.)
     maxASA = {'A': 121.0, 'R': 265.0, 'N': 187.0, 'D': 187.0, 'C': 148.0, 'E': 214.0, 'Q': 214.0, 'G': 97.0, 'H': 216.0, 'I': 195.0, 'L': 191.0, 'K': 230.0, 'M': 203.0, 'F': 228.0, 'P': 154.0, 'S': 143.0, 'T': 163.0, 'W': 264.0, 'Y': 255.0, 'V': 165.0}
-    # normal heavy atom count done with the script genenerate_AA_MCS.py
+    # normal heavy atom count done with the script genenerate_AA_MCS.py This includes OXT atom.
     normal_HA = {'A': 6, 'R': 12, 'N': 9, 'D': 9, 'C': 7, 'E': 10, 'Q': 10, 'G': 5, 'H': 11, 'I': 9, 'L': 9, 'K': 10, 'M': 9, 'F': 12, 'P': 8, 'S': 7, 'T': 8, 'W': 15, 'Y': 13, 'V': 8}
     # I think PyMOL has H,S,L only?
     ss_types = {'H': 'Helix','S': 'Sheet', 'L': 'Loop', 'G': '3_10 helix', 'I': 'Pi helix', 'T': 'Turn', 'C': 'Coil', 'E': 'Sheet', 'B': 'Beta bridge', '-': 'Unassigned'}
@@ -64,7 +64,8 @@ class StructureAnalyser:
             elif self.N_atoms == 1:
                 raise ValueError('Structure is likely an Calpha trace')
             # --- analyses
-            self.has_all_heavy_atoms = self.N_atoms >= self.normal_HA[self.mutation.from_residue]
+            # the normal number of heavy atoms (`.normal_HA`) is counting OXT.
+            self.has_all_heavy_atoms = self.N_atoms >= self.normal_HA[self.mutation.from_residue] - 1
             self.pymol.cmd.h_add()
             self.neighbours = self.get_neighbours()
             self.SASA = self.get_SASA()
