@@ -30,7 +30,7 @@ class ProteinAnalyser(ProteinCore):
         ## mutation ##
         self._mutation = None
         # structure
-        self.structural = None # StructureAnalyser instance
+        self.structural = None  # StructureAnalyser instance
         self.energetics = None
         self.rosetta_params_filenames = []
         self.energetics_gnomAD = None
@@ -335,7 +335,7 @@ class ProteinAnalyser(ProteinCore):
     def property_at_mutation(self):
         return {k: self.properties[k][self.mutation.residue_index - 1] for k in self.properties}
 
-    def analyse_structure(self, structure: Optional[Structure]=None, params: List[str]=[]):
+    def analyse_structure(self, structure: Optional[Structure] = None, params: List[str] = []):
         # fetch structure if not provided
         if structure is None:
             structure = self.get_best_model()
@@ -409,7 +409,7 @@ class ProteinAnalyser(ProteinCore):
                     cycles=1,
                     params_filenames=self.rosetta_params_filenames,
                     radius=self.radius,
-                    use_pymol_for_neighbours =self.use_pymol_for_neighbours,
+                    use_pymol_for_neighbours=self.use_pymol_for_neighbours,
                     scorefxn_name=self.scorefxn_name)
 
     @property
@@ -434,6 +434,7 @@ class ProteinAnalyser(ProteinCore):
         :param kwargs:
         :return:
         """
+
         def subprocess(child_conn):  # Pipe <- Union[dict, None]:
             try:
                 data = fun(**kwargs)
@@ -528,7 +529,7 @@ class ProteinAnalyser(ProteinCore):
         init_settings['target_resi'] = mutation.residue_index
 
         def relax(resi, from_resn, to_resn, init_settings):
-            mut = Mutator(**init_settings) #altered target_residue from taht of the mutation!
+            mut = Mutator(**init_settings)  # altered target_residue from taht of the mutation!
             results = mut.analyse_mutation(to_resn)
             return {'coordinates': results['mutant'], 'ddg': results['ddG']}
 
@@ -577,20 +578,22 @@ class ProteinAnalyser(ProteinCore):
 
         def analysis(ptms, init_settings):
             mut = Mutator(**init_settings)
-            return mut. make_phospho(ptms)
+            return mut.make_phospho(ptms)
+
         if not spit_process:
             msg = analysis(init_settings=init_settings, ptms=self.features['PSP_modified_residues'])
         else:
             msg = self._run_subprocess(
-                self._subprocess_factory(analysis, ptms=self.features['PSP_modified_residues'], init_settings=init_settings))
-        #self.phosphorylated_pdbblcok = msg
+                self._subprocess_factory(analysis, ptms=self.features['PSP_modified_residues'],
+                                         init_settings=init_settings))
+        # self.phosphorylated_pdbblcok = msg
         return msg
 
     # conservation score
     # disorder
 
     def conclude(self):
-        pass   # JS side.
+        pass  # JS side.
 
     def correct_definitions(self):
         # in some case there are multiple chain definitions.
