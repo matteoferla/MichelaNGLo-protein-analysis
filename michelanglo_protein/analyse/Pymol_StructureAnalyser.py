@@ -106,7 +106,7 @@ class StructureAnalyser:
             sele = self.target_selection
         return self.pymol.cmd.get_area(sele)
 
-    def get_neighbours(self, threshhold: float = 3, sele: str = None):
+    def get_neighbours(self, threshhold: float = 12, sele: str = None):
         """
 
         :param threshhold: &Aring;ngstrom distance.
@@ -114,7 +114,7 @@ class StructureAnalyser:
         """
         assert self.pymol is not None, 'Can only be called within a PyMOL session'
         if not sele:
-            sele = f'(not {self.target_selection}) and (byres ({self.target_selection} around {threshhold})) and name CA'
+            sele = f'(not {self.target_selection}) and (byres (({self.target_selection} and name CA) around {threshhold})) and name CA'
             #sele = f'(byres ({self.target_selection} around {threshhold})) and name CA'
         my_dict = {'residues': []}
         self.pymol.cmd.iterate(sele, "residues.append({'resi': resi, 'resn': resn, 'chain': chain})", space=my_dict)
