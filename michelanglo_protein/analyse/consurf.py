@@ -349,8 +349,6 @@ class Consurfer:
                                              0  # extend
                                              )[0]
         ref_al, con_al, _, _, _ = alignment
-        print(ref_al)
-        print(con_al)
         offset = 0
         for r, c in zip(ref_al, con_al):
             if r == '-':
@@ -394,6 +392,5 @@ class Consurfer:
         if chain is None:
             chain = self.present_chain
         offset = self.get_offset_by_alignment(ref_sequence)
-        print('offset and chain', offset, chain)
         self.offset_seqpos({chain: offset})
         return offset

@@ -150,7 +150,6 @@ class StructureAnalyser:
         if self.structure.code is None or len(self.structure.code) == 0:
             raise ValueError('No code')
         if self.structure.type == 'swissmodel': #  based upon 5v3j.2.C C
-            print('XXXX', self.structure.code)
             code, chain = re.search(' (\w{4})\.\d+\.(\w)', self.structure.code).groups()
             # I cannot guarantee self.structure.chain is the same.
         elif len(self.structure.code) == 4:
@@ -161,10 +160,10 @@ class StructureAnalyser:
         try:
             con = Consurfer().from_web(code, chain)
         except Exception as error:
-            raise BaseException(str(error))  # no catch
-        print('data from', code)
+            pass
+            #raise BaseException(str(error))  # no catch
         con.apply_offset_by_alignment(self.sequence)
-        print(con.data) # {'GLY51:A': {'POS': '1', 'SEQ': '   G', '3LATOM': '   GLY51:A', 'SCORE': ' 1.313', 'COLOR': '  2', 'CONFIDENCE INTERVAL': ' 0.264, 1.652', 'CONFIDENCE COLORS': '    4,1', 'MSA DATA': '  11/300', 'RESIDUE VARIETY': 'A,G,R,V,K,I,E'},
+        # {'GLY51:A': {'POS': '1', 'SEQ': '   G', '3LATOM': '   GLY51:A', 'SCORE': ' 1.313', 'COLOR': '  2', 'CONFIDENCE INTERVAL': ' 0.264, 1.652', 'CONFIDENCE COLORS': '    4,1', 'MSA DATA': '  11/300', 'RESIDUE VARIETY': 'A,G,R,V,K,I,E'},
         for neigh_data in self.neighbours:
             try:
                 key = con.get_key(neigh_data['resi'])
