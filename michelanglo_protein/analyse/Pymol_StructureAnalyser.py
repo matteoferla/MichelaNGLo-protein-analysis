@@ -1,9 +1,13 @@
 from ..structure import Structure
 from ..mutation import Mutation
 from michelanglo_transpiler import PyMolTranspiler
+from .consurf import Consurfer
 import pymol2
-import math, re
+from itertools import product
+import math, re, time
+import numpy as np
 from typing import *
+
 
 class StructureAnalyser:
     """
@@ -28,6 +32,8 @@ class StructureAnalyser:
         self.model = None
         self.chain = 'A' #structure.chain get offset will change the chain to A.
         self.code = structure.code
+        self.old_chain = str(structure.chain)
+        self.sequence = sequence
         if self.structure.coordinates:
             self.coordinates = self.structure.coordinates
         elif len(self.code) == 4:
@@ -80,6 +86,7 @@ class StructureAnalyser:
             t = self.get_distance_to_closest_ligand()
             self.closest_ligand = t['closest']
             self.distance_to_closest_ligand = t['distance']
+            self.add_conservation()  # to neighbours
         self.pymol = None
 
     def get_SS(self, sele=None):
@@ -108,6 +115,8 @@ class StructureAnalyser:
 
     def get_neighbours(self, threshhold: float = 12, sele: str = None):
         """
+        Throughout the modules neighbors/neighbours is accidentally written in British English.
+        Do not correct.
 
         :param threshhold: &Aring;ngstrom distance.
         :return:
@@ -118,8 +127,52 @@ class StructureAnalyser:
             #sele = f'(byres ({self.target_selection} around {threshhold})) and name CA'
         my_dict = {'residues': []}
         self.pymol.cmd.iterate(sele, "residues.append({'resi': resi, 'resn': resn, 'chain': chain})", space=my_dict)
-        return my_dict['residues']
+        neighbours = my_dict['residues']
+        # pymol.cmd.distance gets the last atom distance
+        # pymol.cmd.get_distance is atom to atom. 23 s
+        # atom.coord gives coord. 0.2 s
+        # selector = lambda atom: f'resi {atom.resi} and chain {atom.chain} and name {atom.name}'
+        target_coords = [atom.coord for atom in self.pymol.cmd.get_model(self.target_selection).atom]
+        for res in neighbours:
+            near_coords = [atom.coord for atom in self.pymol.cmd.get_model(self.neigh2selection(res)).atom]
+            p_iter = product(map(np.array, target_coords), map(np.array, near_coords))
+            res['distance'] = np.min([np.linalg.norm([aa - bb]) for aa, bb in p_iter])
+        return neighbours
 
+    def neigh2selection(self, neighbour, name:Optional[str]=None) -> str:
+        if name is None:
+            return f'resi {neighbour["resi"]} and chain {neighbour["chain"]}'
+        else:
+            return f'resi {neighbour["resi"]} and chain {neighbour["chain"]} and name {name}'
+
+    def add_conservation(self):
+        # get code and chain
+        if self.structure.code is None or len(self.structure.code) == 0:
+            raise ValueError('No code')
+        if self.structure.type == 'swissmodel': #  based upon 5v3j.2.C C
+            print('XXXX', self.structure.code)
+            code, chain = re.search(' (\w{4})\.\d+\.(\w)', self.structure.code).groups()
+            # I cannot guarantee self.structure.chain is the same.
+        elif len(self.structure.code) == 4:
+            code = self.structure.code
+            chain = self.old_chain
+        else:
+            raise ValueError(f'What is {self.structure.code}')
+        try:
+            con = Consurfer().from_web(code, chain)
+        except Exception as error:
+            raise BaseException(str(error))  # no catch
+        print('data from', code)
+        con.apply_offset_by_alignment(self.sequence)
+        print(con.data) # {'GLY51:A': {'POS': '1', 'SEQ': '   G', '3LATOM': '   GLY51:A', 'SCORE': ' 1.313', 'COLOR': '  2', 'CONFIDENCE INTERVAL': ' 0.264, 1.652', 'CONFIDENCE COLORS': '    4,1', 'MSA DATA': '  11/300', 'RESIDUE VARIETY': 'A,G,R,V,K,I,E'},
+        for neigh_data in self.neighbours:
+            try:
+                key = con.get_key(neigh_data['resi'])
+                neigh_data['variety'] = con.get_variety(key)
+                neigh_data['color'] = con.get_color(key)
+                neigh_data['conscore'] = con.get_conscore(key)
+            except ValueError:
+                pass # absent.
 
     def get_distance_to_closest_chain(self):
         # this is CA only.
