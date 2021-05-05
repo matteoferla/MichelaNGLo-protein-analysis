@@ -159,10 +159,10 @@ class StructureAnalyser:
             raise ValueError(f'What is {self.structure.code}')
         try:
             con = Consurfer().from_web(code, chain)
+            con.apply_offset_by_alignment(self.sequence)
         except Exception as error:
-            pass
+            return
             #raise BaseException(str(error))  # no catch
-        con.apply_offset_by_alignment(self.sequence)
         # {'GLY51:A': {'POS': '1', 'SEQ': '   G', '3LATOM': '   GLY51:A', 'SCORE': ' 1.313', 'COLOR': '  2', 'CONFIDENCE INTERVAL': ' 0.264, 1.652', 'CONFIDENCE COLORS': '    4,1', 'MSA DATA': '  11/300', 'RESIDUE VARIETY': 'A,G,R,V,K,I,E'},
         for neigh_data in self.neighbours:
             try:
