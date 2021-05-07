@@ -160,10 +160,17 @@ class StructureAnalyser:
         try:
             con = Consurfer().from_web(code, chain)
             con.apply_offset_by_alignment(self.sequence)
+            self.pymol.cmd.delete('*')
+            self.pymol.cmd.read_pdbstr(self.coordinates, 'mod_')
+            con.add_bfactor_to_pymol(self.pymol)
+            # No need for: self.pymol.cmd.remove('element H')
+            self.coordinates = self.pymol.cmd.get_pdbstr()
         except Exception as error:
             return
             #raise BaseException(str(error))  # no catch
-        # {'GLY51:A': {'POS': '1', 'SEQ': '   G', '3LATOM': '   GLY51:A', 'SCORE': ' 1.313', 'COLOR': '  2', 'CONFIDENCE INTERVAL': ' 0.264, 1.652', 'CONFIDENCE COLORS': '    4,1', 'MSA DATA': '  11/300', 'RESIDUE VARIETY': 'A,G,R,V,K,I,E'},
+        # {'GLY51:A': {'POS': '1', 'SEQ': '   G', '3LATOM': '   GLY51:A', 'SCORE': ' 1.313', 'COLOR': '  2',
+        # 'CONFIDENCE INTERVAL': ' 0.264, 1.652', 'CONFIDENCE COLORS': '    4,1', 'MSA DATA': '  11/300',
+        # 'RESIDUE VARIETY': 'A,G,R,V,K,I,E'},
         for neigh_data in self.neighbours:
             try:
                 key = con.get_key(neigh_data['resi'])
@@ -172,6 +179,7 @@ class StructureAnalyser:
                 neigh_data['conscore'] = con.get_conscore(key)
             except ValueError:
                 pass # absent.
+
 
     def get_distance_to_closest_chain(self):
         # this is CA only.
