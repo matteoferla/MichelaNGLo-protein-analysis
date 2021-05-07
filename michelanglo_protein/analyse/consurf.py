@@ -1,6 +1,7 @@
 from typing import *
 
 import re
+import logging
 import requests
 
 
@@ -54,6 +55,7 @@ class Consurfer:
     >>> cp = ConsurfPoser.merge([cp1, cp2, cp3])
 
     """
+    log = logging.getLogger()
 
     # ----- init methods ---------
 
@@ -300,17 +302,22 @@ class Consurfer:
                 new_data[res] = values
         self.data = new_data
 
-    def offset_seqpos(self, offset_map: Dict[str, int]) -> None:
+    def offset_seqpos(self, offset_map: Dict[str, Union[int, List[int]]]) -> None:
         """
         Offset the index (the SEQPOS record numbering and use that.
         """
         new_data = {}
-        for res, values in list(self.data.items()):
+        for ri, (res, values) in enumerate(list(self.data.items())):
             chain = self.get_residue_chain(res)
             resi = self.get_residue_index(res)
             resn = self.get_residue_name(res)
             if chain in offset_map:
-                offset = offset_map[chain]
+                if isinstance(offset_map[chain], int):
+                    offset = offset_map[chain]
+                elif isinstance(offset_map[chain], list):
+                    offset = offset_map[chain][ri]
+                else:
+                    raise TypeError
                 if isinstance(values['POS'], str):
                     values['POS'] = int(values['POS'].strip())
                 new_resi = values['POS'] + offset
@@ -345,10 +352,7 @@ class Consurfer:
     def sequence(self):
         return ''.join(row['SEQ'].strip() for row in self.data.values())
 
-    def get_offset_by_alignment(self, ref_sequence: str) -> int:
-        """
-        Offset by alignment. SEQPOS alignment
-        """
+    def align(self, ref_sequence: str) -> Tuple[str, str]:
         from Bio import pairwise2
         # alignment = pairwise2.align.globalxx(ref_sequence, data_sequence)[0]
         # 3 sequential mismatches make a gap favourable:
@@ -359,6 +363,15 @@ class Consurfer:
                                              0  # extend
                                              )[0]
         ref_al, con_al, _, _, _ = alignment
+        self.log.debug('ref al ' + ref_al)
+        self.log.debug('con al ' + con_al)
+        return ref_al, con_al
+
+    def get_offset_by_alignment(self, ref_sequence: str) -> int:
+        """
+        Offset by alignment. SEQPOS alignment
+        """
+        ref_al, con_al = self.align(ref_sequence)
         offset = 0
         for r, c in zip(ref_al, con_al):
             if r == '-':
@@ -373,33 +386,25 @@ class Consurfer:
         """
         Offset by alignment. SEQPOS alignment
         """
-        from Bio import pairwise2
-        # alignment = pairwise2.align.globalxx(ref_sequence, data_sequence)[0]
-        # 3 sequential mismatches make a gap favourable:
-        alignment = pairwise2.align.globalms(ref_sequence, self.sequence,
-                                             2,  # match
-                                             -.5,  # mismatch
-                                             -1,  # open
-                                             0  # extend
-                                             )[0]
-        ref_al, con_al, _, _, _ = alignment
+        ref_al, con_al = self.align(ref_sequence)
         c2r = []
         ri = 0
         for r, c in zip(ref_al, con_al):
             if c == '-' and r == '-':
                 raise ValueError('Impossible at ``get_offset_map_by_alignment``')
             elif c != '-' and r != '-':
-                c2r.append(r)
-                r += 1
+                c2r.append(ri)
+                ri += 1
             elif c != '-' and r == '-':
                 c2r.append(None)  # no match.
             elif c == '-' and r != '-':
-                r += 1  # no match for R.
-        return c2r
+                ri += 1  # no match for R.
+        return [ri - ci for ci, ri in enumerate(c2r)]
 
     def apply_offset_by_alignment(self, ref_sequence: str, chain: Optional[str] = None) -> int:
         if chain is None:
             chain = self.present_chain
-        offset = self.get_offset_by_alignment(ref_sequence)
-        self.offset_seqpos({chain: offset})
-        return offset
+        offset_vector = self.get_offset_vector_by_alignment(ref_sequence)
+        self.log.debug(f'offset {offset_vector}')
+        self.offset_seqpos({chain: offset_vector})
+        return offset_vector

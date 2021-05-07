@@ -4,7 +4,7 @@ from michelanglo_transpiler import PyMolTranspiler
 from .consurf import Consurfer
 import pymol2
 from itertools import product
-import math, re, time
+import math, re, time, logging
 import numpy as np
 from typing import *
 
@@ -19,6 +19,7 @@ class StructureAnalyser:
     normal_HA = {'A': 6, 'R': 12, 'N': 9, 'D': 9, 'C': 7, 'E': 10, 'Q': 10, 'G': 5, 'H': 11, 'I': 9, 'L': 9, 'K': 10, 'M': 9, 'F': 12, 'P': 8, 'S': 7, 'T': 8, 'W': 15, 'Y': 13, 'V': 8}
     # I think PyMOL has H,S,L only?
     ss_types = {'H': 'Helix','S': 'Sheet', 'L': 'Loop', 'G': '3_10 helix', 'I': 'Pi helix', 'T': 'Turn', 'C': 'Coil', 'E': 'Sheet', 'B': 'Beta bridge', '-': 'Unassigned'}
+    log = logging.getLogger()
 
     def __init__(self, structure: Structure, mutation: Mutation, sequence: Optional[str] = None):
         """
@@ -165,7 +166,9 @@ class StructureAnalyser:
             con.add_bfactor_to_pymol(self.pymol)
             # No need for: self.pymol.cmd.remove('element H')
             self.coordinates = self.pymol.cmd.get_pdbstr()
+            self.log.debug(con.data)
         except Exception as error:
+            self.log.debug(f'{error.__class__.__name__}: {error} at consurf')
             return
             #raise BaseException(str(error))  # no catch
         # {'GLY51:A': {'POS': '1', 'SEQ': '   G', '3LATOM': '   GLY51:A', 'SCORE': ' 1.313', 'COLOR': '  2',
@@ -177,7 +180,8 @@ class StructureAnalyser:
                 neigh_data['variety'] = con.get_variety(key)
                 neigh_data['color'] = con.get_color(key)
                 neigh_data['conscore'] = con.get_conscore(key)
-            except ValueError:
+            except ValueError as error:
+                self.log.debug(f'{error.__class__.__name__}: {error} for {neigh_data["resi"]}')
                 pass # absent.
 
 
