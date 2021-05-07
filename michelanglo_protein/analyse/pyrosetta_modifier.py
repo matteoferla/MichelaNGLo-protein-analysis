@@ -267,14 +267,17 @@ class Mutator:
                 patch = 'phosphorylated'
             elif record['ptm'] == 'ac':
                 patch = 'acetylated'
-            elif record['ptm'] == 'm1':
+            elif record['ptm'] == 'm1' and record['from_residue'].upper() == 'LYS':
+                # monomethylarginine (NMM) will segfault
                 patch = 'monomethylated'
-            elif record['ptm'] == 'm2':
+            elif record['ptm'] == 'm2' and record['from_residue'].upper() == 'LYS':
+                # dimethylarginine (DA2) will segfault
                 patch = 'dimethylated'
-            elif record['ptm'] == 'm3':
+            elif record['ptm'] == 'm3' and record['from_residue'].upper() == 'LYS':
+                # is trimethylarginine a thing?
                 patch = 'trimethylated'
             else:
-                pass #no Gal
+                continue #no Gal
                 #raise ValueError(f'What is {record["ptm"]}?')
             new_res = f"{seq3(record['from_residue']).upper()}:{patch}"
             r = pdb2pose(res=int(record['residue_index']), chain='A')
