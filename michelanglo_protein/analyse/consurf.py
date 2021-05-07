@@ -58,6 +58,7 @@ class Consurfer:
     # ----- init methods ---------
 
     def __init__(self):
+        self.request = requests.session()
         self.grades_block = ''
         self.data = {}
         self.present_chain = 'A'  # fallback
@@ -145,7 +146,7 @@ class Consurfer:
         # 9 is conserved 1 is not.
         return color
 
-    def get_key(self, index: int, chain: Optional[str]=None) -> str:
+    def get_key(self, index: int, chain: Optional[str] = None) -> str:
         for entry in self.data:
             if int(index) != self.get_residue_index(entry):
                 continue
@@ -187,7 +188,7 @@ class Consurfer:
             for i in range(residue.natoms()):
                 pdb_info.bfactor(pose_res, i, self.get_conscore(con_res))
 
-    def add_bfactor_to_pymol(self, pymol, add_score: bool = False):
+    def add_bfactor_to_pymol(self, pymol, add_score: bool = False, missing: float = 1.):
         """
         pymol is a pymol2.PyMOL object.
 
@@ -198,6 +199,8 @@ class Consurfer:
 
         ``add_score`` True adds the score (zero centered), else the 10-1 color
         """
+        pymol.cmd.alter(f'*', f'b={missing}')
+
         for key, values in self.data.items():
             resi = self.get_residue_index(key)
             chain = self.get_residue_chain(key)
@@ -212,6 +215,13 @@ class Consurfer:
             pymol.cmd.alter(f'resi {resi} and chain {chain}', f'b={color}')
         pymol.cmd.sort()
 
+    def add_bfactor_via_pymol(self, coordinates: str, add_score: bool = False):
+        import pymol2
+        with pymol2.PyMOL() as pymol:
+            pymol.cmd.read_pdbstr(coordinates, 'model')
+            self.add_bfactor_to_pymol(pymol, add_score=add_score)
+            return pymol.cmd.get_pdbstr()
+
     # ----- dependent methods: web
 
     def fetch(self, code: str, chain: str) -> dict:
@@ -222,8 +232,8 @@ class Consurfer:
         self.parse()
 
     def _fetch_initial(self, code: str, chain: str) -> str:
-        reply = requests.get('https://consurfdb.tau.ac.il/scripts/chain_selection.php',
-                             params=dict(pdb_ID=code.upper()))
+        reply = self.request.get('https://consurfdb.tau.ac.il/scripts/chain_selection.php',
+                                 params=dict(pdb_ID=code.upper()))
         self.assert_reply(reply, msg=f'matching {code}')
         mapping = dict(re.findall('option value="(\w) (\w{5})"', reply.text))
         assert chain in mapping, f'Chain {chain} is absent in {code} according to Consurf'
@@ -231,7 +241,7 @@ class Consurfer:
 
     def _fetch_final(self, final: str):
         url = f'https://consurfdb.tau.ac.il/DB/{final}/consurf_summary.txt'
-        reply = requests.get(url)
+        reply = self.request.get(url)
         self.assert_reply(reply, msg=f'retrieval of suggestion {final}')
         return reply.text
 
@@ -318,7 +328,7 @@ class Consurfer:
         Swissmodel has the offset from the SEQPOS, SIFTS from the ATOM,
         but if there is no ATOM, it is none, so this is safe.
         """
-        sm_data = requests.get(f'https://swissmodel.expasy.org/repository/uniprot/{uniprot}.json').json()
+        sm_data = self.request.get(f'https://swissmodel.expasy.org/repository/uniprot/{uniprot}.json').json()
         segs_data = [structure['chains'] for structure in sm_data['result']['structures'] if
                      structure['template'].upper() == code]
         chain_data = [seg for seg in segs_data[0] if seg['id'] == chain][0]['segments'][0]
@@ -359,7 +369,6 @@ class Consurfer:
                 break
         return -offset
 
-
     def get_offset_vector_by_alignment(self, ref_sequence: str) -> List[int]:
         """
         Offset by alignment. SEQPOS alignment
@@ -383,9 +392,9 @@ class Consurfer:
                 c2r.append(r)
                 r += 1
             elif c != '-' and r == '-':
-                c2r.append(None)   # no match.
+                c2r.append(None)  # no match.
             elif c == '-' and r != '-':
-                r += 1   # no match for R.
+                r += 1  # no match for R.
         return c2r
 
     def apply_offset_by_alignment(self, ref_sequence: str, chain: Optional[str] = None) -> int:
