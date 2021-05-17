@@ -238,7 +238,9 @@ class Consurfer:
                                  params=dict(pdb_ID=code.upper()))
         self.assert_reply(reply, msg=f'matching {code}')
         mapping = dict(re.findall('option value="(\w) (\w{5})"', reply.text))
-        assert chain in mapping, f'Chain {chain} is absent in {code} according to Consurf'
+        if chain not in mapping:
+            self.log.debug(f'Reply: {reply.text}')
+            raise KeyError(f'Chain {chain} is absent in {code} according to Consurf')
         return mapping[chain]
 
     def _fetch_final(self, final: str):
@@ -248,6 +250,11 @@ class Consurfer:
         return reply.text
 
     def assert_reply(self, reply, msg):
+        if 'The requested URL was rejected' in reply.text:
+            requests.exceptions.ConnectionError(
+                f'{msg} gave an error code 200 with Consurf.',
+                request=reply.request,
+                response=reply)
         if reply.status_code == 200:
             pass
         elif reply.status_code == 404:

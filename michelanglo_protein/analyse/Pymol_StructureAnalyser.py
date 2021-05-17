@@ -20,6 +20,7 @@ class StructureAnalyser:
     # I think PyMOL has H,S,L only?
     ss_types = {'H': 'Helix','S': 'Sheet', 'L': 'Loop', 'G': '3_10 helix', 'I': 'Pi helix', 'T': 'Turn', 'C': 'Coil', 'E': 'Sheet', 'B': 'Beta bridge', '-': 'Unassigned'}
     log = logging.getLogger()
+    error_on_missing_conservation = False
 
     def __init__(self, structure: Structure, mutation: Mutation, sequence: Optional[str] = None):
         """
@@ -159,6 +160,10 @@ class StructureAnalyser:
             chain = self.old_chain
         else:
             raise ValueError(f'What is {self.structure.code}')
+        if not self.error_on_missing_conservation:
+            cought = Exception
+        else:
+            cought = ()
         try:
             con = Consurfer().from_web(code, chain)
             con.apply_offset_by_alignment(self.sequence)
@@ -169,7 +174,7 @@ class StructureAnalyser:
             # No need for: self.pymol.cmd.remove('element H')
             self.coordinates = self.pymol.cmd.get_pdbstr()
             self.log.debug(con.data)
-        except Exception as error: #() for crappy debug
+        except cought as error: #() for crappy debug
             self.log.debug(f'{error.__class__.__name__}: {error} at consurf at line ({error.__traceback__.tb_lineno})')
             self.has_conservation = False
             return
