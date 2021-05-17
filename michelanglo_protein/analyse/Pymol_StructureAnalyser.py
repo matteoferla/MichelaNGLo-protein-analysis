@@ -35,6 +35,7 @@ class StructureAnalyser:
         self.code = structure.code
         self.old_chain = str(structure.chain)
         self.sequence = sequence
+        self.has_conservation = False
         if self.structure.coordinates:
             self.coordinates = self.structure.coordinates
         elif len(self.code) == 4:
@@ -161,14 +162,16 @@ class StructureAnalyser:
         try:
             con = Consurfer().from_web(code, chain)
             con.apply_offset_by_alignment(self.sequence)
+            self.has_conservation = True
             self.pymol.cmd.delete('*')
             self.pymol.cmd.read_pdbstr(self.coordinates, 'mod_')
             con.add_bfactor_to_pymol(self.pymol)
             # No need for: self.pymol.cmd.remove('element H')
             self.coordinates = self.pymol.cmd.get_pdbstr()
             self.log.debug(con.data)
-        except Exception as error:
-            self.log.debug(f'{error.__class__.__name__}: {error} at consurf')
+        except Exception as error: #() for crappy debug
+            self.log.debug(f'{error.__class__.__name__}: {error} at consurf at line ({error.__traceback__.tb_lineno})')
+            self.has_conservation = False
             return
             #raise BaseException(str(error))  # no catch
         # {'GLY51:A': {'POS': '1', 'SEQ': '   G', '3LATOM': '   GLY51:A', 'SCORE': ' 1.313', 'COLOR': '  2',

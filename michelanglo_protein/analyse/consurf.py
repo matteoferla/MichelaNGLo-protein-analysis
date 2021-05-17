@@ -320,6 +320,8 @@ class Consurfer:
                     raise TypeError
                 if isinstance(values['POS'], str):
                     values['POS'] = int(values['POS'].strip())
+                if offset is None:
+                    continue
                 new_resi = values['POS'] + offset
                 if new_resi < 1:
                     continue
@@ -399,7 +401,7 @@ class Consurfer:
                 c2r.append(None)  # no match.
             elif c == '-' and r != '-':
                 ri += 1  # no match for R.
-        return [ri - ci for ci, ri in enumerate(c2r)]
+        return [ri - ci if ri is not None else None for ci, ri in enumerate(c2r)]
 
     def apply_offset_by_alignment(self, ref_sequence: str, chain: Optional[str] = None) -> int:
         if chain is None:

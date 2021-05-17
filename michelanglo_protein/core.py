@@ -7,13 +7,11 @@ from .structure import Structure
 from .gnomad_variant import Variant
 
 from warnings import warn
-from typing import Dict
-
-import requests
-from .structure import Structure
+from typing import *
+from .swissmodel_retrieval import FromSwissmodel
 
 
-class ProteinCore:
+class ProteinCore(FromSwissmodel):
     """
     This is a lightweight version of Protein that is intended to run off pre parsed pickles.
     It forms the base of Protein. This does zero protein analyses.
@@ -289,28 +287,3 @@ class ProteinCore:
                 return str(x)
 
         return deobjectify(self)
-
-    # regen pdb and swissmodel data
-    def retrieve_structures_from_swissmodel(self, blank_previous: bool = True):
-        pdbs = []
-        swissmodel = []
-        reply = requests.get(f'https://swissmodel.expasy.org/repository/uniprot/{self.uniprot}.json',
-                             # params=dict(provider='swissmodel')  # do both.
-                             )
-        if reply.status_code != 200:
-            raise ConnectionError('Swissmodel retrieval failed')
-        data = reply.json()
-        for structural_data in data['result']['structures']:
-            structure = Structure.from_swissmodel_query(structural_data, self.uniprot)
-            if structure.type == 'rcsb':
-                pdbs.append(structure)
-            else:
-                swissmodel.append(structure)
-        # add...
-        if blank_previous:
-            self.pdbs = pdbs
-            self.swissmodel = swissmodel
-        else:
-            self.pdbs.extend(pdbs)
-            self.swissmodel.extend(swissmodel)
-

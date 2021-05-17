@@ -17,6 +17,7 @@ class Structure:
     No longer a namedtuple.
     """
     settings = global_settings
+    important_attributes = ['x', 'y', 'id', 'description', 'resolution', 'extra', 'alignment']
 
     # __slots__ = ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'coordinates', 'extra']
     def __init__(self, id, description, x: int, y: int, code, type='rcsb', chain='*', offset: int = 0, coordinates=None,
@@ -45,6 +46,7 @@ class Structure:
         self.chain_definitions = []  # filled by SIFT. This is a list with a Dict per chain.
         self.type = type.lower()  #: str: rcsb | swissmodel | homologue | www | local | custom
         self.chain = chain  #: type str: chain letter or * (all)
+        self.alignment = {}
         if extra is None:
             self.extra = {}
         else:
@@ -83,8 +85,11 @@ class Structure:
                 assert pymol.cmd.select(f'chain A and resi {resi} and name {name}'), \
                     f'Given protein has no {name} atom in residue {resi} in chain A'
 
-    def to_dict(self) -> Dict:
-        return {'x': self.x, 'y': self.y, 'id': self.id, 'description': self.description}
+    def to_dict(self, full=False) -> Dict:
+        if full:
+            return {key: getattr(self, key) for key in self.important_attributes if hasattr(self, key)}
+        else:
+            return {'x': self.x, 'y': self.y, 'id': self.id, 'description': self.description}
 
     def __str__(self):
         return str(self.to_dict())
@@ -349,6 +354,7 @@ class Structure:
                      structural_data['chains'][0]['segments'][0]['pdb']['from']
         else:
             offset = 0
+        chain_id = 0   # is this ever not the zeroth?
         structure = cls(
             # these two do ziltch:
             id=structural_data['md5'],
@@ -364,7 +370,7 @@ class Structure:
             type='swissmodel' if structural_data['provider'] == 'SWISSMODEL' else 'rcsb',
             url=structural_data['coordinates'],
             # structural_data['template'][-1] works only for swissmodel for chain.
-            chain=structural_data['chains'][0]['id'],
+            chain=structural_data['chains'][chain_id]['id'],
             extra={k: structural_data[k] for k in keepers if k in structural_data}
         )
         # do not fill the structure.chain_definitions via SIFT
@@ -380,4 +386,17 @@ class Structure:
                                             description=info[0]['description'],
                                             uniprot=info[0]['uniprot_ac'] if 'uniprot_ac' in info[0] else 'P00404',
                                             ) for chain, info in structural_data['in_complex_with'].items()]
+        # ---- sequence
+
+        def get_sequence(part):
+            # the gap needs to be for 'uniprot' only!
+            seq = '-' * (structural_data['chains'][chain_id]['segments'][0]['uniprot']['from'] - 1)
+            seq += structural_data['chains'][chain_id]['segments'][0][part]['aligned_sequence']
+            return seq
+
+        if structure.type == 'swissmodel':
+            # herein the template is
+            structure.alignment = {'template': get_sequence('smtl'), 'uniprot': get_sequence('uniprot')}
+        elif structure.type == 'rcsb':
+            structure.alignment = {'template': get_sequence('pdb'), 'uniprot': get_sequence('uniprot')}
         return structure

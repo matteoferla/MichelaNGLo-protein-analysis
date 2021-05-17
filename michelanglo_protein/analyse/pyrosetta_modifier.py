@@ -13,8 +13,8 @@ As a result ProteinAnalyser.analyse_FF uses multiprocessing to do the job on a d
 # ``colour`` is correctly spelt ``color`` throughout.
 
 import pyrosetta, pymol2, re, os
-from typing import List, Dict, Optional  # , TypedDict
-from collections import namedtuple
+from typing import *
+from collections import namedtuple, defaultdict
 from Bio.SeqUtils import seq3
 from ..gnomad_variant import Variant  # solely for type hinting.
 
@@ -33,6 +33,39 @@ class Mutator:
     * ``.pose`` pyrosetta.Pose
     * ``._pdb2pose`` points to ``self.pose.pdb_info().pdb2pose``, while target_pdb2pose accepts Target and gives back int
     """
+
+    term_meanings = defaultdict(str, {
+    "fa_atr": "Lennard-Jones attractive between atoms in different residues (r^6 term, London dispersion forces).",
+    "fa_rep": "Lennard-Jones repulsive between atoms in different residues (r^12 term, Pauli repulsion forces).",
+    "fa_sol": "Lazaridis-Karplus solvation energy.",
+    "fa_intra_rep": "Lennard-Jones repulsive between atoms in the same residue.",
+    "fa_elec": "Coulombic electrostatic potential with a distance-dependent dielectric.",
+    "pro_close": "Proline ring closure energy and energy of psi angle of preceding residue.",
+    "hbond_sr_bb": "Backbone-backbone hbonds close in primary sequence.",
+    "hbond_lr_bb": "Backbone-backbone hbonds distant in primary sequence.",
+    "hbond_bb_sc": "Sidechain-backbone hydrogen bond energy.",
+    "hbond_sc": "Sidechain-sidechain hydrogen bond energy.",
+    "dslf_fa13": "Disulfide geometry potential.",
+    "rama": "Ramachandran preferences.",
+    "omega": "Omega dihedral in the backbone. A Harmonic constraint on planarity with standard deviation of ~6 deg.",
+    "fa_dun": "Internal energy of sidechain rotamers as derived from Dunbrack's statistics (2010 Rotamer Library used in Talaris2013).",
+    "fa_dun_semi": "Internal energy of sidechain semi-rotamers as derived from Dunbrack's statistics (2010 Rotamer Library used in Talaris2013).",
+    "p_aa_pp": "Probability of amino acid at Φ/Ψ.",
+    "ref": "Reference energy for each amino acid. Balances internal energy of amino acid terms.  Plays role in design.",
+    "METHOD_WEIGHTS": "Not an energy term itself, but the parameters for each amino acid used by the ref energy term.",
+    "lk_ball": "Anisotropic contribution to the solvation.",
+    "lk_ball_iso": "Same as fa_sol; see below.",
+    "lk_ball_wtd": "weighted sum of lk_ball & lk_ball_iso (w1*lk_ball + w2*lk_ball_iso); w2 is negative so that anisotropic contribution(lk_ball) replaces some portion of isotropic contribution (fa_sol=lk_ball_iso).",
+    "lk_ball_bridge": "Bonus to solvation coming from bridging waters, measured by overlap of the 'balls' from two interacting polar atoms.",
+    "lk_ball_bridge_uncpl": "Same as lk_ball_bridge, but the value is uncoupled with dGfree (i.e. constant bonus, whereas lk_ball_bridge is proportional to dGfree values).",
+    "fa_intra_atr_xover4": "Intra-residue LJ attraction, counted for the atom-pairs beyond torsion-relationship.",
+    "fa_intra_rep_xover4": "Intra-residue LJ repulsion, counted for the atom-pairs beyond torsion-relationship.",
+    "fa_intra_sol_xover4": "Intra-residue LK solvation, counted for the atom-pairs beyond torsion-relationship.",
+    "fa_intra_elec": "Intra-residue Coulombic interaction, counted for the atom-pairs beyond torsion-relationship.",
+    "rama_prepro": "Backbone torsion preference term that takes into account of whether preceding amono acid is Proline or not.",
+    "hxl_tors": "Sidechain hydroxyl group torsion preference for Ser/Thr/Tyr, supersedes yhh_planarity (that covers L- and D-Tyr only).",
+    "yhh_planarity": "Sidechain hydroxyl group torsion preference for Tyr, superseded by hxl_tors"
+    })
 
     def __init__(self,
                  pdbblock: str,
@@ -65,6 +98,8 @@ class Mutator:
         # there are a few other fixes. Such as franklin2019 and spades.
         self.scorefxn = pyrosetta.create_score_function(scorefxn_name)
         self.scores = {}  # gets filled by .mark()
+        self.cycles = cycles
+        self.radius = radius
         # Load
         self.target = Target(target_resi, target_chain)
         self.pdbblock = pdbblock
@@ -73,13 +108,13 @@ class Mutator:
         self.mark('raw')  # mark scores the self.pose
         # Find neighbourhood (pyrosetta.rosetta.utility.vector1_bool)
         if use_pymol_for_neighbours:
-            neighbours = self.calculate_neighbours_in_pymol(radius)
+            neighbours = self.calculate_neighbours_in_pymol(self.radius)
             self.neighbour_vector = self.targets2vector(neighbours)
         else:
-            self.neighbour_vector = self.calculate_neighbours_in_pyrosetta(radius)
+            self.neighbour_vector = self.calculate_neighbours_in_pyrosetta(self.radius)
 
         # Read relax
-        self.ready_relax(cycles)
+        self.ready_relax(self.cycles)
 
     def target_pdb2pose(self, target: Target) -> int:
         return self._pdb2pose(chain=target.chain, res=target.resi)
@@ -206,9 +241,22 @@ class Mutator:
 
         :return: fa_sol kcal/mol
         """
-        n = self.scorefxn.score_by_scoretype(self.native, pyrosetta.rosetta.core.scoring.ScoreType.fa_sol)
-        m = self.scorefxn.score_by_scoretype(self.pose, pyrosetta.rosetta.core.scoring.ScoreType.fa_sol)
-        return m - n
+        _, _, diff = self.get_term_scores(pyrosetta.rosetta.core.scoring.ScoreType.fa_sol)
+        return diff
+
+    def get_all_scores(self) -> Dict[str, Dict[str, Union[float, str]]]:
+        data = {}
+        for term in self.scorefxn.get_nonzero_weighted_scoretypes():
+            data[term.name] = dict(zip(['native', 'mutant', 'difference'], self.get_term_scores(term)))
+            data[term.name]['weight'] = self.scorefxn.get_weight(term)
+            data[term.name]['meaning'] = self.term_meanings[term.name]
+        return data
+
+    def get_term_scores(self, term: pyrosetta.rosetta.core.scoring.ScoreType) -> Tuple[float, float, float]:
+        n = self.scorefxn.score_by_scoretype(self.native, term)
+        m = self.scorefxn.score_by_scoretype(self.pose, term)
+        d = m - n
+        return n, m, d
 
     def get_diff_res_score(self) -> float:
         """
@@ -247,7 +295,10 @@ class Mutator:
                 'ddG_residue': self.get_diff_res_score(),
                 'native_residue_terms': self.get_res_score_terms(self.native),
                 'mutant_residue_terms': self.get_res_score_terms(self.pose),
-                'neighbours': self.get_pdb_neighbours()
+                'terms': self.get_all_scores(),
+                'neighbours': self.get_pdb_neighbours(),
+                'cycles': self.cycles,
+                'radius': self.radius
                 }
 
     def get_pdb_neighbours(self):
