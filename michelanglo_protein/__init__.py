@@ -30,5 +30,6 @@ from .core import ProteinCore, Variant, Structure
 from .protein_analysis import ProteinAnalyser
 from .protein_manual import ProteinManual
 from .mutation import Mutation
+from .metadata_from_PDBe import PDBMeta
 
 __version__ = '0.4'

@@ -238,8 +238,11 @@ class Consurfer:
                                  params=dict(pdb_ID=code.upper()))
         self.assert_reply(reply, msg=f'matching {code}')
         mapping = dict(re.findall('option value="(\w) (\w{5})"', reply.text))
+        if 'No chains found for' in reply.text:
+            self.log.debug(f'Reply: {reply.text.strip()}')
+            raise KeyError(f'{code} has no chains according to Consurf')
         if chain not in mapping:
-            self.log.debug(f'Reply: {reply.text}')
+            self.log.debug(f'Reply: {reply.text.strip()}')
             raise KeyError(f'Chain {chain} is absent in {code} according to Consurf')
         return mapping[chain]
 

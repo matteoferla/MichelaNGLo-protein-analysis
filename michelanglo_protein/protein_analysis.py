@@ -344,29 +344,33 @@ class ProteinAnalyser(ProteinCore):
             self.structural = None
             return self
         if not structure.chain_definitions and structure.type != 'custom':
-            # this is not supposed to happen! Swissmodel.
-            print(f'definitionless structure: {structure.code}')
-            if structure.chain == '*':
-                chain = 'A'
-            else:
-                chain = structure.chain
-            # chain definition is used heavily clientside.
-            structure.chain_definitions = [{'chain': chain,
-                                            'uniprot': self.uniprot,
-                                            'x': structure.x,
-                                            'y': structure.y,
-                                            'offset': 0,
-                                            'range': f'{structure.x}-{structure.y}',
-                                            'description': structure.description,
-                                            'name': self.gene_name,
-                                            'note': 'Retroactively filled data. May be wrong.'
-                                            }]
+            # jupyter notebook use. not server
+            self.fix_missing_chain_definition(structure)
         self.structural = StructureAnalyser(structure, self.mutation, sequence=self.sequence)
         if self.structural and self.structural.neighbours:
             # see mutation.exposure_effect
             self.mutation.surface_expose = 'buried' if self.structural.buried else 'surface'
             self.annotate_neighbours()
         return self
+
+    def fix_missing_chain_definition(self, structure: Structure):
+        # this is not supposed to happen serverside, except when using in Jupyter notebook.
+        print(f'definitionless structure: {structure.code}')
+        if structure.chain == '*':
+            chain = 'A'
+        else:
+            chain = structure.chain
+        # chain definition is used heavily clientside.
+        structure.chain_definitions = [{'chain': chain,
+                                        'uniprot': self.uniprot,
+                                        'x': structure.x,
+                                        'y': structure.y,
+                                        'offset': 0,
+                                        'range': f'{structure.x}-{structure.y}',
+                                        'description': structure.description,
+                                        'name': self.gene_name,
+                                        'note': 'Retroactively filled data. May be wrong.'
+                                        }]
 
     def annotate_neighbours(self):
         """

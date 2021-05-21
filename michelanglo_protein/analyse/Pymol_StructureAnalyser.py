@@ -49,13 +49,8 @@ class StructureAnalyser:
                 # retrieve from Swissmodel does not have template in description
                 # (see Structure.from_swissmodel_query)
                 # but the old pregen stuff did!
-                chain = re.match('\w{4}\.\w+\.(\w)', structure.description).group(1)
-            pdbblock = structure.get_coordinates()
-            self.coordinates = PyMolTranspiler().renumber(pdb=pdbblock,
-                                                          definitions=structure.chain_definitions,
-                                                          make_A=chain,
-                                                          sequence=sequence
-                                                          ).raw_pdb
+                template_code, chain = re.search('(\w{4})\.\w+\.(\w)', structure.code).groups()
+            self.coordinates = structure.get_coordinates_w_template_extras()
         assert self.coordinates, 'There are no coordinates!!'
         # these two are very much for the ajax.
         self.chain_definitions = structure.chain_definitions  # seems redundant but str(structure) does not give these.

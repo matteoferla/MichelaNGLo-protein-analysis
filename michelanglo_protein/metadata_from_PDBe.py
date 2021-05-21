@@ -1,20 +1,111 @@
 ## This code is not part of the module, it is unlinked.
 
+"""
+Several methods return the list of entities. These look like these:
+
+Protein
+
+[{'entity_id': 1,
+  'mutation_flag': None,
+  'synonym': 'Guanine nucleotide-binding protein G(o) subunit alpha',
+  'weight': 25286.922,
+  'sequence': 'MTLSAEERAALERSKAIEKNLKEDGISAAKDVKLLLLGADNSGKSTIVKQMKIIHGGSGGSGGTTGIVETHFTFKNLHFRLFDVGGQRSERKKWIHCFEDVTAIIFCVDLSDYNRMHESLMLFDSICNNKFFIDTSIILFLNKKDLFGEKIKKSPLTICFPEYTGPNTYEDAAAYIQAQFESKNRSPNKEIYCHMTCATDTNNAQVIFDAVTDIIIANNLRGCGLY',
+  'molecule_name': ['Guanine nucleotide-binding protein G(o) subunit alpha'],
+  'pdb_sequence': 'MTLSAEERAALERSKAIEKNLKEDGISAAKDVKLLLLGADNSGKSTIVKQMKIIHGGSGGSGGTTGIVETHFTFKNLHFRLFDVGGQRSERKKWIHCFEDVTAIIFCVDLSDYNRMHESLMLFDSICNNKFFIDTSIILFLNKKDLFGEKIKKSPLTICFPEYTGPNTYEDAAAYIQAQFESKNRSPNKEIYCHMTCATDTNNAQVIFDAVTDIIIANNLRGCGLY',
+  'ca_p_only': False,
+  'source': [{'expression_host_scientific_name': 'Spodoptera frugiperda',
+    'tax_id': 9606,
+    'mappings': [{'start': {'residue_number': 1},
+      'end': {'residue_number': 226}}],
+    'organism_scientific_name': 'Homo sapiens',
+    'expression_host_tax_id': 7108}],
+  'length': 226,
+  'in_chains': ['A'],
+  'pdb_sequence_indices_with_multiple_residues': {},
+  'molecule_type': 'polypeptide(L)',
+  'in_struct_asyms': ['A'],
+  'sample_preparation': 'Genetically manipulated',
+  'gene_name': None,
+  'number_of_copies': 1}]
+
+Ligand
+
+[{'entity_id': 5,
+  'mutation_flag': None,
+  'in_struct_asyms': ['E', 'G', 'H'],
+  'weight': 256.424,
+  'molecule_name': ['PALMITIC ACID'],
+  'chem_comp_ids': ['PLM'],
+  'ca_p_only': False,
+  'in_chains': ['A', 'R'],
+  'molecule_type': 'bound',
+  'sample_preparation': 'Synthetically obtained',
+  'number_of_copies': 3},]
+
+"""
+
 import requests
+from typing import *
 
 class PDBMeta:
     """
     Query the PDBe for what the code parts are.
     Herein by chain the chain letter is meant, while the data of the chain is called entity... terrible.
     """
-    def __init__(self, entry):
-        if entry.find('_') != -1:
+    def __init__(self, entry, chain=None):
+        if chain is not None:
+            self.code = entry
+            self.chain = chain
+        elif entry.find('_') != -1:
             self.code, self.chain = entry.split('_')
         else:
             self.code = entry
             self.chain = '?'
-        reply = requests.get(f'https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/{self.code}').json()
-        self.data = reply[self.code.lower()]
+        # cached property
+        self._data = None
+        self._summary = None
+        self._publication = None
+        self._experiment = None
+
+    # ---- cached props (cannot use 3.8 method)
+
+    def _cached(self, attr_name, url, first=True):
+        if getattr(self, attr_name) is not None:
+            return getattr(self, attr_name)
+        else:
+            reply = requests.get(url+self.code).json()
+            reply_inner = reply[self.code.lower()]
+            if not first:
+                setattr(self, attr_name, reply_inner)
+            elif len(reply_inner) == 0:
+                setattr(self, attr_name, None)
+            else:
+                setattr(self, attr_name, reply[self.code.lower()][0])
+            return getattr(self, attr_name)
+
+    @property
+    def data(self):
+        return self._cached('_data', 'https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/', False)
+
+    @property
+    def summary(self):
+        # keys= ['related_structures', 'experimental_method', 'assemblies', 'title', 'release_date', 'split_entry',
+        # 'experimental_method_class', 'revision_date', 'entry_authors', 'deposition_site', 'number_of_entities',
+        # 'deposition_date', 'processing_site']
+        return self._cached('_summary', 'https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/', True)
+
+    @property
+    def publication(self):
+        # keys= ['related_structures', 'experimental_method', 'assemblies', 'title', 'release_date', 'split_entry',
+        # 'experimental_method_class', 'revision_date', 'entry_authors', 'deposition_site', 'number_of_entities',
+        # 'deposition_date', 'processing_site']
+        return self._cached('_publication', 'https://www.ebi.ac.uk/pdbe/api/pdb/entry/publications/', True)
+
+    @property
+    def experiment(self):
+        return self._cached('_experiment', 'https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/', True)
+
+    # ---------------------
 
     def get_data_by_chain(self, chain=None):
         if not chain:
@@ -44,11 +135,23 @@ class PDBMeta:
     def get_proteins(self):
         return [entity for entity in self.data if self.is_peptide(entity)]
 
+    def get_polymers(self):
+        return [entity for entity in self.data if self.is_polymer(entity)]
+
     def get_nonproteins(self):
         return [entity for entity in self.data if not self.is_peptide(entity)]
 
     def is_peptide(self, entity):
         return entity['molecule_type'] == 'polypeptide(L)'
+
+    def is_DNA(self, entity):
+        return entity['molecule_type'] == 'polydeoxyribonucleotide'
+
+    def is_RNA(self, entity):
+        return entity['molecule_type'] == 'polyribonucleotide'
+
+    def is_polymer(self, entity):
+        return self.is_peptide(entity) or self.is_DNA(entity) or self.is_RNA(entity)
 
     def wordy_describe_entity(self, entity):
         if self.is_peptide(entity):
@@ -57,6 +160,7 @@ class PDBMeta:
             return f'{"/".join(entity["molecule_name"])} in chain {"/".join(entity["in_chains"])}'
 
     def is_boring_ligand(self, entity):
+        # DNA and RNA do not have chem_comp_ids key so will be classed as "boring"
         if 'chem_comp_ids' not in entity:
             return True #this entity isnt even a thing
         elif len(entity['chem_comp_ids']) == 0:
@@ -380,3 +484,56 @@ class PDBMeta:
                    "/".join(entity["molecule_name"])) for entity in self.get_nonproteins() for chain in
                   entity["in_chains"] if not self.is_boring_ligand(entity)]
         return {'peptide': peptide, 'hetero': hetero}
+
+    def get_other_proteins(self, chain: str) -> List:
+        """
+        Get the peptide chains that are not this.
+        """
+        return [entity for entity in self.get_proteins() if chain not in entity['in_chains']]
+
+
+    def get_other_polymers(self, chain: str) -> List:
+        """
+        Get the polymer chains that are not this.
+        """
+        return [entity for entity in self.get_polymers() if chain not in entity['in_chains']]
+
+    def is_antibody(self, entity: dict) -> bool:
+        if 'molecule_name' not in entity:
+            return False # it is not an antibody... but is as un-useful as one ?!
+        elif any([term in entity['molecule_name'] for term in ['antibody', 'anti-body', 'nanobody']]):
+            return True
+        else:
+            return False
+
+    def get_other_chains(self, chain: str, first_only:bool=False) -> Set:
+        if first_only:
+            return {entity['in_chains'][0] for entity in self.get_other_polymers(chain) if not self.is_antibody(entity)}
+        else:
+            return {e_chain for entity in self.get_other_polymers(chain) for e_chain in entity['in_chains']
+                    if not self.is_antibody(entity)}
+
+    def get_interesting_ligands(self) -> List:
+        return [entity for entity in self.get_nonproteins() if not self.is_boring_ligand(entity)]
+
+    def get_interesting_ligand_names(self) -> Set:
+        return {entity['chem_comp_ids'][0] for entity in self.get_nonproteins() if not self.is_boring_ligand(entity)}
+
+    @property
+    def experimental_method(self):
+        return self.experiment['experimental_method']
+
+    @property
+    def resolution(self):
+        if 'resolution' in self.experiment:
+            return self.experiment['resolution']
+        else:
+            return None
+
+    @classmethod
+    def bulk_resolution(cls, codes:list):
+        reply = requests.post('https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/', data=','.join(codes)).json()
+        return {code: info['resolution'] if 'resolution' in info else 0.  for code, info in reply.items()}
+
+
+

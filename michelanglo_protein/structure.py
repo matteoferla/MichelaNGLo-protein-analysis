@@ -2,7 +2,7 @@ import pickle, os, re, json
 from datetime import datetime
 from .settings_handler import global_settings  # the instance not the class.
 import gzip, requests
-from michelanglo_transpiler import PyMolTranspiler
+from michelanglo_transpiler import PyMolTranspiler  # called by get_offset_coordinates
 from collections import defaultdict
 import pymol2
 
@@ -19,7 +19,7 @@ class Structure:
     settings = global_settings
     important_attributes = ['x', 'y', 'id', 'description', 'resolution', 'extra', 'alignment']
 
-    # __slots__ = ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'coordinates', 'extra']
+    # __slots__ = ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'coordinates', 'extra', 'offset_corrected']
     def __init__(self, id, description, x: int, y: int, code, type='rcsb', chain='*', offset: int = 0, coordinates=None,
                  extra=None, url=''):
         """
@@ -32,6 +32,7 @@ class Structure:
         self.description = description  #: description
         self.x = int(x)  #: resi in the whole uniprot protein
         self.y = int(y)  #: end resi in the whole uniprot protein
+        self.offset_corrected = False  # prevents a double trip
         # TODO these do not seem to used as are overwritten by chain definitions.
         if offset is None:
             self.offset = None
@@ -139,6 +140,8 @@ class Structure:
         Gets the coordinates and offsets them.
         :return:
         """
+        # if self.offset_corrected:
+        #     return self.coordinates
         if not self.chain_definitions:
             self.lookup_sifts()
         self.coordinates = PyMolTranspiler().renumber(self.get_coordinates(),
@@ -146,6 +149,11 @@ class Structure:
                                                       sequence=sequence,
                                                       make_A=self.chain,
                                                       remove_solvent=True).raw_pdb
+        self.fix_renumbered_annotation()
+        return self.coordinates
+
+    def fix_renumbered_annotation(self):
+        # this should have logging.
         if self.chain != 'A':
             ## fix this horror.
             for i, c in enumerate(self.chain_definitions):
@@ -160,13 +168,13 @@ class Structure:
                 if self.chain_definitions[i]['chain'] == 'XXX':
                     self.chain_definitions[i]['chain'] = self.chain
                     break
-        # just om case there is a double trip! (Non server usage)
+        # just in case there is a double trip! (Non server usage)
         self.chain = 'A'
         self.offset = 0
+        self.offset_corrected = True
         for i, c in enumerate(self.chain_definitions):
             if c['chain'] == 'A':
                 self.chain_definitions[i]['offset'] = 0
-        return self.coordinates
 
     def includes(self, position, offset=0):
         """
@@ -345,6 +353,7 @@ class Structure:
 
     @classmethod
     def from_swissmodel_query(cls, structural_data: dict, uniprot: str):
+        # called by retrieve_structures_from_swissmodel of ProteinCore
         # structural_data is an entry in the list data['result']['structures'] from a JSON query to swissmodel
         keepers = ['coverage', 'created_date', 'from', 'gmqe', 'identity', 'in_complex_with', 'ligand_chains', 'method',
                    'oligo-state', 'qmean', 'similarity', 'template', 'to']
@@ -354,7 +363,7 @@ class Structure:
                      structural_data['chains'][0]['segments'][0]['pdb']['from']
         else:
             offset = 0
-        chain_id = 0   # is this ever not the zeroth?
+        chain_id = 0  # is this ever not the zeroth?
         structure = cls(
             # these two do ziltch:
             id=structural_data['md5'],
@@ -374,18 +383,27 @@ class Structure:
             extra={k: structural_data[k] for k in keepers if k in structural_data}
         )
         # do not fill the structure.chain_definitions via SIFT
-        structure.chain_definitions = [dict(chain=structure.chain,
-                                            x=structure.x,
-                                            y=structure.y,
-                                            offset=structure.offset,
-                                            range=f'{structure.x}-{structure.y}',
-                                            uniprot=uniprot)
-                                       ] + \
-                                      [dict(chain=chain,
-                                            offset=0,
-                                            description=info[0]['description'],
-                                            uniprot=info[0]['uniprot_ac'] if 'uniprot_ac' in info[0] else 'P00404',
-                                            ) for chain, info in structural_data['in_complex_with'].items()]
+        def get_chain_def(info) -> dict:
+            chain = info['id']
+            if chain not in structural_data['in_complex_with'].keys():
+                # homo chain
+                return dict(chain=chain,
+                     x=structure.x,
+                     y=structure.y,
+                     offset=structure.offset,
+                     range=f'{structure.x}-{structure.y}',
+                     uniprot=uniprot)
+            else:
+                # het chain.
+                other_info = structural_data['in_complex_with'][chain]
+                return dict(chain=chain,
+                             offset=0,
+                             description=other_info[0]['description'],
+                             uniprot=info[0]['uniprot_ac'] if 'uniprot_ac' in info[0] else 'P00404',
+                             )
+
+        structure.chain_definitions = [get_chain_def(info) for info in structural_data['chains']]
+
         # ---- sequence
 
         def get_sequence(part):
@@ -400,3 +418,88 @@ class Structure:
         elif structure.type == 'rcsb':
             structure.alignment = {'template': get_sequence('pdb'), 'uniprot': get_sequence('uniprot')}
         return structure
+
+    def get_coordinates_w_template_extras(self, sequence: Optional[str] = None, monomer=True):
+        """
+        Sequence is the Uniprot sequence. For safety/debug
+        Biological assembly is a tricky one. Therefore it is often safer to just use a monomer.
+
+        in_struct_asyms and in_chains are different if bio assembly is smaller than async assembly
+        """
+        assert self.type == 'swissmodel'
+        template_code, chain = re.search('(\w{4})\.\w+\.(\w)', self.code).groups()
+        pdbblock = self.get_coordinates()
+        meta = PDBMeta(template_code, chain)
+        other_chains = meta.get_other_chains(chain, first_only=monomer) - set(self.extra['in_complex_with'].keys())
+        if 'ligand_chains' in self.extra:
+            present_ligands = {e['hetid'] for e in self.extra['ligand_chains'] if 'hetid' in e}
+        else:
+            present_ligands = set()
+        other_ligands = meta.get_interesting_ligand_names() - present_ligands
+        if len(other_chains) + len(other_ligands) > 0:
+            with pymol2.PyMOL() as pymol:
+                pymol.cmd.read_pdbstr(self.coordinates, 'threaded')
+                pymol.cmd.fetch(template_code, 'template', file=None)
+                pymol.cmd.remove(f'template and chain {chain} and polymer')
+                interesting_lig = ' or '.join([f'resi {name3}' for name3 in other_ligands])
+                wanted_chains = ' or '.join([f'chain {chain}' for chain in other_chains])
+                chain_sele = f'(template and ({wanted_chains}))'
+                lig_sele = f'(template and ({interesting_lig}))'
+                if wanted_chains and interesting_lig:
+                    pymol.cmd.create('combo', f'threaded or {chain_sele} or {lig_sele}')
+                elif wanted_chains:
+                    pymol.cmd.create('combo', f'threaded or {chain_sele}')
+                elif interesting_lig:
+                    pymol.cmd.create('combo', f'threaded or {lig_sele}')
+                else:
+                    pymol.cmd.create('combo', 'threaded')  # this should be a break statement with logging
+                    #log.critical('Impossible')
+                pymol.cmd.remove('(byres polymer around 5) and not polymer')  # remove asymmetric non bio ligands.
+                pdbblock = pymol.cmd.get_pdbstr('combo')
+                # update chain definitions
+                for entity in meta.get_other_proteins(chain):
+                    for chain in entity['in_chains']:
+                        if chain not in other_chains:
+                            continue
+                        if pymol.cmd.select(f'combo and chain {chain}') == 0:
+                            continue
+                        if 'mappings' in entity['source'][0]:
+                            x = entity['source'][0]['mappings'][0]['start']['residue_number']
+                            y = entity['source'][0]['mappings'][0]['end']['residue_number']
+                        else:
+                            x = 1
+                            y = 1_000_000
+                        self.chain_definitions.append(dict(chain=chain,
+                                                           x=x, y=y,
+                                                           offset=0,  # who cares.
+                                                           range=f'{x}-{y}',
+                                                           uniprot='P00404',  # unknown.
+                                                           name=entity['molecule_name'][0],
+                                                           transplanted=True
+                                                           ))
+                        if monomer:
+                            break  # only first entity['in_chains'] was added
+                for entity in meta.get_other_polymers(chain):
+                    if meta.is_peptide(entity):
+                        continue
+                    for chain in entity['in_chains']:
+                        if pymol.cmd.select(f'combo and chain {chain}') == 0:
+                            continue
+                        self.chain_definitions.append(dict(chain=chain,
+                                                           x=1, y=entity['length'],
+                                                           offset=0,  # who cares.
+                                                           range=f"1-{entity['length']}",
+                                                           uniprot='P00404',  # not valid
+                                                           name=entity['molecule_name'][0],
+                                                           transplanted=True
+                                                           ))
+        else:
+            pass  # nothing to do.
+        self.coordinates = PyMolTranspiler().renumber(pdbblock,
+                                                      self.chain_definitions,
+                                                      sequence=sequence,
+                                                      make_A=self.chain,
+                                                      remove_solvent=True).raw_pdb
+        self.fix_renumbered_annotation()
+        return self.coordinates
+

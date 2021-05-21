@@ -1,12 +1,14 @@
 from typing import *
 import requests
 from .structure import Structure
+from .metadata_from_PDBe import PDBMeta
 
 """
 The data return from a swissmodel query is full of information but is as complicated as a uniprot one...
 
 .. code-block:: python
     fs = FromSwissmodel('NDKB_HUMAN')
+    # ProteinCore(uniprot='NDKB_HUMAN')
     data = fs.retrieve_structures_from_swissmodel()
     data.keys() # dict_keys(['api_version', 'query', 'query_date', 'result'])
     data['result'].keys() # dict_keys(['crc64', 'md5', 'sequence', 'sequence_length', 'structures', 'uniprot_entries'])
@@ -46,6 +48,11 @@ class FromSwissmodel:
                 pdbs.append(structure)
             else:
                 swissmodel.append(structure)
+        # if there are few pdbs add resolution.
+        res = PDBMeta.bulk_resolution([structure.code for structure in pdbs if len(structure.code) == 4])
+        for structure in pdbs:
+            if structure.code in res:
+                structure.resolution = res[structure.code.lower()]
         # add...
         if blank_previous:
             self.pdbs = pdbs
