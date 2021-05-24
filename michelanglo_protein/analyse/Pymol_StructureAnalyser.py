@@ -165,6 +165,9 @@ class StructureAnalyser:
             self.has_conservation = True
             self.pymol.cmd.delete('*')
             self.pymol.cmd.read_pdbstr(self.coordinates, 'mod_')
+            con_chain = con.get_consurf_chain()
+            if con_chain != 'A':
+                con.remap_chains({con_chain: 'A'})
             con.add_bfactor_to_pymol(self.pymol)
             # No need for: self.pymol.cmd.remove('element H')
             self.coordinates = self.pymol.cmd.get_pdbstr()

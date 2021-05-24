@@ -3,6 +3,7 @@ from typing import *
 import re
 import logging
 import requests
+from collections import Counter
 
 
 # not std lib imports in methods --> bad typehinting
@@ -292,8 +293,14 @@ class Consurfer:
             else:
                 new_data[res] = values
         if self.present_chain in chain_map:
-            self.chain_map = chain_map[self.chain_map]
+            self.present_chain = chain_map[self.present_chain]
         self.data = new_data
+
+    def get_consurf_chain(self):
+        # corrects self.present_chain
+        chains = [self.get_residue_chain(res) for res in self.data]
+        self.present_chain = Counter(chains).most_common(1)[0][0]
+        return self.present_chain
 
     def offset_atom(self, offset_map: Dict[str, int]) -> None:
         """
