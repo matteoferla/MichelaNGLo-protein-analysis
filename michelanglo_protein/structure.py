@@ -5,10 +5,15 @@ import gzip, requests
 from michelanglo_transpiler import PyMolTranspiler  # called by get_offset_coordinates
 from collections import defaultdict
 import pymol2
+from collections import Counter
 
 from warnings import warn
 from .metadata_from_PDBe import PDBMeta
 from typing import Dict, Optional
+
+import logging
+
+log = logging.getLogger()
 
 
 class Structure:
@@ -26,7 +31,7 @@ class Structure:
         Stores the structural data for easy use by FeatureViewer and co. Can be converted to StructureAnalyser
         type = rcsb | swissmodel | homologue | www | local | custom
 
-        The type ``rcsb`` isnt called pdb as that would be ambiguous
+        The type ``rcsb`` isnt called pdb as that would be ambiguous w/ the format
         """
         self.id = id  #: RCSB code
         self.description = description  #: description
@@ -88,9 +93,10 @@ class Structure:
 
     def to_dict(self, full=False) -> Dict:
         if full:
-            return {key: getattr(self, key) for key in self.important_attributes if hasattr(self, key)}
+            extras = {key: getattr(self, key) for key in self.important_attributes if hasattr(self, key)}
         else:
-            return {'x': self.x, 'y': self.y, 'id': self.id, 'description': self.description}
+            extras = {}
+        return {'x': self.x, 'y': self.y, 'id': self.id, 'type': self.type, 'description': self.description, **extras}
 
     def __str__(self):
         return str(self.to_dict())
@@ -156,6 +162,7 @@ class Structure:
         # this should have logging.
         if self.chain != 'A':
             ## fix this horror.
+            log.warning('Chain A is not the target chain in the definitions!')
             for i, c in enumerate(self.chain_definitions):
                 if self.chain_definitions[i]['chain'] == 'A':
                     self.chain_definitions[i]['chain'] = 'XXX'
@@ -382,25 +389,26 @@ class Structure:
             chain=structural_data['chains'][chain_id]['id'],
             extra={k: structural_data[k] for k in keepers if k in structural_data}
         )
+
         # do not fill the structure.chain_definitions via SIFT
         def get_chain_def(info) -> dict:
             chain = info['id']
             if chain not in structural_data['in_complex_with'].keys():
                 # homo chain
                 return dict(chain=chain,
-                     x=structure.x,
-                     y=structure.y,
-                     offset=structure.offset,
-                     range=f'{structure.x}-{structure.y}',
-                     uniprot=uniprot)
+                            x=structure.x,
+                            y=structure.y,
+                            offset=structure.offset,
+                            range=f'{structure.x}-{structure.y}',
+                            uniprot=uniprot)
             else:
                 # het chain.
                 other_info = structural_data['in_complex_with'][chain]
                 return dict(chain=chain,
-                             offset=0,
-                             description=other_info[0]['description'],
-                             uniprot=info[0]['uniprot_ac'] if 'uniprot_ac' in info[0] else 'P00404',
-                             )
+                            offset=0,
+                            description=other_info[0]['description'],
+                            uniprot=info[0]['uniprot_ac'] if 'uniprot_ac' in info[0] else 'P00404',
+                            )
 
         structure.chain_definitions = [get_chain_def(info) for info in structural_data['chains']]
 
@@ -419,87 +427,214 @@ class Structure:
             structure.alignment = {'template': get_sequence('pdb'), 'uniprot': get_sequence('uniprot')}
         return structure
 
-    def get_coordinates_w_template_extras(self, sequence: Optional[str] = None, monomer=True):
+    # def Xget_coordinates_w_template_extras(self, sequence: Optional[str] = None, monomer=True):
+    #     """
+    #     Sequence is the Uniprot sequence. For safety/debug
+    #     Biological assembly is a tricky one. Therefore it is often safer to just use a monomer.
+    #     in_struct_asyms and in_chains are different if bio assembly is smaller than async assembly
+    #     """
+    #     assert self.type == 'swissmodel'
+    #     template_code, chain = re.search('(\w{4})\.\w+\.(\w)', self.code).groups()
+    #     pdbblock = self.get_coordinates()
+    #     meta = PDBMeta(template_code, chain)
+    #     other_chains = meta.get_other_chains(chain, first_only=monomer) - set(self.extra['in_complex_with'].keys())
+    #     if 'ligand_chains' in self.extra:
+    #         present_ligands = {e['hetid'] for e in self.extra['ligand_chains'] if 'hetid' in e}
+    #     else:
+    #         present_ligands = set()
+    #     other_ligands = meta.get_interesting_ligand_names() - present_ligands
+    #     if len(other_chains) + len(other_ligands) > 0:
+    #         with pymol2.PyMOL() as pymol:
+    #             pymol.cmd.read_pdbstr(self.coordinates, 'threaded')
+    #             pymol.cmd.fetch(template_code, 'template', file=None)
+    #             pymol.cmd.remove(f'template and chain {chain} and polymer')
+    #             interesting_lig = ' or '.join([f'resi {name3}' for name3 in other_ligands])
+    #             wanted_chains = ' or '.join([f'chain {chain}' for chain in other_chains])
+    #             chain_sele = f'(template and ({wanted_chains}))'
+    #             lig_sele = f'(template and ({interesting_lig}))'
+    #             if wanted_chains and interesting_lig:
+    #                 pymol.cmd.create('combo', f'threaded or {chain_sele} or {lig_sele}')
+    #             elif wanted_chains:
+    #                 pymol.cmd.create('combo', f'threaded or {chain_sele}')
+    #             elif interesting_lig:
+    #                 pymol.cmd.create('combo', f'threaded or {lig_sele}')
+    #             else:
+    #                 pymol.cmd.create('combo', 'threaded')  # this should be a break statement with logging
+    #                 # log.critical('Impossible')
+    #             pymol.cmd.remove('(byres polymer around 5) and not polymer')  # remove asymmetric non bio ligands.
+    #             pdbblock = pymol.cmd.get_pdbstr('combo')
+    #             # update chain definitions
+    #             for entity in meta.get_other_proteins(chain):
+    #                 for chain in entity['in_chains']:
+    #                     if chain not in other_chains:
+    #                         continue
+    #                     if pymol.cmd.select(f'combo and chain {chain}') == 0:
+    #                         continue
+    #                     if 'mappings' in entity['source'][0]:
+    #                         x = entity['source'][0]['mappings'][0]['start']['residue_number']
+    #                         y = entity['source'][0]['mappings'][0]['end']['residue_number']
+    #                     else:
+    #                         x = 1
+    #                         y = 1_000_000
+    #                     self.chain_definitions.append(dict(chain=chain,
+    #                                                        x=x, y=y,
+    #                                                        offset=0,  # who cares.
+    #                                                        range=f'{x}-{y}',
+    #                                                        uniprot='P00404',  # unknown.
+    #                                                        name=entity['molecule_name'][0],
+    #                                                        transplanted=True
+    #                                                        ))
+    #                     if monomer:
+    #                         break  # only first entity['in_chains'] was added
+    #             for entity in meta.get_other_polymers(chain):
+    #                 if meta.is_peptide(entity):
+    #                     continue
+    #                 for chain in entity['in_chains']:
+    #                     if pymol.cmd.select(f'combo and chain {chain}') == 0:
+    #                         continue
+    #                     self.chain_definitions.append(dict(chain=chain,
+    #                                                        x=1, y=entity['length'],
+    #                                                        offset=0,  # who cares.
+    #                                                        range=f"1-{entity['length']}",
+    #                                                        uniprot='P00404',  # not valid
+    #                                                        name=entity['molecule_name'][0],
+    #                                                        transplanted=True
+    #                                                        ))
+    #     # pro-forma.
+    #     self.fix_renumbered_annotation()
+    #     return self.coordinates
+
+    def get_coordinates_w_template_extras(self, sequence: Optional[str] = None):
         """
         Sequence is the Uniprot sequence. For safety/debug
         Biological assembly is a tricky one. Therefore it is often safer to just use a monomer.
 
         in_struct_asyms and in_chains are different if bio assembly is smaller than async assembly
+
+        The Swissmodel template library contains segi and chain renumbered structures
+        preferably as biounits. This is great except for the fact that the data of the chains is not available.
+        Hence the hybrid PDBe approach.
+        This means that for 6pax, whereas the (segi, chains) are
+
+        ([('B', 'A'), ('C', 'B'), ('A', 'C'), ('B', 'D'), ('C', 'E'), ('A', 'F')]
+
+        In the SMTL 6pax.1 it is:
+
+        [('-', ''), ('A', ''), ('B', ''), ('C', '')])
+
         """
         assert self.type == 'swissmodel'
         template_code, chain = re.search('(\w{4})\.\w+\.(\w)', self.code).groups()
+        log.debug(f'template_code={template_code} chain={chain} current={self.chain}')
         pdbblock = self.get_coordinates()
         meta = PDBMeta(template_code, chain)
-        other_chains = meta.get_other_chains(chain, first_only=monomer) - set(self.extra['in_complex_with'].keys())
-        if 'ligand_chains' in self.extra:
-            present_ligands = {e['hetid'] for e in self.extra['ligand_chains'] if 'hetid' in e}
-        else:
-            present_ligands = set()
-        other_ligands = meta.get_interesting_ligand_names() - present_ligands
-        if len(other_chains) + len(other_ligands) > 0:
-            with pymol2.PyMOL() as pymol:
-                pymol.cmd.read_pdbstr(self.coordinates, 'threaded')
-                pymol.cmd.fetch(template_code, 'template', file=None)
-                pymol.cmd.remove(f'template and chain {chain} and polymer')
-                interesting_lig = ' or '.join([f'resi {name3}' for name3 in other_ligands])
-                wanted_chains = ' or '.join([f'chain {chain}' for chain in other_chains])
-                chain_sele = f'(template and ({wanted_chains}))'
-                lig_sele = f'(template and ({interesting_lig}))'
-                if wanted_chains and interesting_lig:
-                    pymol.cmd.create('combo', f'threaded or {chain_sele} or {lig_sele}')
-                elif wanted_chains:
-                    pymol.cmd.create('combo', f'threaded or {chain_sele}')
-                elif interesting_lig:
-                    pymol.cmd.create('combo', f'threaded or {lig_sele}')
+        with pymol2.PyMOL() as pymol:
+            pymol.cmd.set('fetch_path', os.getcwd() + '/michelanglo_app/temp')
+            pymol.cmd.read_pdbstr(pdbblock, 'threaded')
+            pymol.cmd.fetch(template_code, 'template', file=None, type='pdb1')
+            log.debug('Merging with template...')
+            pymol.cmd.remove('solvent')
+            overlap_iter = pymol.cmd.get_model('template and (threaded around 0.1)').atom
+            data = Counter([(atom.chain, atom.segi) for atom in overlap_iter])
+            removed_chains = []
+            for (chain, segi), count in data.most_common():
+                if count < 10:
+                    pass  # a couple of overlapping atoms are fine.
                 else:
-                    pymol.cmd.create('combo', 'threaded')  # this should be a break statement with logging
-                    #log.critical('Impossible')
-                pymol.cmd.remove('(byres polymer around 5) and not polymer')  # remove asymmetric non bio ligands.
-                pdbblock = pymol.cmd.get_pdbstr('combo')
-                # update chain definitions
-                for entity in meta.get_other_proteins(chain):
-                    for chain in entity['in_chains']:
-                        if chain not in other_chains:
-                            continue
-                        if pymol.cmd.select(f'combo and chain {chain}') == 0:
-                            continue
-                        if 'mappings' in entity['source'][0]:
-                            x = entity['source'][0]['mappings'][0]['start']['residue_number']
-                            y = entity['source'][0]['mappings'][0]['end']['residue_number']
-                        else:
-                            x = 1
-                            y = 1_000_000
-                        self.chain_definitions.append(dict(chain=chain,
-                                                           x=x, y=y,
-                                                           offset=0,  # who cares.
-                                                           range=f'{x}-{y}',
-                                                           uniprot='P00404',  # unknown.
-                                                           name=entity['molecule_name'][0],
-                                                           transplanted=True
-                                                           ))
-                        if monomer:
-                            break  # only first entity['in_chains'] was added
-                for entity in meta.get_other_polymers(chain):
-                    if meta.is_peptide(entity):
-                        continue
-                    for chain in entity['in_chains']:
-                        if pymol.cmd.select(f'combo and chain {chain}') == 0:
-                            continue
-                        self.chain_definitions.append(dict(chain=chain,
-                                                           x=1, y=entity['length'],
-                                                           offset=0,  # who cares.
-                                                           range=f"1-{entity['length']}",
-                                                           uniprot='P00404',  # not valid
-                                                           name=entity['molecule_name'][0],
-                                                           transplanted=True
-                                                           ))
-        else:
-            pass  # nothing to do.
-        self.coordinates = PyMolTranspiler().renumber(pdbblock,
-                                                      self.chain_definitions,
-                                                      sequence=sequence,
-                                                      make_A=self.chain,
-                                                      remove_solvent=True).raw_pdb
-        self.fix_renumbered_annotation()
-        return self.coordinates
+                    if chain and segi:
+                        pymol.cmd.remove(f'template and chain {chain} and segi {segi} and polymer')
+                    elif chain:
+                        pymol.cmd.remove(f'template and chain {chain} and polymer')
+                    else:
+                        pymol.cmd.remove(f'template and chain "" and and polymer')
+                    removed_chains.append(chain)
+                    meta.remove_chain(chain)
 
+            pymol.cmd.remove(f'template and (threaded around 0.1) and not polymer')
+            boring = '+'.join(meta.boring_ligands)
+            if boring:
+                pymol.cmd.remove(f'template and resn {boring}')
+            # correct template chain A.
+            # thanks to the fact that SM do not have segi.
+            if self.chain != 'A' and pymol.cmd.select(f'threaded and chain A'):
+                pymol.cmd.alter(f'threaded and chain A', 'chain="X"')
+                pymol.cmd.sort()
+                for defi in self.chain_definitions:
+                    if defi['chain'] == 'A':
+                        defi['chain'] = 'X'
+                        break
+                    else:
+                        log.debug(f'Chain absent in definition')
+            if self.chain != 'A':
+                pymol.cmd.alter(f'threaded and chain {self.chain}', 'chain="A"')
+                pymol.cmd.sort()
+                for defi in self.chain_definitions:
+                    if defi['chain'] == self.chain:
+                        defi['chain'] = 'A'
+                        break
+                    else:
+                        log.debug(f'... Chain absent in definition')
+                self.chain = 'A'
+            transpiler = PyMolTranspiler()  # using parts.
+            transpiler.pymol = pymol
+            chaingen = transpiler.get_new_letter()
+            present_chains = {atom.chain for atom in pymol.cmd.get_model('threaded').atom}
+            to_be_added_chains = {atom.chain for atom in pymol.cmd.get_model('template').atom}
+            for chain in to_be_added_chains:
+                if chain in present_chains:
+                    old_chain = chain
+                    new_chain = next(chaingen)
+                    pymol.cmd.alter(f"template and chain {old_chain}", f'chain="{new_chain}"')
+                    pymol.cmd.sort()
+                    meta.move_chain(old_chain, new_chain)
+                elif chain == '':
+                    pymol.cmd.alter(f"template and chain ''", f'chain="{new_chain}"')
+                    pymol.cmd.sort()
+            pymol.cmd.create('combo', 'template or threaded', 1)  # state 1.
+            self.coordinates = pymol.cmd.get_pdbstr('combo')
+            if False:  # extreme debug time
+                pymol.cmd.save('temp.pse')
+                raise SystemExit
+            # update chain definitions
+            for entity in meta.get_proteins():
+                for chain in entity['in_chains']:
+                    if chain not in to_be_added_chains:
+                        continue
+                    elif pymol.cmd.select(f'combo and chain {chain}') == 0:
+                        continue
+                    elif 'mappings' in entity['source'][0]:
+                        x = entity['source'][0]['mappings'][0]['start']['residue_number']
+                        y = entity['source'][0]['mappings'][0]['end']['residue_number']
+                    else:
+                        x = 1
+                        y = 1_000_000
+                    log.debug(f'Adding chain {chain}')
+                    self.chain_definitions.append(dict(chain=chain,
+                                                       x=x, y=y,
+                                                       offset=0,  # who cares.
+                                                       range=f'{x}-{y}',
+                                                       uniprot='P00404',  # unknown.
+                                                       name=entity['molecule_name'][0],
+                                                       transplanted=True
+                                                       ))
+            for entity in meta.get_polymers():
+                if meta.is_peptide(entity):
+                    continue
+                for chain in entity['in_chains']:
+                    if pymol.cmd.select(f'combo and chain {chain}') == 0:
+                        continue
+                    self.chain_definitions.append(dict(chain=chain,
+                                                       x=1, y=entity['length'],
+                                                       offset=0,  # who cares.
+                                                       range=f"1-{entity['length']}",
+                                                       uniprot='P00404',  # not valid
+                                                       name=entity['molecule_name'][0].replace('*P', '')
+                                                                                      .replace('P*', '')
+                                                                                      .replace('*', ''),
+                                                       transplanted=True
+                                                       ))
+        # end of pymol context manager
+        # pro-forma:
+        self.fix_renumbered_annotation()
+        log.debug('... Merged')
+        return self.coordinates

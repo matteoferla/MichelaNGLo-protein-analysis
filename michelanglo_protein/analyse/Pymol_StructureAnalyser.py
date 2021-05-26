@@ -84,7 +84,8 @@ class StructureAnalyser:
             t = self.get_distance_to_closest_ligand()
             self.closest_ligand = t['closest']
             self.distance_to_closest_ligand = t['distance']
-            self.add_conservation()  # to neighbours
+            if self.structure.type in ('rcsb', 'swissmodel'):
+                self.add_conservation()  # to neighbours
         self.pymol = None
 
     def get_SS(self, sele=None):

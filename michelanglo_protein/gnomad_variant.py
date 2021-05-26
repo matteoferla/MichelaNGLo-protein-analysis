@@ -16,3 +16,11 @@ class Variant(namedtuple('Variant',
                 return 'missense'
         else:
             return 'nonsense'
+
+    def to_dict(self):
+        return dict(id=self.id,
+                    x=self.x, y=self.y,
+                    impact=self.impact,
+                    type=self.type,
+                    description=self.description,
+                    homozygous=self.homozygous)

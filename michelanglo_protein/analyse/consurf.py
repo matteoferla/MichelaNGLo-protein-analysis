@@ -242,10 +242,13 @@ class Consurfer:
         if 'No chains found for' in reply.text:
             self.log.debug(f'Reply: {reply.text.strip()}')
             raise KeyError(f'{code} has no chains according to Consurf')
-        if chain not in mapping:
+        elif len(mapping) == 1:
+            return list(mapping.values())[0]
+        elif chain not in mapping:
             self.log.debug(f'Reply: {reply.text.strip()}')
-            raise KeyError(f'Chain {chain} is absent in {code} according to Consurf')
-        return mapping[chain]
+            raise KeyError(f'Chain {chain} is absent in {code} according to Consurf (SMTL changed the chain number)')
+        else:
+            return mapping[chain]
 
     def _fetch_final(self, final: str):
         url = f'https://consurfdb.tau.ac.il/DB/{final}/consurf_summary.txt'
