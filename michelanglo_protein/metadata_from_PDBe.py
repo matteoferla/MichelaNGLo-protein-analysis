@@ -542,10 +542,10 @@ class PDBMeta:
         for entity in list(self.data):
             if 'in_chains' not in entity:
                 continue  # What is this though??
-            elif chain in entity['in_chains'][0] and len(entity['in_chains'][0]) == 1:
+            elif chain in entity['in_chains'] and len(entity['in_chains']) == 1:
                 self.data.remove(entity)
-            elif chain in entity['in_chains'][0]:
-                self.data['in_chains'][0].remove(chain)
+            elif chain in entity['in_chains']:
+                self.data['in_chains'].remove(chain)
             else:
                 pass  # no match
 
@@ -554,8 +554,8 @@ class PDBMeta:
             if 'in_chains' not in entity:
                 continue  # What is this though??
             elif old_chain in entity['in_chains'][0]:
-                entity['in_chains'][0].remove(old_chain)
-                entity['in_chains'][0].append(new_chain)
+                entity['in_chains'].remove(old_chain)
+                entity['in_chains'].append(new_chain)
             else:
                 pass  # no match
 

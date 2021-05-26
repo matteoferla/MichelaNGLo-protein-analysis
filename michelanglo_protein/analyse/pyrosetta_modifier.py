@@ -17,11 +17,15 @@ from typing import *
 from collections import namedtuple, defaultdict
 from Bio.SeqUtils import seq3
 from ..gnomad_variant import Variant  # solely for type hinting.
+import logging
 
-pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
+log = logging.getLogger()
 
 Target = namedtuple('target', ['resi', 'chain'])
 
+default_params_folder = os.path.join(os.path.split(__file__)[0], 'params')
+
+pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
 
 class Mutator:
     """
@@ -67,6 +71,9 @@ class Mutator:
     "yhh_planarity": "Sidechain hydroxyl group torsion preference for Tyr, superseded by hxl_tors"
     })
 
+    default_params = [os.path.join(default_params_folder, filename) for filename in os.listdir(default_params_folder)
+                      if os.path.splitext(filename)[1] == '.params']
+
     def __init__(self,
                  pdbblock: str,
                  target_resi: int,
@@ -103,7 +110,8 @@ class Mutator:
         # Load
         self.target = Target(target_resi, target_chain)
         self.pdbblock = pdbblock
-        self.params_filenames = params_filenames
+        self.params_filenames = list(params_filenames) + self.default_params
+        log.debug(self.params_filenames)
         self.pose = self.load_pose()  # self.pose is intended as the damageable version.
         self.mark('raw')  # mark scores the self.pose
         # Find neighbourhood (pyrosetta.rosetta.utility.vector1_bool)
@@ -136,8 +144,11 @@ class Mutator:
         if self.params_filenames:
             params_paths = pyrosetta.rosetta.utility.vector1_string()
             params_paths.extend(self.params_filenames)
-            pyrosetta.generate_nonstandard_residue_set(pose, params_paths)
-        pyrosetta.rosetta.core.import_pose.pose_from_pdbstring(pose, self.pdbblock)
+            rts = pyrosetta.generate_nonstandard_residue_set(pose, params_paths)
+            # the filename AFAIK does nothing.
+            pyrosetta.rosetta.core.import_pose.pose_from_pdbstring(pose, self.pdbblock, rts, 'temp.pdb')
+        else:
+            pyrosetta.rosetta.core.import_pose.pose_from_pdbstring(pose, self.pdbblock)
         self._pdb2pose = pose.pdb_info().pdb2pose
         return pose
 
@@ -358,13 +369,13 @@ class Mutator:
         pyrosetta.toolbox.mutate_residue(self.pose,
                                          mutant_position=pose_idx,
                                          mutant_aa=from_resi,
-                                         pack_radius=4.0,
+                                         pack_radius=5.0,
                                          pack_scorefxn=self.scorefxn)
         ref = self.scorefxn(self.pose)
         pyrosetta.toolbox.mutate_residue(self.pose,
                                          mutant_position=pose_idx,
                                          mutant_aa=to_resi,
-                                         pack_radius=4.0,
+                                         pack_radius=5.0,
                                          pack_scorefxn=self.scorefxn)
         return self.scorefxn(self.pose) - ref
 

@@ -36,11 +36,12 @@ class FromSwissmodel:
     def retrieve_structures_from_swissmodel(self, blank_previous: bool = True) -> dict:
         pdbs = []
         swissmodel = []
-        reply = requests.get(f'https://swissmodel.expasy.org/repository/uniprot/{self.uniprot}.json',
+        url = f'https://swissmodel.expasy.org/repository/uniprot/{self.uniprot}.json'
+        reply = requests.get(url,
                              # params=dict(provider='swissmodel')  # do both.
                              )
         if reply.status_code != 200:
-            raise ConnectionError('Swissmodel retrieval failed')
+            raise ConnectionError(f'Swissmodel retrieval failed (code {reply.status_code}): {url}')
         data = reply.json()
         for structural_data in data['result']['structures']:
             structure = Structure.from_swissmodel_query(structural_data, self.uniprot)

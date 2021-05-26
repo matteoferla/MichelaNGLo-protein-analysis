@@ -407,7 +407,7 @@ class Structure:
                 return dict(chain=chain,
                             offset=0,
                             description=other_info[0]['description'],
-                            uniprot=info[0]['uniprot_ac'] if 'uniprot_ac' in info[0] else 'P00404',
+                            uniprot=other_info[0]['uniprot_ac'] if 'uniprot_ac' in other_info[0] else 'P00404',
                             )
 
         structure.chain_definitions = [get_chain_def(info) for info in structural_data['chains']]
