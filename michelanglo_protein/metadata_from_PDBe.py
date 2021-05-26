@@ -545,7 +545,7 @@ class PDBMeta:
             elif chain in entity['in_chains'] and len(entity['in_chains']) == 1:
                 self.data.remove(entity)
             elif chain in entity['in_chains']:
-                self.data['in_chains'].remove(chain)
+                entity['in_chains'].remove(chain)
             else:
                 pass  # no match
 
