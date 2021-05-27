@@ -529,7 +529,7 @@ class PDBMeta:
         if first_only:
             return {entity['in_chains'][0] for entity in self.get_polymers() if not self.is_antibody(entity)}
         else:
-            return {e_chain for entity in self.get_other_polymers() for e_chain in entity['in_chains']
+            return {e_chain for entity in self.get_polymers() for e_chain in entity['in_chains']
                     if not self.is_antibody(entity)}
 
     def get_interesting_ligands(self) -> List:

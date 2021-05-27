@@ -9,7 +9,7 @@ from collections import Counter
 
 from warnings import warn
 from .metadata_from_PDBe import PDBMeta
-from typing import Dict, Optional
+from typing import *
 
 import logging
 
@@ -148,6 +148,7 @@ class Structure:
         """
         # if self.offset_corrected:
         #     return self.coordinates
+        log.debug(self.chain_definitions)
         if not self.chain_definitions:
             self.lookup_sifts()
         self.coordinates = PyMolTranspiler().renumber(self.get_coordinates(),
@@ -207,7 +208,7 @@ class Structure:
         """
         if self.type != 'rcsb':
             return self  # it is probably clean.
-
+        log.debug(f'Looking up sifts if this is empty: {self.chain_definitions}')
         if not self.chain_definitions:
             details = self._get_sifts()
             offset = 0
@@ -356,6 +357,7 @@ class Structure:
 
     def lookup_ligand(self):
         warn('TEMP! Returns the data... not self')
+        # code not used anywhere.
         return PDBMeta(self.code + '_' + self.chain).data
 
     @classmethod
@@ -391,26 +393,24 @@ class Structure:
         )
 
         # do not fill the structure.chain_definitions via SIFT
-        def get_chain_def(info) -> dict:
+        def get_chain_def(info) -> List[dict]:
             chain = info['id']
-            if chain not in structural_data['in_complex_with'].keys():
-                # homo chain
-                return dict(chain=chain,
+            chained = [dict(chain=chain,
                             x=structure.x,
                             y=structure.y,
                             offset=structure.offset,
                             range=f'{structure.x}-{structure.y}',
-                            uniprot=uniprot)
-            else:
-                # het chain.
-                other_info = structural_data['in_complex_with'][chain]
-                return dict(chain=chain,
-                            offset=0,
-                            description=other_info[0]['description'],
-                            uniprot=other_info[0]['uniprot_ac'] if 'uniprot_ac' in other_info[0] else 'P00404',
-                            )
+                            uniprot=uniprot)]
+            if 'in_complex_with' in structural_data:
+                for partner_chain, partner_def in structural_data['in_complex_with'].items():
+                    chained.append(dict(chain=partner_chain,
+                                offset=0,
+                                description=partner_def[0]['description'],
+                                uniprot=partner_def[0]['uniprot_ac'] if 'uniprot_ac' in partner_def[0] else 'P00404',
+                                ))
+            return chained
 
-        structure.chain_definitions = [get_chain_def(info) for info in structural_data['chains']]
+        structure.chain_definitions = [chained for info in structural_data['chains'] for chained in get_chain_def(info)]
 
         # ---- sequence
 
@@ -549,7 +549,7 @@ class Structure:
                         pymol.cmd.remove(f'template and chain "" and and polymer')
                     removed_chains.append(chain)
                     meta.remove_chain(chain)
-
+            log.debug(f'The following chains were removed {removed_chains}')
             pymol.cmd.remove(f'template and (threaded around 0.1) and not polymer')
             boring = '+'.join(meta.boring_ligands)
             if boring:

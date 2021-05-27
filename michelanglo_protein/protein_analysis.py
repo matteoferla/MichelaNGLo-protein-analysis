@@ -355,6 +355,7 @@ class ProteinAnalyser(ProteinCore):
 
     def fix_missing_chain_definition(self, structure: Structure):
         # this is not supposed to happen serverside, except when using in Jupyter notebook.
+        # log is a fx not logging.log
         print(f'definitionless structure: {structure.code}')
         if structure.chain == '*':
             chain = 'A'
