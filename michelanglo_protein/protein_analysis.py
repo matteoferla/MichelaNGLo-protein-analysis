@@ -24,7 +24,12 @@ class ProteinAnalyser(ProteinCore):
                        'm3': 'trimethylated',
                        'me': 'methylated'}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args,
+                 scorefxn_name: str = 'ref2015',
+                 cycles: int = 1,
+                 radius: int = 12,
+                 use_pymol_for_neighbours: bool = False,
+                 **kwargs):
         super().__init__(*args, **kwargs)
         ## other ##
         ## mutation ##
@@ -34,9 +39,10 @@ class ProteinAnalyser(ProteinCore):
         self.energetics = None
         self.rosetta_params_filenames = []
         self.energetics_gnomAD = None
-        self.scorefxn_name = 'ref2015'
-        self.radius = 12  # the radius via PyMol radius=3
-        self.use_pymol_for_neighbours = False
+        self.scorefxn_name = scorefxn_name
+        self.radius = radius  # the radius via PyMol radius=3
+        self.cycles = cycles
+        self.use_pymol_for_neighbours = use_pymol_for_neighbours
 
     ####### elm
     _elmdata = []
@@ -411,7 +417,7 @@ class ProteinAnalyser(ProteinCore):
         return dict(pdbblock=self.pdbblock,
                     target_resi=self.mutation.residue_index,
                     target_chain='A',
-                    cycles=1,
+                    cycles=self.cycles,
                     params_filenames=self.rosetta_params_filenames,
                     radius=self.radius,
                     use_pymol_for_neighbours=self.use_pymol_for_neighbours,
