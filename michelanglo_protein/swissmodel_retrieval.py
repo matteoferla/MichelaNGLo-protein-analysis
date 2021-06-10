@@ -2,6 +2,9 @@ from typing import *
 import requests
 from .structure import Structure
 from .metadata_from_PDBe import PDBMeta
+import logging
+
+log = logging.getLogger()
 
 """
 The data return from a swissmodel query is full of information but is as complicated as a uniprot one...
@@ -41,7 +44,9 @@ class FromSwissmodel:
                              # params=dict(provider='swissmodel')  # do both.
                              )
         if reply.status_code != 200:
-            raise ConnectionError(f'Swissmodel retrieval failed (code {reply.status_code}): {url}')
+            msg = f'Swissmodel retrieval failed (code {reply.status_code}): {url}'
+            log.info(msg)
+            raise ConnectionError(msg)
         data = reply.json()
         for structural_data in data['result']['structures']:
             structure = Structure.from_swissmodel_query(structural_data, self.uniprot)
@@ -49,11 +54,14 @@ class FromSwissmodel:
                 pdbs.append(structure)
             else:
                 swissmodel.append(structure)
-        # if there are few pdbs add resolution.
+        log.debug(f'{len(pdbs)} PDBs and {len(swissmodel)} SWISSMODELs available')
+        # This does not used the cached data.
         res = PDBMeta.bulk_resolution([structure.code for structure in pdbs if len(structure.code) == 4])
         for structure in pdbs:
             if structure.code in res:
                 structure.resolution = res[structure.code.lower()]
+            else:
+                log.debug(f'PDBe resolution not found for {structure.code} (options: {list(res.keys())}')
         # add...
         if blank_previous:
             self.pdbs = pdbs
