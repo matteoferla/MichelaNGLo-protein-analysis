@@ -573,4 +573,4 @@ class PDBMeta:
     @classmethod
     def bulk_resolution(cls, codes: list):
         reply = requests.post('https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/', data=','.join(codes)).json()
-        return {code: info['resolution'] if 'resolution' in info else 0. for code, info in reply.items()}
+        return {code: info[0]['resolution'] if 'resolution' in info[0] else 0. for code, info in reply.items()}
