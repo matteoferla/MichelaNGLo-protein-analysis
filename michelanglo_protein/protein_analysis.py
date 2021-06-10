@@ -329,7 +329,7 @@ class ProteinAnalyser(ProteinCore):
                     if model.includes(self.mutation.residue_index):
                         good.append(model)
                 if good:
-                    good.sort(key=lambda x: x.resolution)
+                    good.sort(key=lambda x: x.resolution if x.resolution > 0 else x.resolution + 10)
                     return good[0]
                 else:  # no models with mutation.
                     pass
