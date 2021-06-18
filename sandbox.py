@@ -448,7 +448,7 @@ if __name__ == '__main__':
     global_settings.verbose = True  # False
     global_settings.startup(data_folder='../protein-data')
 ## workspace!
-if 1 == 1:
+if 1 == 0:
     # os.mkdir(os.path.join(ProteinCore.settings.temp_folder, 'PDB'))
     # describe('P01112')
     # analyse('P62873')
@@ -536,7 +536,7 @@ elif 1 == 0:
 elif 1 == 0:
     print('retrieving...')
     global_settings.retrieve_references(ask=False, refresh=False)
-else:
+elif 1 == 0:
     # dock 9 ops.
     # test_ProteinAnalyser()
     p = ProteinGatherer(uniprot='Q96N67').load()

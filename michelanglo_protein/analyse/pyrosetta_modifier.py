@@ -6,6 +6,14 @@ To avoid segmentation faults it is run on a separate process byt this.
 
 Pyrosetta will throw a segmentation fault if anything is done incorrectly. Such as editing a non-existent atom.
 As a result ProteinAnalyser.analyse_FF uses multiprocessing to do the job on a different core.
+
+The PyMOL neighbours could be using
+
+cc_sele = pyrosetta.rosetta.core.select.residue_selector.CloseContactResidueSelector()
+cc_sele.central_residue_group_selector(resi_sele)
+cc_sele.threshold(3)
+
+But for debug this was done...
 """
 
 # NB. Do not change the spelling of Neighbours to Neighbors as the front end uses it too.
@@ -82,7 +90,8 @@ class Mutator:
                  radius: int = 4,
                  params_filenames: List[str]=(),
                  scorefxn_name:str = 'ref2015',
-                 use_pymol_for_neighbours:bool=True):
+                 use_pymol_for_neighbours:bool=False,
+                 neighbour_only_score:bool=True):
         """
         Load.
 
@@ -96,6 +105,7 @@ class Mutator:
         :param radius: (opt) angstrom to expand around
         :param params_filenames: list of filenames of params files (rosetta topology files)
         """
+        log.debug('Initialising')
         if 'beta_july15' in scorefxn_name or 'beta_nov15' in scorefxn_name:
             pyrosetta.rosetta.basic.options.set_boolean_option('corrections:beta_july15', True)
         elif 'beta_nov16' in scorefxn_name:
@@ -105,6 +115,7 @@ class Mutator:
         # there are a few other fixes. Such as franklin2019 and spades.
         self.scorefxn = pyrosetta.create_score_function(scorefxn_name)
         self.scores = {}  # gets filled by .mark()
+        self.neighbour_only_score = bool(neighbour_only_score)
         self.cycles = cycles
         self.radius = radius
         # Load
@@ -113,14 +124,16 @@ class Mutator:
         self.params_filenames = list(params_filenames) + self.default_params
         log.debug(self.params_filenames)
         self.pose = self.load_pose()  # self.pose is intended as the damageable version.
-        self.mark('raw')  # mark scores the self.pose
+        log.debug('Pose loaded...')
         # Find neighbourhood (pyrosetta.rosetta.utility.vector1_bool)
         if use_pymol_for_neighbours:
             neighbours = self.calculate_neighbours_in_pymol(self.radius)
             self.neighbour_vector = self.targets2vector(neighbours)
         else:
             self.neighbour_vector = self.calculate_neighbours_in_pyrosetta(self.radius)
-
+        log.debug('About to run raw...')
+        self.mark('raw')  # mark scores the self.pose
+        log.debug(f'Raw scored: {self.scores}')
         # Read relax
         self.ready_relax(self.cycles)
 
@@ -154,6 +167,12 @@ class Mutator:
 
     def calculate_neighbours_in_pymol(self, radius: int = 4) -> List[Target]:
         """
+        DEBUG ONLY. TODO switch to:
+
+        cc_sele = pyrosetta.rosetta.core.select.residue_selector.CloseContactResidueSelector()
+        cc_sele.central_residue_group_selector(resi_sele)
+        cc_sele.threshold(3)
+
         Gets the residues within the radius of target. THis method uses PyMOL!
         It is for filling self.neighbour_vector, but via self.targets2vector()
 
@@ -220,7 +239,11 @@ class Mutator:
         :param label: scores is Dict. label is key.
         :return: {ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
         """
-        self.scores[label] = self.scorefxn(self.pose)
+        if self.neighbour_only_score:
+            self.scorefxn(self.pose)
+            self.scores[label] = self.scorefxn.get_sub_score(self.pose, self.neighbour_vector)
+        else:
+            self.scores[label] = self.scorefxn(self.pose)
         return self.scores
 
     def mutate(self, aa):
@@ -322,6 +345,7 @@ class Mutator:
         MutateResidue = pyrosetta.rosetta.protocols.simple_moves.MutateResidue
         pdb2pose = phospho.pdb_info().pdb2pose
         changes = 0
+        resi_sele = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector()
         for record in ptms:
             if record['ptm'] == 'ub':
                 continue  # What is a proxy for ubiquitination??
@@ -346,6 +370,11 @@ class Mutator:
             if r == 0:  # missing density.
                 continue
             MutateResidue(target=r, new_res=new_res).apply(phospho)
+            resi_sele.append_index(r)
+        neigh_sele = pyrosetta.rosetta.core.select.residue_selector.NeighborhoodResidueSelector(resi_sele, 7, True)
+        self.neighbour_vector = neigh_sele.apply(self.pose)
+        self.ready_relax(cycles=1)
+        self.do_relax()
         return self.output_pdbblock(phospho)
 
     def repack(self, target: Optional[pyrosetta.rosetta.core.pose.Pose] = None) -> None:
@@ -369,15 +398,25 @@ class Mutator:
         pyrosetta.toolbox.mutate_residue(self.pose,
                                          mutant_position=pose_idx,
                                          mutant_aa=from_resi,
-                                         pack_radius=5.0,
+                                         pack_radius=7.0,
                                          pack_scorefxn=self.scorefxn)
-        ref = self.scorefxn(self.pose)
+        resi_sele = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector(pose_idx)
+        neigh_sele = pyrosetta.rosetta.core.select.residue_selector.NeighborhoodResidueSelector(resi_sele, 7, True)
+        self.neighbour_vector = neigh_sele.apply(self.pose)
+        if self.neighbour_only_score:
+            ref = self.scorefxn.get_sub_score(self.pose, self.neighbour_vector)
+        else:
+            ref = self.scorefxn(self.pose)
         pyrosetta.toolbox.mutate_residue(self.pose,
                                          mutant_position=pose_idx,
                                          mutant_aa=to_resi,
-                                         pack_radius=5.0,
+                                         pack_radius=7.0,
                                          pack_scorefxn=self.scorefxn)
-        return self.scorefxn(self.pose) - ref
+        if self.neighbour_only_score:
+            mut = self.scorefxn.get_sub_score(self.pose, self.neighbour_vector)
+        else:
+            mut = self.scorefxn(self.pose)
+        return mut - ref
 
     def repack_other(self, residue_index, from_residue, to_residue):
         self.native = self.pose.clone()
@@ -481,5 +520,5 @@ def paratest():
 
 
 if __name__ == '__main__':
-    # test()
-    paratest()
+    test()
+    #paratest()

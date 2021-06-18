@@ -22,7 +22,7 @@ class StructureAnalyser:
     log = logging.getLogger()
     error_on_missing_conservation = False
 
-    def __init__(self, structure: Structure, mutation: Mutation, sequence: Optional[str] = None):
+    def __init__(self, structure: Structure, mutation: Mutation, sequence: Optional[str] = None, no_conservation=False):
         """
 
         :param structure: a instance of Structure, a former namedtuple and is in core.py
@@ -84,7 +84,7 @@ class StructureAnalyser:
             t = self.get_distance_to_closest_ligand()
             self.closest_ligand = t['closest']
             self.distance_to_closest_ligand = t['distance']
-            if self.structure.type in ('rcsb', 'swissmodel'):
+            if self.structure.type in ('rcsb', 'swissmodel') and not no_conservation:
                 self.add_conservation()  # to neighbours
         self.pymol = None
 

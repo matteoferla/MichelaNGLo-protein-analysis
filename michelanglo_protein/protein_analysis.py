@@ -341,7 +341,9 @@ class ProteinAnalyser(ProteinCore):
     def property_at_mutation(self):
         return {k: self.properties[k][self.mutation.residue_index - 1] for k in self.properties}
 
-    def analyse_structure(self, structure: Optional[Structure] = None, params: List[str] = []):
+    def analyse_structure(self, structure: Optional[Structure] = None,
+                          params: List[str] = [],
+                          no_conservation=False):
         # fetch structure if not provided
         if structure is None:
             structure = self.get_best_model()
@@ -352,7 +354,10 @@ class ProteinAnalyser(ProteinCore):
         if not structure.chain_definitions and structure.type != 'custom':
             # jupyter notebook use. not server
             self.fix_missing_chain_definition(structure)
-        self.structural = StructureAnalyser(structure, self.mutation, sequence=self.sequence)
+        self.structural = StructureAnalyser(structure,
+                                            self.mutation,
+                                            sequence=self.sequence,
+                                            no_conservation=no_conservation)
         if self.structural and self.structural.neighbours:
             # see mutation.exposure_effect
             self.mutation.surface_expose = 'buried' if self.structural.buried else 'surface'
