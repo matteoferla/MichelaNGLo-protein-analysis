@@ -35,6 +35,7 @@ default_params_folder = os.path.join(os.path.split(__file__)[0], 'params')
 
 pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
 
+
 class Mutator:
     """
     Relaxes around a residue on init and mutates.
@@ -47,36 +48,36 @@ class Mutator:
     """
 
     term_meanings = defaultdict(str, {
-    "fa_atr": "Lennard-Jones attractive between atoms in different residues (r^6 term, London dispersion forces).",
-    "fa_rep": "Lennard-Jones repulsive between atoms in different residues (r^12 term, Pauli repulsion forces).",
-    "fa_sol": "Lazaridis-Karplus solvation energy.",
-    "fa_intra_rep": "Lennard-Jones repulsive between atoms in the same residue.",
-    "fa_elec": "Coulombic electrostatic potential with a distance-dependent dielectric.",
-    "pro_close": "Proline ring closure energy and energy of psi angle of preceding residue.",
-    "hbond_sr_bb": "Backbone-backbone hbonds close in primary sequence.",
-    "hbond_lr_bb": "Backbone-backbone hbonds distant in primary sequence.",
-    "hbond_bb_sc": "Sidechain-backbone hydrogen bond energy.",
-    "hbond_sc": "Sidechain-sidechain hydrogen bond energy.",
-    "dslf_fa13": "Disulfide geometry potential.",
-    "rama": "Ramachandran preferences.",
-    "omega": "Omega dihedral in the backbone. A Harmonic constraint on planarity with standard deviation of ~6 deg.",
-    "fa_dun": "Internal energy of sidechain rotamers as derived from Dunbrack's statistics (2010 Rotamer Library used in Talaris2013).",
-    "fa_dun_semi": "Internal energy of sidechain semi-rotamers as derived from Dunbrack's statistics (2010 Rotamer Library used in Talaris2013).",
-    "p_aa_pp": "Probability of amino acid at Φ/Ψ.",
-    "ref": "Reference energy for each amino acid. Balances internal energy of amino acid terms.  Plays role in design.",
-    "METHOD_WEIGHTS": "Not an energy term itself, but the parameters for each amino acid used by the ref energy term.",
-    "lk_ball": "Anisotropic contribution to the solvation.",
-    "lk_ball_iso": "Same as fa_sol; see below.",
-    "lk_ball_wtd": "weighted sum of lk_ball & lk_ball_iso (w1*lk_ball + w2*lk_ball_iso); w2 is negative so that anisotropic contribution(lk_ball) replaces some portion of isotropic contribution (fa_sol=lk_ball_iso).",
-    "lk_ball_bridge": "Bonus to solvation coming from bridging waters, measured by overlap of the 'balls' from two interacting polar atoms.",
-    "lk_ball_bridge_uncpl": "Same as lk_ball_bridge, but the value is uncoupled with dGfree (i.e. constant bonus, whereas lk_ball_bridge is proportional to dGfree values).",
-    "fa_intra_atr_xover4": "Intra-residue LJ attraction, counted for the atom-pairs beyond torsion-relationship.",
-    "fa_intra_rep_xover4": "Intra-residue LJ repulsion, counted for the atom-pairs beyond torsion-relationship.",
-    "fa_intra_sol_xover4": "Intra-residue LK solvation, counted for the atom-pairs beyond torsion-relationship.",
-    "fa_intra_elec": "Intra-residue Coulombic interaction, counted for the atom-pairs beyond torsion-relationship.",
-    "rama_prepro": "Backbone torsion preference term that takes into account of whether preceding amono acid is Proline or not.",
-    "hxl_tors": "Sidechain hydroxyl group torsion preference for Ser/Thr/Tyr, supersedes yhh_planarity (that covers L- and D-Tyr only).",
-    "yhh_planarity": "Sidechain hydroxyl group torsion preference for Tyr, superseded by hxl_tors"
+        "fa_atr": "Lennard-Jones attractive between atoms in different residues (r^6 term, London dispersion forces).",
+        "fa_rep": "Lennard-Jones repulsive between atoms in different residues (r^12 term, Pauli repulsion forces).",
+        "fa_sol": "Lazaridis-Karplus solvation energy.",
+        "fa_intra_rep": "Lennard-Jones repulsive between atoms in the same residue.",
+        "fa_elec": "Coulombic electrostatic potential with a distance-dependent dielectric.",
+        "pro_close": "Proline ring closure energy and energy of psi angle of preceding residue.",
+        "hbond_sr_bb": "Backbone-backbone hbonds close in primary sequence.",
+        "hbond_lr_bb": "Backbone-backbone hbonds distant in primary sequence.",
+        "hbond_bb_sc": "Sidechain-backbone hydrogen bond energy.",
+        "hbond_sc": "Sidechain-sidechain hydrogen bond energy.",
+        "dslf_fa13": "Disulfide geometry potential.",
+        "rama": "Ramachandran preferences.",
+        "omega": "Omega dihedral in the backbone. A Harmonic constraint on planarity with standard deviation of ~6 deg.",
+        "fa_dun": "Internal energy of sidechain rotamers as derived from Dunbrack's statistics (2010 Rotamer Library used in Talaris2013).",
+        "fa_dun_semi": "Internal energy of sidechain semi-rotamers as derived from Dunbrack's statistics (2010 Rotamer Library used in Talaris2013).",
+        "p_aa_pp": "Probability of amino acid at Φ/Ψ.",
+        "ref": "Reference energy for each amino acid. Balances internal energy of amino acid terms.  Plays role in design.",
+        "METHOD_WEIGHTS": "Not an energy term itself, but the parameters for each amino acid used by the ref energy term.",
+        "lk_ball": "Anisotropic contribution to the solvation.",
+        "lk_ball_iso": "Same as fa_sol; see below.",
+        "lk_ball_wtd": "weighted sum of lk_ball & lk_ball_iso (w1*lk_ball + w2*lk_ball_iso); w2 is negative so that anisotropic contribution(lk_ball) replaces some portion of isotropic contribution (fa_sol=lk_ball_iso).",
+        "lk_ball_bridge": "Bonus to solvation coming from bridging waters, measured by overlap of the 'balls' from two interacting polar atoms.",
+        "lk_ball_bridge_uncpl": "Same as lk_ball_bridge, but the value is uncoupled with dGfree (i.e. constant bonus, whereas lk_ball_bridge is proportional to dGfree values).",
+        "fa_intra_atr_xover4": "Intra-residue LJ attraction, counted for the atom-pairs beyond torsion-relationship.",
+        "fa_intra_rep_xover4": "Intra-residue LJ repulsion, counted for the atom-pairs beyond torsion-relationship.",
+        "fa_intra_sol_xover4": "Intra-residue LK solvation, counted for the atom-pairs beyond torsion-relationship.",
+        "fa_intra_elec": "Intra-residue Coulombic interaction, counted for the atom-pairs beyond torsion-relationship.",
+        "rama_prepro": "Backbone torsion preference term that takes into account of whether preceding amono acid is Proline or not.",
+        "hxl_tors": "Sidechain hydroxyl group torsion preference for Ser/Thr/Tyr, supersedes yhh_planarity (that covers L- and D-Tyr only).",
+        "yhh_planarity": "Sidechain hydroxyl group torsion preference for Tyr, superseded by hxl_tors"
     })
 
     default_params = [os.path.join(default_params_folder, filename) for filename in os.listdir(default_params_folder)
@@ -88,10 +89,11 @@ class Mutator:
                  target_chain: str = 'A',
                  cycles: int = 1,
                  radius: int = 4,
-                 params_filenames: List[str]=(),
-                 scorefxn_name:str = 'ref2015',
-                 use_pymol_for_neighbours:bool=False,
-                 neighbour_only_score:bool=True):
+                 params_filenames: List[str] = (),
+                 scorefxn_name: str = 'ref2015',
+                 use_pymol_for_neighbours: bool = False,
+                 neighbour_only_score: bool = True,
+                 outer_constrained: bool = True):
         """
         Load.
 
@@ -114,6 +116,11 @@ class Mutator:
             pyrosetta.rosetta.basic.options.set_boolean_option('corrections:gen_potential', True)
         # there are a few other fixes. Such as franklin2019 and spades.
         self.scorefxn = pyrosetta.create_score_function(scorefxn_name)
+        # correct for split as per https://www.rosettacommons.org/node/11245
+        weights = self.scorefxn.weights()  # Create the EnergyMap
+        emopts = pyrosetta.rosetta.core.scoring.methods.EnergyMethodOptions(self.scorefxn.energy_method_options())
+        emopts.hbond_options().decompose_bb_hb_into_pair_energies(True)
+        self.scorefxn.set_energy_method_options(emopts)
         self.scores = {}  # gets filled by .mark()
         self.neighbour_only_score = bool(neighbour_only_score)
         self.cycles = cycles
@@ -136,6 +143,8 @@ class Mutator:
         log.debug(f'Raw scored: {self.scores}')
         # Read relax
         self.ready_relax(self.cycles)
+        if outer_constrained:
+            self.explicit_cons()
 
     def target_pdb2pose(self, target: Target) -> int:
         return self._pdb2pose(chain=target.chain, res=target.resi)
@@ -204,10 +213,13 @@ class Mutator:
         :return: self.neighbour_vector
         :rtype: pyrosetta.rosetta.utility.vector1_bool
         """
+        neigh_sele = self._get_neigh_sele(radius)
+        return neigh_sele.apply(self.pose)
+
+    def _get_neigh_sele(self, radius):
         r = self.target_pdb2pose(self.target)
         resi_sele = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector(r)
-        neigh_sele = pyrosetta.rosetta.core.select.residue_selector.NeighborhoodResidueSelector(resi_sele, radius, True)
-        return neigh_sele.apply(self.pose)
+        return pyrosetta.rosetta.core.select.residue_selector.NeighborhoodResidueSelector(resi_sele, radius, True)
 
     def ready_relax(self, cycles: int = 1) -> pyrosetta.rosetta.protocols.moves.Mover:
         """
@@ -219,6 +231,7 @@ class Mutator:
         self.movemap = pyrosetta.MoveMap()
         self.movemap.set_bb(self.neighbour_vector)
         self.movemap.set_chi(self.neighbour_vector)
+        # jump is false by def.
         self.relax.set_movemap(self.movemap)
         if self.scorefxn.get_weight(pyrosetta.rosetta.core.scoring.ScoreType.cart_bonded) > 0:
             # it's cartesian!
@@ -307,8 +320,62 @@ class Mutator:
 
     def get_res_score_terms(self, pose) -> dict:
         data = pose.energies().residue_total_energies_array()  # structured numpy array
-        i = self.target_pdb2pose(self.target) - 1  #pose numbering is fortran style. while python is C++
+        i = self.target_pdb2pose(self.target) - 1  # pose numbering is fortran style. while python is C++
         return {data.dtype.names[j]: data[i][j] for j in range(len(data.dtype))}
+
+    def explicit_cons(self, proximity_threshold=3) -> pyrosetta.rosetta.core.scoring.constraints.ConstraintSet:
+        """
+        Adds contraints between atoms closer than 3 Å between the neighbourhood residues and the other residues.
+        Therefore preventing residues (such as bad ligands) from exploding during repacking.
+        The constraint generator works with CA only, or without only with peptides,
+        hydrogen bonding generator would not capture clashing atom, such as incorrectly protonated ligands.
+        This method takes up less than a second or two, it's the relax that takes up more time.
+        """
+        # sele neigh
+        neigh_sele = self._get_neigh_sele(self.radius)
+        # get outers
+        cc_sele = pyrosetta.rosetta.core.select.residue_selector.CloseContactResidueSelector()
+        cc_sele.central_residue_group_selector(neigh_sele)
+        cc_sele.threshold(proximity_threshold)
+        not_sele = pyrosetta.rosetta.core.select.residue_selector.NotResidueSelector(neigh_sele)
+        outer_sele = pyrosetta.rosetta.core.select.residue_selector.AndResidueSelector(cc_sele, not_sele)
+        outers = pyrosetta.rosetta.core.select.residue_selector.ResidueVector(outer_sele.apply(self.pose))
+        outer_cc_sele = pyrosetta.rosetta.core.select.residue_selector.CloseContactResidueSelector()
+        outer_cc_sele.threshold(proximity_threshold)
+        # outer_map
+        outer_map = {}
+        for out in list(outers):
+            # get border
+            out_sele = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector(out)
+            outer_cc_sele.central_residue_group_selector(out_sele)
+            border_sele = pyrosetta.rosetta.core.select.residue_selector.AndResidueSelector(outer_cc_sele, neigh_sele)
+            # border are the border residues of a given outer residue.
+            borders = pyrosetta.rosetta.core.select.residue_selector.ResidueVector(border_sele.apply(self.pose))
+            outer_map[out] = borders
+        # distance
+        cons = pyrosetta.rosetta.core.scoring.constraints.ConstraintSet()
+        HarmonicFunc = pyrosetta.rosetta.core.scoring.func.HarmonicFunc
+        AtomPairConstraint = pyrosetta.rosetta.core.scoring.constraints.AtomPairConstraint
+        for out, borders in outer_map.items():
+            out_res = self.pose.residue(out)
+            out_xyzs = {o: out_res.xyz(o) for o in range(1, out_res.natoms() + 1)}
+            for border in list(borders):
+                b_res = self.pose.residue(border)
+                # bs = set(range(1, b_res.natoms() + 1)) - set(b_res.all_bb_atoms())
+                bs = list(range(1, b_res.natoms() + 1))
+                for b in bs:
+                    bxyz = b_res.xyz(b)
+                    for o, oxyz in out_xyzs.items():
+                        d = (bxyz - oxyz).norm()
+                        if d < proximity_threshold:
+                            b_atom = pyrosetta.AtomID(atomno_in=b, rsd_in=border)
+                            o_atom = pyrosetta.AtomID(atomno_in=o, rsd_in=out)
+                            harfun = HarmonicFunc(x0_in=d, sd_in=0.2)
+                            cons.add_constraint(AtomPairConstraint(b_atom, o_atom, harfun))
+        setup = pyrosetta.rosetta.protocols.constraint_movers.ConstraintSetMover()
+        setup.constraint_set(cons)
+        setup.apply(self.pose)
+        return cons
 
     def analyse_mutation(self, alt_resn: str) -> Dict:
         self.do_relax()
@@ -332,13 +399,24 @@ class Mutator:
                 'terms': self.get_all_scores(),
                 'neighbours': self.get_pdb_neighbours(),
                 'cycles': self.cycles,
-                'radius': self.radius
+                'radius': self.radius,
+                'neighbouring_ligand': self.is_ligand_in_sele()
                 }
 
     def get_pdb_neighbours(self):
         neighs = pyrosetta.rosetta.core.select.residue_selector.ResidueVector(self.neighbour_vector)
         pose2pdb = self.pose.pdb_info().pose2pdb
-        return [pose2pdb(r) for r in neighs]
+        return [pose2pdb(r) for r in list(neighs)]
+
+    def is_ligand_in_sele(self):
+        lig_sele = pyrosetta.rosetta.core.select.residue_selector.ResiduePropertySelector(
+            pyrosetta.rosetta.core.chemical.ResidueProperty.LIGAND)
+        lig_resi = pyrosetta.rosetta.core.select.residue_selector.ResidueVector(lig_sele.apply(self.pose))
+        neigh_resi = pyrosetta.rosetta.core.select.residue_selector.ResidueVector(self.neighbour_vector)
+        if set(neigh_resi) & set(lig_resi):
+            return True
+        else:
+            return False
 
     def make_phospho(self, ptms):
         phospho = self.pose.clone()
@@ -363,8 +441,8 @@ class Mutator:
                 # is trimethylarginine a thing?
                 patch = 'trimethylated'
             else:
-                continue #no Gal
-                #raise ValueError(f'What is {record["ptm"]}?')
+                continue  # no Gal
+                # raise ValueError(f'What is {record["ptm"]}?')
             new_res = f"{seq3(record['from_residue']).upper()}:{patch}"
             r = pdb2pose(res=int(record['residue_index']), chain='A')
             if r == 0:  # missing density.
@@ -394,6 +472,7 @@ class Mutator:
 
     def _repack_gnomad(self, pose_idx, from_resi, to_resi) -> int:
         self.pose = self.native.clone()
+        self.pose.remove_constraints()
         # local repack...
         pyrosetta.toolbox.mutate_residue(self.pose,
                                          mutant_position=pose_idx,
@@ -521,4 +600,4 @@ def paratest():
 
 if __name__ == '__main__':
     test()
-    #paratest()
+    # paratest()
