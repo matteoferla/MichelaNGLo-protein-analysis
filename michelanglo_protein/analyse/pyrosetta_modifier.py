@@ -194,7 +194,7 @@ class Mutator:
             atoms = pymol.cmd.get_model(sele)
             neighbours = []
             for atom in atoms.atom:
-                res = int(re.match('\d+', atom.resi).group())
+                res = int(re.match(r'\d+', atom.resi).group())
                 neighbours.append(Target(resi=res, chain=atom.chain))
         return neighbours
 

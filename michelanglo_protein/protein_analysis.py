@@ -480,18 +480,20 @@ class ProteinAnalyser(ProteinCore):
                 pass
         return parent_conn.recv()
 
-    def analyse_FF(self, spit_process=True) -> Union[Dict, None]:
+    def analyse_FF(self, spit_process=True, **mutator_options) -> Union[Dict, None]:
         """
         Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
 
         :param spit_process: run as a separate process to avoid segfaults?
+        :params mutator_options: neighbour_only_score, outer_constrained for debug
+
         :return:
         """
         if self.pdbblock is None:
             # to do remember what kind of logging happens down here...
             return None
         ### perpare.
-        init_settings = self._init_settings
+        init_settings = {**self._init_settings, **mutator_options}
 
         def analysis(to_resn, init_settings):
             mut = Mutator(**init_settings)
