@@ -366,6 +366,11 @@ class Mutator:
                 for b in bs:
                     bxyz = b_res.xyz(b)
                     for o, oxyz in out_xyzs.items():
+                        # is sequential bb? skip.
+                        if abs(out - border) == 1 and \
+                                o in out_res.all_bb_atoms() and \
+                                b in b_res.all_bb_atoms():
+                            continue
                         d = (bxyz - oxyz).norm()
                         if d < proximity_threshold:
                             b_atom = pyrosetta.AtomID(atomno_in=b, rsd_in=border)
@@ -400,7 +405,8 @@ class Mutator:
                 'neighbours': self.get_pdb_neighbours(),
                 'cycles': self.cycles,
                 'radius': self.radius,
-                'neighbouring_ligand': self.is_ligand_in_sele()
+                'neighbouring_ligand': self.is_ligand_in_sele(),
+                'n_constraints': len(self.pose.constraint_set().get_all_constraints())
                 }
 
     def get_pdb_neighbours(self):
