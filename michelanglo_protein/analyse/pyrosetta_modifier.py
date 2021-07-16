@@ -116,6 +116,8 @@ class Mutator:
             pyrosetta.rosetta.basic.options.set_boolean_option('corrections:gen_potential', True)
         # there are a few other fixes. Such as franklin2019 and spades.
         self.scorefxn = pyrosetta.create_score_function(scorefxn_name)
+        ap_st = pyrosetta.rosetta.core.scoring.ScoreType.atom_pair_constraint
+        self.scorefxn.set_weight(ap_st, 10)
         # correct for split as per https://www.rosettacommons.org/node/11245
         weights = self.scorefxn.weights()  # Create the EnergyMap
         emopts = pyrosetta.rosetta.core.scoring.methods.EnergyMethodOptions(self.scorefxn.energy_method_options())
@@ -252,11 +254,15 @@ class Mutator:
         :param label: scores is Dict. label is key.
         :return: {ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
         """
+
+        ap_st = pyrosetta.rosetta.core.scoring.ScoreType.atom_pair_constraint
+        self.scorefxn.set_weight(ap_st, 0)
         if self.neighbour_only_score:
             self.scorefxn(self.pose)
             self.scores[label] = self.scorefxn.get_sub_score(self.pose, self.neighbour_vector)
         else:
             self.scores[label] = self.scorefxn(self.pose)
+        self.scorefxn.set_weight(ap_st, 10)
         return self.scores
 
     def mutate(self, aa):
