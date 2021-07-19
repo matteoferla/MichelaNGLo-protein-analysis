@@ -92,8 +92,8 @@ class Mutator:
                  params_filenames: List[str] = (),
                  scorefxn_name: str = 'ref2015',
                  use_pymol_for_neighbours: bool = False,
-                 neighbour_only_score: bool = True,
-                 outer_constrained: bool = True):
+                 neighbour_only_score: bool = False,
+                 outer_constrained: bool = False):
         """
         Load.
 
