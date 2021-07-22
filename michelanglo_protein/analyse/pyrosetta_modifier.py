@@ -93,8 +93,11 @@ class Mutator:
                  scorefxn_name: str = 'ref2015',
                  use_pymol_for_neighbours: bool = False,
                  neighbour_only_score: bool = False,
-                 outer_constrained: bool = False):
+                 outer_constrained: bool = False,
+                 remove_ligands: bool = False,
+                 prevent_acceptance_of_incrementor:bool = False):
         """
+
         Load.
 
         :param pdbblock: PDB block
@@ -106,6 +109,21 @@ class Mutator:
         :param cycles: (opt) cycles of relax.
         :param radius: (opt) angstrom to expand around
         :param params_filenames: list of filenames of params files (rosetta topology files)
+        :param scorefxn_name: scorefunction to use, some modifying options are enabled if not 'ref2015'
+        :type scorefxn_name: str
+        :param use_pymol_for_neighbours: Pyrosetta neighbourhood is calculated by centroid to centroid (C-&beta; generally)
+            thus being okay for mutations. However there is the annoyance that ligands may have weirdly defined centroids.
+            for example in 5CE4 F128 is over 12Å away from OLE, which it hydrogen bonds with...
+        :type use_pymol_for_neighbours: bool
+        :param neighbour_only_score: score the neighbourhood only (correctly w/ h-bond correction)
+        :type neighbour_only_score: bool
+        :param outer_constrained: prevent the loss of interactions with residues beyond the neighbour with constraints.
+        :type outer_constrained: bool
+        :param remove_ligands: remove ligands?
+        :type remove_ligands: bool
+        :param prevent_acceptance_of_incrementor: there is a peculiarity that in some cases, a score worse
+            than the original is accepted. This prevents it... but often fails to so no relaxation is done.
+        :type prevent_acceptance_of_incrementor:bool
         """
         log.debug('Initialising')
         if 'beta_july15' in scorefxn_name or 'beta_nov15' in scorefxn_name:
@@ -133,6 +151,8 @@ class Mutator:
         self.params_filenames = list(params_filenames) + self.default_params
         log.debug(self.params_filenames)
         self.pose = self.load_pose()  # self.pose is intended as the damageable version.
+        if remove_ligands:
+            pyrosetta.rosetta.core.pose.remove_nonprotein_residues(self.pose)
         log.debug('Pose loaded...')
         # Find neighbourhood (pyrosetta.rosetta.utility.vector1_bool)
         if use_pymol_for_neighbours:
@@ -143,8 +163,10 @@ class Mutator:
         log.debug('About to run raw...')
         self.mark('raw')  # mark scores the self.pose
         log.debug(f'Raw scored: {self.scores}')
-        # Read relax
+        # Ready relax
         self.ready_relax(self.cycles)
+        self.n_preventions = 0
+        self.prevent_acceptance_of_incrementor = prevent_acceptance_of_incrementor
         if outer_constrained:
             self.explicit_cons()
 
@@ -272,7 +294,26 @@ class Mutator:
         pyrosetta.toolbox.mutate_residue(self.pose, res, aa)
 
     def do_relax(self):
-        self.relax.apply(self.pose)
+        """
+        Does relax but prevents the odd case that an exploded structure is accepted.
+        """
+        if self.n_preventions > 3:
+            log.warning(f'Relax cycle failed too many times!')
+            return   # do nothing.
+        if self.prevent_acceptance_of_incrementor:
+            original = self.pose.copy()
+            initial = self.scorefxn(self.pose)
+            self.relax.apply(self.pose)
+            final = self.scorefxn(self.pose)
+            if initial < final:
+                log.warning(f'Relax cycle failed {initial} < {final} for {self.target}')
+                self.pose = original
+                self.n_preventions += 1
+                do_relax()
+            else:
+                self.n_preventions = 0
+        else:
+            self.relax.apply(self.pose)
 
     def output_pdbblock(self, pose: Optional[pyrosetta.Pose] = None) -> str:
         """
