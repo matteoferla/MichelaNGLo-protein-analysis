@@ -95,6 +95,7 @@ class Mutator:
                  neighbour_only_score: bool = False,
                  outer_constrained: bool = False,
                  remove_ligands: bool = False,
+                 single_chain: bool = False,
                  prevent_acceptance_of_incrementor:bool = False):
         """
 
@@ -121,6 +122,9 @@ class Mutator:
         :type outer_constrained: bool
         :param remove_ligands: remove ligands?
         :type remove_ligands: bool
+        :param single_chain: Remove all bar the first chain...
+            assumes there is some biological assembly error. But also good for testing...
+        :type single_chain: bool
         :param prevent_acceptance_of_incrementor: there is a peculiarity that in some cases, a score worse
             than the original is accepted. This prevents it... but often fails to so no relaxation is done.
         :type prevent_acceptance_of_incrementor:bool
@@ -150,9 +154,7 @@ class Mutator:
         self.pdbblock = pdbblock
         self.params_filenames = list(params_filenames) + self.default_params
         log.debug(self.params_filenames)
-        self.pose = self.load_pose()  # self.pose is intended as the damageable version.
-        if remove_ligands:
-            pyrosetta.rosetta.core.pose.remove_nonprotein_residues(self.pose)
+        self.pose = self.load_pose(single_chain, remove_ligands)  # self.pose is intended as the damageable version.
         log.debug('Pose loaded...')
         # Find neighbourhood (pyrosetta.rosetta.utility.vector1_bool)
         if use_pymol_for_neighbours:
@@ -180,7 +182,7 @@ class Mutator:
         else:
             pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
 
-    def load_pose(self) -> pyrosetta.Pose:
+    def load_pose(self, single_chain=False, remove_ligands=False) -> pyrosetta.Pose:
         """
         Loading from str is a bit messy. this simply does that and returns a Pose
 
@@ -195,8 +197,15 @@ class Mutator:
             pyrosetta.rosetta.core.import_pose.pose_from_pdbstring(pose, self.pdbblock, rts, 'temp.pdb')
         else:
             pyrosetta.rosetta.core.import_pose.pose_from_pdbstring(pose, self.pdbblock)
-        self._pdb2pose = pose.pdb_info().pdb2pose
+        if single_chain:
+            pose = pose.split_by_chain(1)
+        if remove_ligands:
+            pyrosetta.rosetta.core.pose.remove_nonprotein_residues(pose)
         return pose
+
+    @property
+    def _pdb2pose(self):
+        return self.pose.pdb_info().pdb2pose
 
     def calculate_neighbours_in_pymol(self, radius: int = 4) -> List[Target]:
         """
