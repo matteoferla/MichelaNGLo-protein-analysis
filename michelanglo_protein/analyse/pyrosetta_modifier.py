@@ -310,7 +310,7 @@ class Mutator:
             log.warning(f'Relax cycle failed too many times!')
             return   # do nothing.
         if self.prevent_acceptance_of_incrementor:
-            original = self.pose.copy()
+            original = self.pose.clone()
             initial = self.scorefxn(self.pose)
             self.relax.apply(self.pose)
             final = self.scorefxn(self.pose)
