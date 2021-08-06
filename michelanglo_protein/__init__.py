@@ -31,5 +31,6 @@ from .protein_analysis import ProteinAnalyser
 from .protein_manual import ProteinManual
 from .mutation import Mutation
 from .metadata_from_PDBe import PDBMeta
+from .alphafold2_retrieval import is_alphafold_taxon
 
 __version__ = '0.4'
