@@ -37,24 +37,34 @@ class StructureAnalyser:
         self.old_chain = str(structure.chain)
         self.sequence = sequence
         self.has_conservation = False
+        # -------------- fix for non serverside usage...
+        # structure type str: rcsb | swissmodel | homologue | www | local | custom | alphafold2
+        if self.structure.type is None or self.structure.type == '':
+            self.log.critical(f'Empty structure type: {self.structure}')
+            if len(self.code) == 4:
+                self.structure.type = 'rcsb'
+            else:
+                self.structure.type = 'custom'
+        # ------------- get coordinates
         if self.structure.coordinates:
             self.coordinates = self.structure.coordinates
-        elif len(self.code) == 4:
+        elif self.structure.type == 'rcsb':
             self.coordinates = structure.get_offset_coordinates()
-        else:
-            self.structure.type = 'swissmodel'
-            if self.structure.chain:
-                chain = self.structure.chain
-            else:
-                # retrieve from Swissmodel does not have template in description
-                # (see Structure.from_swissmodel_query)
-                # but the old pregen stuff did!
-                template_code, chain = re.search('(\w{4})\.\w+\.(\w)', structure.code).groups()
+        elif self.structure.type == 'swissmodel':
+            # NB. sequence optional argument for ``structure.get_coordinates_w_template_extras``
+            # has no a serverside usage
             self.coordinates = structure.get_coordinates_w_template_extras()
-        assert self.coordinates, 'There are no coordinates!!'
-        # these two are very much for the ajax.
-        self.chain_definitions = structure.chain_definitions  # seems redundant but str(structure) does not give these.
-        self.history = {'code': self.code, 'changes': 'offset and made chain A'},
+        elif self.structure.type == 'alphafold2': # kept separate for clarity...
+            self.coordinates = structure.get_coordinates()
+        else:
+            self.coordinates = structure.get_coordinates()
+        # correct issues.............................
+
+        if self.structure.type != 'alphafold2':
+            # these two are very much for the ajax.
+            self.chain_definitions = structure.chain_definitions
+            # self.chain_definitions seems redundant but str(structure) does not give these.
+            self.history = {'code': self.code, 'changes': 'offset and made chain A'},
         # do operations on structure
         self.target_selection = f'(resi {self.position} and chain {self.chain})'
         self.pymol = None

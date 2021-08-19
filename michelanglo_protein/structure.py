@@ -50,7 +50,7 @@ class Structure:
         self.resolution = 0  #: crystal resolution. 0 or lower will trigger special cases
         self.code = code
         self.chain_definitions = []  # filled by SIFT. This is a list with a Dict per chain.
-        self.type = type.lower()  #: str: rcsb | swissmodel | homologue | www | local | custom
+        self.type = type.lower()  #: str: rcsb | swissmodel | homologue | www | local | custom | alphafold2
         self.chain = chain  #: type str: chain letter or * (all)
         self.alignment = {}
         if extra is None:
@@ -123,7 +123,7 @@ class Structure:
         # url present
         elif self.url:  # regardless of type/
             r = requests.get(self.url, allow_redirects=True)
-        elif self.type == 'www':
+        elif self.type in ('www', 'alphafold2'):
             assert self.url, 'No URL provided for www retrieval'
             r = requests.get(self.url)
         # other

@@ -9,9 +9,10 @@ from .gnomad_variant import Variant
 from warnings import warn
 from typing import *
 from .swissmodel_retrieval import FromSwissmodel
+from .alphafold2_retrieval import FromAlphaFold2
 
 
-class ProteinCore(FromSwissmodel):
+class ProteinCore(FromSwissmodel, FromAlphaFold2):
     """
     This is a lightweight version of Protein that is intended to run off pre parsed pickles.
     It forms the base of Protein. This does zero protein analyses.
@@ -108,6 +109,7 @@ class ProteinCore(FromSwissmodel):
         ## pdb
         self.pdb_matches = []  # {'match': align.title[0:50], 'match_score': hsp.score, 'match_start': hsp.query_start, 'match_length': hsp.align_length, 'match_identity': hsp.identities / hsp.align_length}
         self.swissmodel = []  # parse_swissmodel() fills it.
+        self.alphafold2 = [] # parse_alphafold2() fills it. Assumes there may be more than one model in future.
         self.percent_modelled = -1
         ## junk
         self.other = other  ## this is a garbage bin. But a handy one.

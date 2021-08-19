@@ -24,7 +24,7 @@ import pyrosetta, pymol2, re, os
 from typing import *
 from collections import namedtuple, defaultdict
 from Bio.SeqUtils import seq3
-from ..gnomad_variant import Variant  # solely for type hinting.
+from ..gnomad_variant import Variant
 import logging
 
 log = logging.getLogger()
@@ -314,11 +314,11 @@ class Mutator:
             initial = self.scorefxn(self.pose)
             self.relax.apply(self.pose)
             final = self.scorefxn(self.pose)
-            if initial < final:
+            if initial + 0.1 < final:
                 log.warning(f'Relax cycle failed {initial} < {final} for {self.target}')
                 self.pose = original
                 self.n_preventions += 1
-                do_relax()
+                self.do_relax()
             else:
                 self.n_preventions = 0
         else:

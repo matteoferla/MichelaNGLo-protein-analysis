@@ -316,25 +316,71 @@ class ProteinAnalyser(ProteinCore):
     #     raise DeprecationWarning
     #     return [pdb for pdb in self.pdbs + self.swissmodel + self.pdb_matches if int(pdb['x']) < position < int(pdb['y'])]
 
-    def get_best_model(self) -> Structure:
+    def get_best_model(self,
+                       allow_pdb: bool = True,
+                       allow_swiss: bool = True,
+                       allow_alphafold: bool = True,
+                       swiss_oligomer_identity_cutoff: float = 20,
+                       swiss_oligomer_qmean_cutoff: float = -2,
+                       swiss_monomer_identity_cutoff: float = 50,
+                       swiss_monomer_qmean_cutoff: float = -2,
+                       **other
+                       ) -> Union[Structure, None]:
         """
         This currently just gets the first PDB based on resolution. It ought to check what is the best properly.
         it checks pdbs first, then swissmodel.
         :return:
         """
-        for l in (self.pdbs, self.swissmodel):
-            if l:
-                good = []
-                for model in l:  # model is a structure object.
-                    if model.includes(self.mutation.residue_index):
-                        good.append(model)
-                if good:
-                    good.sort(key=lambda x: x.resolution if x.resolution > 0 else x.resolution + 10)
-                    return good[0]
-                else:  # no models with mutation.
-                    pass
-            else:  # no models in group
-                pass
+        # ========== PDB Structures ==========
+        if allow_pdb:
+            # sort by resolution
+            good = []
+            for model in self.pdbs:  # model is a structure object.
+                if model.includes(self.mutation.residue_index):
+                    good.append(model)
+            if good:
+                good.sort(key=lambda x: x.resolution if x.resolution > 0 else x.resolution + 10)
+                return good[0]
+        # ========== Swissmodels ==========
+        if allow_swiss:
+            # model.extra contains the following information:
+            # {'coverage': 0.8888888888888888,
+            # 'created_date': '2021-08-15T15:17:20.510000+00:00',
+            # 'from': 1,
+            #      'gmqe': 0.8285852631, 'identity': 100.0, 'ligand_chains': [
+            #         {'count': 1, 'ligands': [{'description': "GUANOSINE-5'-DIPHOSPHATE", 'hetid': 'GDP'}]}],
+            #      'method': 'HOMOLOGY MODELLING', 'oligo-state': 'monomer',
+            #      'qmean': {'acc_agreement_norm_score': 0.8571428571, 'acc_agreement_z_score': 1.7916027418,
+            #                'avg_local_score': 0.8635788817000001, 'avg_local_score_error': 0.066,
+            #                'cbeta_norm_score': -0.0190696889, 'cbeta_z_score': 1.0622486306,
+            #                'interaction_norm_score': -0.0317405303, 'interaction_z_score': 1.0583894953,
+            #                'packing_norm_score': -0.4082934663, 'packing_z_score': 0.5429377363,
+            #                'qmean4_norm_score': 0.7804128192, 'qmean4_z_score': -0.0149125599,
+            #                'qmean6_norm_score': 0.8291977057000001, 'qmean6_z_score': 0.9976404675,
+            #                'ss_agreement_norm_score': 0.7833758802, 'ss_agreement_z_score': 0.8231823308,
+            #                'torsion_norm_score': -0.2728591636, 'torsion_z_score': -0.5001983842000001},
+            #      'similarity': 0.6134031415, 'template': '4q21.1.A', 'to': 168}
+            for model in self.swissmodel:
+                # --------- metrics --------------------
+                qmean = model.extra['qmean']['qmean4_z_score'] if 'qmean' in model.extra else -100
+                identity = model.extra['identity'] if 'identity' in model.extra else 0
+                is_monomer = model.extra['oligo-state'] == 'monomer' if 'oligo-state' in model.extra else True
+                has_ligands = len(model.extra['ligand_chains']) > 0 if 'ligand_chains' in model.extra else False
+                # --------- discard conditions ---------
+                if not model.includes(self.mutation.residue_index):
+                    continue # does not cover variant
+                if qmean < swiss_oligomer_qmean_cutoff or identity < swiss_oligomer_identity_cutoff:
+                    continue  # too nasty even if oligomer
+                if (is_monomer and not has_ligands) and \
+                        qmean < swiss_monomer_qmean_cutoff or identity < swiss_monomer_identity_cutoff:
+                    continue  # nasty monomer
+                return model
+        else:
+            pass  # Swissmodel disabled
+        # ========== AlphaFold2 ============================
+        if allow_alphafold and len(self.alphafold2):
+            return self.alphafold2[0]
+        # ========== Failure ============================
         return None
 
     @property
@@ -342,15 +388,19 @@ class ProteinAnalyser(ProteinCore):
         return {k: self.properties[k][self.mutation.residue_index - 1] for k in self.properties}
 
     def analyse_structure(self, structure: Optional[Structure] = None,
-                          params: List[str] = [],
-                          no_conservation=False):
+                          params: Optional[List[str]] = None,
+                          no_conservation=False,
+                          **options) -> Union[Structure, None]:
+        # params
+        if params is None:
+            params = []
         # fetch structure if not provided
         if structure is None:
-            structure = self.get_best_model()
+            structure = self.get_best_model(**options)
         # however the best model may not exists.
         if not structure:
             self.structural = None
-            return self
+            return None
         if not structure.chain_definitions and structure.type != 'custom':
             # jupyter notebook use. not server
             self.fix_missing_chain_definition(structure)
@@ -362,7 +412,7 @@ class ProteinAnalyser(ProteinCore):
             # see mutation.exposure_effect
             self.mutation.surface_expose = 'buried' if self.structural.buried else 'surface'
             self.annotate_neighbours()
-        return self
+        return structure
 
     def fix_missing_chain_definition(self, structure: Structure):
         # this is not supposed to happen serverside, except when using in Jupyter notebook.
