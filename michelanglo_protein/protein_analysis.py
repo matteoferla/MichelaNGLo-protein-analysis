@@ -536,13 +536,12 @@ class ProteinAnalyser(ProteinCore):
 
         :param spit_process: run as a separate process to avoid segfaults?
         :params mutator_options: neighbour_only_score, outer_constrained for debug
-
         :return:
         """
         if self.pdbblock is None:
             # to do remember what kind of logging happens down here...
             return None
-        ### perpare.
+        ### prepare.
         init_settings = {**self._init_settings, **mutator_options}
 
         def analysis(to_resn, init_settings):

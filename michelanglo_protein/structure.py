@@ -96,7 +96,8 @@ class Structure:
             extras = {key: getattr(self, key) for key in self.important_attributes if hasattr(self, key)}
         else:
             extras = {}
-        return {'x': self.x, 'y': self.y, 'id': self.id, 'type': self.type, 'description': self.description, **extras}
+        return {'x': self.x, 'y': self.y, 'id': self.id,
+                'type': self.type, 'description': self.description, **extras}
 
     def __str__(self):
         return str(self.to_dict())

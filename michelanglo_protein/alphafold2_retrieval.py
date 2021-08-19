@@ -55,6 +55,14 @@ class FromAlphaFold2:  # to be inherited by ProteinCore
             url=url,
             chain='A'
         )
+        structure.chain_definitions = [{'chain': 'A',
+                                           'uniprot': self.uniprot,
+                                           'x': 1,
+                                           'y': len(self),
+                                           'offset': 0,
+                                           'range': f'1-{len(self)}',
+                                           'name': self.uniprot,
+                                           'description': 'AlphaFold2'}]
         self.alphafold2.append(structure)
 
 

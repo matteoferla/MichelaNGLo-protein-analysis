@@ -56,15 +56,14 @@ class StructureAnalyser:
             self.coordinates = structure.get_coordinates_w_template_extras()
         elif self.structure.type == 'alphafold2': # kept separate for clarity...
             self.coordinates = structure.get_coordinates()
+            self.history = {'code': 'AlphaFold2'}
         else:
             self.coordinates = structure.get_coordinates()
         # correct issues.............................
-
-        if self.structure.type != 'alphafold2':
-            # these two are very much for the ajax.
-            self.chain_definitions = structure.chain_definitions
-            # self.chain_definitions seems redundant but str(structure) does not give these.
-            self.history = {'code': self.code, 'changes': 'offset and made chain A'},
+        # these two are very much for the ajax.
+        self.chain_definitions = structure.chain_definitions
+        # self.chain_definitions seems redundant but str(structure) does not give these.
+        self.history = {'code': self.code, 'changes': 'offset and made chain A'}
         # do operations on structure
         self.target_selection = f'(resi {self.position} and chain {self.chain})'
         self.pymol = None
