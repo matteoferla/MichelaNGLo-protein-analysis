@@ -485,12 +485,12 @@ class ProteinAnalyser(ProteinCore):
 
         :return: pdbblock
         """
-        if self.structural is None:
-            return None
-        if self.energetics:
+        if self.energetics and self.energetics['native']:
             return self.energetics['native']
-        else:
+        elif self.structural and self.structural.coordinates:
             return self.structural.coordinates
+        else:
+            return None
 
     def _subprocess_factory(self, fun, **kwargs):
         """
@@ -540,7 +540,7 @@ class ProteinAnalyser(ProteinCore):
         """
         if self.pdbblock is None:
             # to do remember what kind of logging happens down here...
-            return None
+            return {'error': 'ValueError', 'msg': 'no PDB block'}
         ### prepare.
         init_settings = {**self._init_settings, **mutator_options}
 
@@ -556,7 +556,7 @@ class ProteinAnalyser(ProteinCore):
         self.energetics = msg
         return msg
 
-    def analyse_gnomad_FF(self, spit_process=True) -> Union[Dict, None]:
+    def analyse_gnomad_FF(self, spit_process=True, **mutator_options) -> Union[Dict, None]:
         """
         Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
 
@@ -564,9 +564,9 @@ class ProteinAnalyser(ProteinCore):
         :return:
         """
         if self.pdbblock is None:
-            return None
+            return {'error': 'ValueError', 'msg': 'no PDB block'}
         ### perpare.
-        init_settings = self._init_settings
+        init_settings = {**self._init_settings, **mutator_options}
 
         def analysis(gnomads, init_settings):
             mut = Mutator(**init_settings)
@@ -588,9 +588,8 @@ class ProteinAnalyser(ProteinCore):
             pass
         else:
             raise TypeError(f'whats {mutation}?')
-        # avoid empty.
         if self.pdbblock is None:
-            return None
+            return {'error': 'ValueError', 'msg': 'no PDB block'}
         ### perpare.
         init_settings = self._init_settings
         init_settings['target_resi'] = mutation.residue_index
@@ -629,16 +628,16 @@ class ProteinAnalyser(ProteinCore):
                 Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
 
                 :param spit_process: run as a separate process to avoid segfaults?
-                :return:
+                :return: a PDB block not a score dict!
                 """
         if self.pdbblock is None:
-            print('no self.pdbblock')
-            return None
+            #print('no self.pdbblock')
+            return None # it returns a string not a dictionary.
         elif 'PSP_modified_residues' not in self.features:
-            print('no features')
+            #print('no features')
             return None
         elif not self.features['PSP_modified_residues']:
-            print('no features2')
+            #print('no features2')
             return None
         ### perpare.
         init_settings = self._init_settings
