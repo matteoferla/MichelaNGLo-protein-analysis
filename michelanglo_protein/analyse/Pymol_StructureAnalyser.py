@@ -89,6 +89,7 @@ class StructureAnalyser:
             self.RSA = self.SASA / self.maxASA[self.mutation.from_residue]
             self.SS = self.get_SS()
             self.buried = self.RSA <= 0.2
+            self.bfactor = self.pymol.cmd.get_model(f'{self.target_selection} and name CA').atom[0].b
             self.ligand_list = self.get_ligand_list()
             t = self.get_distance_to_closest_ligand()
             self.closest_ligand = t['closest']
