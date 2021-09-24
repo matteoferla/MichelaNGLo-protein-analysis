@@ -146,7 +146,7 @@ class ProteinCore(FromSwissmodel, FromAlphaFold2):
             os.mkdir(path)
         return path
 
-    def exists(self, file=None):
+    def exists(self, file=None, test_loading:bool=False):
         """
         Method to check if file exists already.
         Actually loads it sneakily!
@@ -161,7 +161,8 @@ class ProteinCore(FromSwissmodel, FromAlphaFold2):
         for extension, loader in (('.p', self.load), ('.pgz', self.gload)):
             file = os.path.join(path, self.uniprot + extension)
             if os.path.exists(file):
-                loader()
+                if test_loading:
+                    loader()
                 return True
         return False
 
