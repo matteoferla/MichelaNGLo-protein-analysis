@@ -580,7 +580,7 @@ class ProteinAnalyser(ProteinCore):
         self.energetics_gnomAD = msg
         return msg
 
-    def analyse_other_FF(self, mutation: Union[Mutation, str], algorithm, spit_process=True) -> Union[Dict, None]:
+    def analyse_other_FF(self, mutation: Union[Mutation, str], algorithm, spit_process=True, **mutator_options) -> Union[Dict, None]:
         # sort out mutation
         if isinstance(mutation, str):
             mutation = Mutation(mutation)
@@ -591,11 +591,11 @@ class ProteinAnalyser(ProteinCore):
         if self.pdbblock is None:
             return {'error': 'ValueError', 'msg': 'no PDB block'}
         ### perpare.
-        init_settings = self._init_settings
+        init_settings = {**self._init_settings, **mutator_options}
         init_settings['target_resi'] = mutation.residue_index
 
         def relax(resi, from_resn, to_resn, init_settings):
-            mut = Mutator(**init_settings)  # altered target_residue from taht of the mutation!
+            mut = Mutator(**init_settings)  # altered target_residue from that of the mutation!
             results = mut.analyse_mutation(to_resn)
             return {'coordinates': results['mutant'], 'ddg': results['ddG']}
 
