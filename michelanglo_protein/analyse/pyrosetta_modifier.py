@@ -87,8 +87,8 @@ class Mutator:
                  pdbblock: str,
                  target_resi: int,
                  target_chain: str = 'A',
-                 cycles: int = 1,
-                 radius: int = 4,
+                 cycles: int = 2,
+                 radius: int = 12,
                  params_filenames: List[str] = (),
                  scorefxn_name: str = 'ref2015',
                  use_pymol_for_neighbours: bool = False,
@@ -147,8 +147,8 @@ class Mutator:
         self.scorefxn.set_energy_method_options(emopts)
         self.scores = {}  # gets filled by .mark()
         self.neighbour_only_score = bool(neighbour_only_score)
-        self.cycles = cycles
-        self.radius = radius
+        self.cycles = int(cycles)
+        self.radius = int(radius) # radius cannot be float.
         # Load
         self.target = Target(target_resi, target_chain)
         self.pdbblock = pdbblock
