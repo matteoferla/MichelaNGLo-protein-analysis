@@ -460,7 +460,7 @@ class Mutator:
             if _failed < 2:
                 log.debug(f"Incrementor issue: {self.scores['mutate']} < {self.scores['mutarelax']}")
                 self.pose = self.native.clone()
-                self.preminimise(3)
+                self.preminimize(3)
                 return self.analyse_mutation(alt_resn, _failed+1)
             else:
                 self.scores['mutarelax'] = self.scores['mutate']
@@ -482,7 +482,7 @@ class Mutator:
                 'n_constraints': len(self.pose.constraint_set().get_all_constraints())
                 }
 
-    def preminise(self, expansion: int):
+    def preminimize(self, expansion: int):
         log.info('Emergency preminimisation')
         # alter vector
         self.neighbour_vector = self.calculate_neighbours_in_pyrosetta(self.radius + expansion)
