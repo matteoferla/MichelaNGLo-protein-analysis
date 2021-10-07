@@ -96,7 +96,7 @@ class Mutator:
                  outer_constrained: bool = False,
                  remove_ligands: bool = False,
                  single_chain: bool = False,
-                 prevent_acceptance_of_incrementor:bool = False):
+                 prevent_acceptance_of_incrementor:bool = True):
         """
 
         Load.
@@ -130,12 +130,18 @@ class Mutator:
         :type prevent_acceptance_of_incrementor:bool
         """
         log.debug('Initialising')
-        if 'beta_july15' in scorefxn_name or 'beta_nov15' in scorefxn_name:
+        if 'ref' in scorefxn_name:
+            pass
+        elif 'beta_july15' in scorefxn_name or 'beta_nov15' in scorefxn_name:
             pyrosetta.rosetta.basic.options.set_boolean_option('corrections:beta_july15', True)
         elif 'beta_nov16' in scorefxn_name:
             pyrosetta.rosetta.basic.options.set_boolean_option('corrections:beta_nov16', True)
         elif 'genpot' in scorefxn_name:
             pyrosetta.rosetta.basic.options.set_boolean_option('corrections:gen_potential', True)
+        elif 'talaris' in scorefxn_name:
+            pyrosetta.rosetta.basic.options.set_boolean_option(f'corrections:restore_talaris_behavior', True)
+        else:
+            log.warning(f'No correction applied for {scorefxn_name}!')
         # there are a few other fixes. Such as franklin2019 and spades.
         self.scorefxn = pyrosetta.create_score_function(scorefxn_name)
         ap_st = pyrosetta.rosetta.core.scoring.ScoreType.atom_pair_constraint
@@ -254,7 +260,7 @@ class Mutator:
         resi_sele = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector(r)
         return pyrosetta.rosetta.core.select.residue_selector.NeighborhoodResidueSelector(resi_sele, radius, True)
 
-    def ready_relax(self, cycles: int = 1) -> pyrosetta.rosetta.protocols.moves.Mover:
+    def ready_relax(self, cycles: int = 1, fixed_bb:bool=False) -> pyrosetta.rosetta.protocols.moves.Mover:
         """
 
         :param cycles:
@@ -262,7 +268,10 @@ class Mutator:
         """
         self.relax = pyrosetta.rosetta.protocols.relax.FastRelax(self.scorefxn, cycles)
         self.movemap = pyrosetta.MoveMap()
-        self.movemap.set_bb(self.neighbour_vector)
+        if not fixed_bb:
+            self.movemap.set_bb(self.neighbour_vector)
+        else:
+            self.movemap.set_bb(False)
         self.movemap.set_chi(self.neighbour_vector)
         # jump is false by def.
         self.relax.set_movemap(self.movemap)
@@ -438,7 +447,7 @@ class Mutator:
         setup.apply(self.pose)
         return cons
 
-    def analyse_mutation(self, alt_resn: str) -> Dict:
+    def analyse_mutation(self, alt_resn: str, _failed=0) -> Dict:
         self.do_relax()
         self.mark('relaxed')
         self.native = self.pose.clone()
@@ -447,6 +456,14 @@ class Mutator:
         self.mark('mutate')
         self.do_relax()
         self.mark('mutarelax')
+        if self.scores['mutate'] < self.scores['mutarelax']:  # increment!
+            if _failed < 2:
+                log.debug(f"Incrementor issue: {self.scores['mutate']} < {self.scores['mutarelax']}")
+                self.pose = self.native.clone()
+                self.preminimise(3)
+                return self.analyse_mutation(alt_resn, _failed+1)
+            else:
+                self.scores['mutarelax'] = self.scores['mutate']
         return {'ddG': self.scores['mutarelax'] - self.scores['relaxed'],
                 'scores': self.scores,
                 'native': nblock,
@@ -464,6 +481,15 @@ class Mutator:
                 'neighbouring_ligand': self.is_ligand_in_sele(),
                 'n_constraints': len(self.pose.constraint_set().get_all_constraints())
                 }
+
+    def preminise(self, expansion: int):
+        log.info('Emergency preminimisation')
+        # alter vector
+        self.neighbour_vector = self.calculate_neighbours_in_pyrosetta(self.radius + expansion)
+        self.ready_relax(5, fixed_bb=True)
+        self.do_relax()
+        # reset — recalculated.
+        self.neighbour_vector = self.calculate_neighbours_in_pyrosetta(self.radius)
 
     def get_pdb_neighbours(self):
         neighs = pyrosetta.rosetta.core.select.residue_selector.ResidueVector(self.neighbour_vector)
