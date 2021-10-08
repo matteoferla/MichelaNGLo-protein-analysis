@@ -46,38 +46,39 @@ class Mutator:
     * ``.pose`` pyrosetta.Pose
     * ``._pdb2pose`` points to ``self.pose.pdb_info().pdb2pose``, while target_pdb2pose accepts Target and gives back int
     """
+    scaling_factor = 1  # multiplied scale
 
     term_meanings = defaultdict(str, {
-        "fa_atr": "Lennard-Jones attractive between atoms in different residues (r^6 term, London dispersion forces).",
-        "fa_rep": "Lennard-Jones repulsive between atoms in different residues (r^12 term, Pauli repulsion forces).",
-        "fa_sol": "Lazaridis-Karplus solvation energy.",
-        "fa_intra_rep": "Lennard-Jones repulsive between atoms in the same residue.",
-        "fa_elec": "Coulombic electrostatic potential with a distance-dependent dielectric.",
-        "pro_close": "Proline ring closure energy and energy of psi angle of preceding residue.",
-        "hbond_sr_bb": "Backbone-backbone hbonds close in primary sequence.",
-        "hbond_lr_bb": "Backbone-backbone hbonds distant in primary sequence.",
-        "hbond_bb_sc": "Sidechain-backbone hydrogen bond energy.",
-        "hbond_sc": "Sidechain-sidechain hydrogen bond energy.",
-        "dslf_fa13": "Disulfide geometry potential.",
-        "rama": "Ramachandran preferences.",
-        "omega": "Omega dihedral in the backbone. A Harmonic constraint on planarity with standard deviation of ~6 deg.",
-        "fa_dun": "Internal energy of sidechain rotamers as derived from Dunbrack's statistics (2010 Rotamer Library used in Talaris2013).",
-        "fa_dun_semi": "Internal energy of sidechain semi-rotamers as derived from Dunbrack's statistics (2010 Rotamer Library used in Talaris2013).",
-        "p_aa_pp": "Probability of amino acid at Φ/Ψ.",
-        "ref": "Reference energy for each amino acid. Balances internal energy of amino acid terms.  Plays role in design.",
-        "METHOD_WEIGHTS": "Not an energy term itself, but the parameters for each amino acid used by the ref energy term.",
-        "lk_ball": "Anisotropic contribution to the solvation.",
-        "lk_ball_iso": "Same as fa_sol; see below.",
-        "lk_ball_wtd": "weighted sum of lk_ball & lk_ball_iso (w1*lk_ball + w2*lk_ball_iso); w2 is negative so that anisotropic contribution(lk_ball) replaces some portion of isotropic contribution (fa_sol=lk_ball_iso).",
-        "lk_ball_bridge": "Bonus to solvation coming from bridging waters, measured by overlap of the 'balls' from two interacting polar atoms.",
+        "fa_atr":               "Lennard-Jones attractive between atoms in different residues (r^6 term, London dispersion forces).",
+        "fa_rep":               "Lennard-Jones repulsive between atoms in different residues (r^12 term, Pauli repulsion forces).",
+        "fa_sol":               "Lazaridis-Karplus solvation energy.",
+        "fa_intra_rep":         "Lennard-Jones repulsive between atoms in the same residue.",
+        "fa_elec":              "Coulombic electrostatic potential with a distance-dependent dielectric.",
+        "pro_close":            "Proline ring closure energy and energy of psi angle of preceding residue.",
+        "hbond_sr_bb":          "Backbone-backbone hbonds close in primary sequence.",
+        "hbond_lr_bb":          "Backbone-backbone hbonds distant in primary sequence.",
+        "hbond_bb_sc":          "Sidechain-backbone hydrogen bond energy.",
+        "hbond_sc":             "Sidechain-sidechain hydrogen bond energy.",
+        "dslf_fa13":            "Disulfide geometry potential.",
+        "rama":                 "Ramachandran preferences.",
+        "omega":                "Omega dihedral in the backbone. A Harmonic constraint on planarity with standard deviation of ~6 deg.",
+        "fa_dun":               "Internal energy of sidechain rotamers as derived from Dunbrack's statistics (2010 Rotamer Library used in Talaris2013).",
+        "fa_dun_semi":          "Internal energy of sidechain semi-rotamers as derived from Dunbrack's statistics (2010 Rotamer Library used in Talaris2013).",
+        "p_aa_pp":              "Probability of amino acid at Φ/Ψ.",
+        "ref":                  "Reference energy for each amino acid. Balances internal energy of amino acid terms.  Plays role in design.",
+        "METHOD_WEIGHTS":       "Not an energy term itself, but the parameters for each amino acid used by the ref energy term.",
+        "lk_ball":              "Anisotropic contribution to the solvation.",
+        "lk_ball_iso":          "Same as fa_sol; see below.",
+        "lk_ball_wtd":          "weighted sum of lk_ball & lk_ball_iso (w1*lk_ball + w2*lk_ball_iso); w2 is negative so that anisotropic contribution(lk_ball) replaces some portion of isotropic contribution (fa_sol=lk_ball_iso).",
+        "lk_ball_bridge":       "Bonus to solvation coming from bridging waters, measured by overlap of the 'balls' from two interacting polar atoms.",
         "lk_ball_bridge_uncpl": "Same as lk_ball_bridge, but the value is uncoupled with dGfree (i.e. constant bonus, whereas lk_ball_bridge is proportional to dGfree values).",
-        "fa_intra_atr_xover4": "Intra-residue LJ attraction, counted for the atom-pairs beyond torsion-relationship.",
-        "fa_intra_rep_xover4": "Intra-residue LJ repulsion, counted for the atom-pairs beyond torsion-relationship.",
-        "fa_intra_sol_xover4": "Intra-residue LK solvation, counted for the atom-pairs beyond torsion-relationship.",
-        "fa_intra_elec": "Intra-residue Coulombic interaction, counted for the atom-pairs beyond torsion-relationship.",
-        "rama_prepro": "Backbone torsion preference term that takes into account of whether preceding amono acid is Proline or not.",
-        "hxl_tors": "Sidechain hydroxyl group torsion preference for Ser/Thr/Tyr, supersedes yhh_planarity (that covers L- and D-Tyr only).",
-        "yhh_planarity": "Sidechain hydroxyl group torsion preference for Tyr, superseded by hxl_tors"
+        "fa_intra_atr_xover4":  "Intra-residue LJ attraction, counted for the atom-pairs beyond torsion-relationship.",
+        "fa_intra_rep_xover4":  "Intra-residue LJ repulsion, counted for the atom-pairs beyond torsion-relationship.",
+        "fa_intra_sol_xover4":  "Intra-residue LK solvation, counted for the atom-pairs beyond torsion-relationship.",
+        "fa_intra_elec":        "Intra-residue Coulombic interaction, counted for the atom-pairs beyond torsion-relationship.",
+        "rama_prepro":          "Backbone torsion preference term that takes into account of whether preceding amono acid is Proline or not.",
+        "hxl_tors":             "Sidechain hydroxyl group torsion preference for Ser/Thr/Tyr, supersedes yhh_planarity (that covers L- and D-Tyr only).",
+        "yhh_planarity":        "Sidechain hydroxyl group torsion preference for Tyr, superseded by hxl_tors"
     })
 
     default_params = [os.path.join(default_params_folder, filename) for filename in os.listdir(default_params_folder)
@@ -96,7 +97,7 @@ class Mutator:
                  outer_constrained: bool = False,
                  remove_ligands: bool = False,
                  single_chain: bool = False,
-                 prevent_acceptance_of_incrementor:bool = True):
+                 prevent_acceptance_of_incrementor: bool = True):
         """
 
         Load.
@@ -154,7 +155,7 @@ class Mutator:
         self.scores = {}  # gets filled by .mark()
         self.neighbour_only_score = bool(neighbour_only_score)
         self.cycles = int(cycles)
-        self.radius = int(radius) # radius cannot be float.
+        self.radius = int(radius)  # radius cannot be float.
         # Load
         self.target = Target(target_resi, target_chain)
         self.pdbblock = pdbblock
@@ -260,7 +261,7 @@ class Mutator:
         resi_sele = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector(r)
         return pyrosetta.rosetta.core.select.residue_selector.NeighborhoodResidueSelector(resi_sele, radius, True)
 
-    def ready_relax(self, cycles: int = 1, fixed_bb:bool=False) -> pyrosetta.rosetta.protocols.moves.Mover:
+    def ready_relax(self, cycles: int = 1, fixed_bb: bool = False) -> pyrosetta.rosetta.protocols.moves.Mover:
         """
 
         :param cycles:
@@ -289,7 +290,7 @@ class Mutator:
 
     def mark(self, label: str) -> Dict:
         """
-        Save the score to ``.scores``
+        Save the score to ``.scores`` (inplace)
 
         :param label: scores is Dict. label is key.
         :return: {ddG: float, scores: Dict[str, float], native:str, mutant:str, rmsd:int}
@@ -299,9 +300,10 @@ class Mutator:
         self.scorefxn.set_weight(ap_st, 0)
         if self.neighbour_only_score:
             self.scorefxn(self.pose)
-            self.scores[label] = self.scorefxn.get_sub_score(self.pose, self.neighbour_vector)
+            self.scores[label]: float = (self.scorefxn.get_sub_score(self.pose, self.neighbour_vector) *
+                                         self.scaling_factor)
         else:
-            self.scores[label] = self.scorefxn(self.pose)
+            self.scores[label]: float = self.scorefxn(self.pose) * self.scaling_factor
         self.scorefxn.set_weight(ap_st, 10)
         return self.scores
 
@@ -317,7 +319,7 @@ class Mutator:
         """
         if self.n_preventions > 3:
             log.warning(f'Relax cycle failed too many times!')
-            return   # do nothing.
+            return  # do nothing.
         if self.prevent_acceptance_of_incrementor:
             original = self.pose.clone()
             initial = self.scorefxn(self.pose)
@@ -365,8 +367,8 @@ class Mutator:
         return data
 
     def get_term_scores(self, term: pyrosetta.rosetta.core.scoring.ScoreType) -> Tuple[float, float, float]:
-        n = self.scorefxn.score_by_scoretype(self.native, term)
-        m = self.scorefxn.score_by_scoretype(self.pose, term)
+        n = self.scorefxn.score_by_scoretype(self.native, term) * self.scaling_factor
+        m = self.scorefxn.score_by_scoretype(self.pose, term) * self.scaling_factor
         d = m - n
         return n, m, d
 
@@ -379,14 +381,14 @@ class Mutator:
         # segfaults if score is not run globally first!
         i = self.target_pdb2pose(self.target)
         r = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector(i)
-        n = self.scorefxn.get_sub_score(self.native, r.apply(self.native))
-        m = self.scorefxn.get_sub_score(self.pose, r.apply(self.native))
+        n = self.scorefxn.get_sub_score(self.native, r.apply(self.native)) * self.scaling_factor
+        m = self.scorefxn.get_sub_score(self.pose, r.apply(self.native)) * self.scaling_factor
         return m - n
 
     def get_res_score_terms(self, pose) -> dict:
         data = pose.energies().residue_total_energies_array()  # structured numpy array
         i = self.target_pdb2pose(self.target) - 1  # pose numbering is fortran style. while python is C++
-        return {data.dtype.names[j]: data[i][j] for j in range(len(data.dtype))}
+        return {data.dtype.names[j]: data[i][j] * self.scaling_factor for j in range(len(data.dtype))}
 
     def explicit_cons(self, proximity_threshold=3) -> pyrosetta.rosetta.core.scoring.constraints.ConstraintSet:
         """
@@ -461,25 +463,25 @@ class Mutator:
                 log.debug(f"Incrementor issue: {self.scores['mutate']} < {self.scores['mutarelax']}")
                 self.pose = self.native.clone()
                 self.preminimize(3)
-                return self.analyse_mutation(alt_resn, _failed+1)
+                return self.analyse_mutation(alt_resn, _failed + 1)
             else:
                 self.scores['mutarelax'] = self.scores['mutate']
-        return {'ddG': self.scores['mutarelax'] - self.scores['relaxed'],
-                'scores': self.scores,
-                'native': nblock,
-                'mutant': self.output_pdbblock(),  # pdbb
-                'rmsd': pyrosetta.rosetta.core.scoring.CA_rmsd(self.native, self.pose),
-                'dsol': self.get_diff_solubility(),
-                'score_fxn': self.scorefxn.get_name(),
-                'ddG_residue': self.get_diff_res_score(),
+        return {'ddG':                  self.scores['mutarelax'] - self.scores['relaxed'],
+                'scores':               self.scores,
+                'native':               nblock,
+                'mutant':               self.output_pdbblock(),  # pdbb
+                'rmsd':                 pyrosetta.rosetta.core.scoring.CA_rmsd(self.native, self.pose),
+                'dsol':                 self.get_diff_solubility(),
+                'score_fxn':            self.scorefxn.get_name(),
+                'ddG_residue':          self.get_diff_res_score(),
                 'native_residue_terms': self.get_res_score_terms(self.native),
                 'mutant_residue_terms': self.get_res_score_terms(self.pose),
-                'terms': self.get_all_scores(),
-                'neighbours': self.get_pdb_neighbours(),
-                'cycles': self.cycles,
-                'radius': self.radius,
-                'neighbouring_ligand': self.is_ligand_in_sele(),
-                'n_constraints': len(self.pose.constraint_set().get_all_constraints())
+                'terms':                self.get_all_scores(),
+                'neighbours':           self.get_pdb_neighbours(),
+                'cycles':               self.cycles,
+                'radius':               self.radius,
+                'neighbouring_ligand':  self.is_ligand_in_sele(),
+                'n_constraints':        len(self.pose.constraint_set().get_all_constraints())
                 }
 
     def preminimize(self, expansion: int):
@@ -589,7 +591,7 @@ class Mutator:
         self.native = self.pose.clone()
         pose2pdb = self.native.pdb_info().pdb2pose
         pose_idx = pose2pdb(chain='A', res=residue_index)
-        return {'ddg': self._repack_gnomad(pose_idx, from_residue, to_residue),
+        return {'ddg':         self._repack_gnomad(pose_idx, from_residue, to_residue),
                 'coordinates': self.output_pdbblock(self.pose)}
 
     def score_gnomads(self, gnomads: List[Variant]):

@@ -530,14 +530,17 @@ class ProteinAnalyser(ProteinCore):
                 pass
         return parent_conn.recv()
 
-    def analyse_FF(self, spit_process=True, **mutator_options) -> Union[Dict, None]:
+    def analyse_FF(self, spit_process=True, scaling_factor = 1, **mutator_options) -> Union[Dict, None]:
         """
         Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
 
         :param spit_process: run as a separate process to avoid segfaults?
+        :params scaling_factor: multiplied to fix overestimated ddG
         :params mutator_options: neighbour_only_score, outer_constrained for debug
         :return:
         """
+        Mutator.scaling_factor = scaling_factor
+
         if self.pdbblock is None:
             # to do remember what kind of logging happens down here...
             return {'error': 'ValueError', 'msg': 'no PDB block'}
@@ -556,13 +559,17 @@ class ProteinAnalyser(ProteinCore):
         self.energetics = msg
         return msg
 
-    def analyse_gnomad_FF(self, spit_process=True, **mutator_options) -> Union[Dict, None]:
+    def analyse_gnomad_FF(self, spit_process=True, scaling_factor = 1, **mutator_options) -> Union[Dict, None]:
         """
         Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
 
         :param spit_process: run as a separate process to avoid segfaults?
+        :params scaling_factor: multiplied to fix overestimated ddG
+        :params mutator_options: neighbour_only_score, outer_constrained for debug
         :return:
         """
+
+        Mutator.scaling_factor = scaling_factor
         if self.pdbblock is None:
             return {'error': 'ValueError', 'msg': 'no PDB block'}
         ### perpare.
@@ -580,7 +587,10 @@ class ProteinAnalyser(ProteinCore):
         self.energetics_gnomAD = msg
         return msg
 
-    def analyse_other_FF(self, mutation: Union[Mutation, str], algorithm, spit_process=True, **mutator_options) -> Union[Dict, None]:
+    def analyse_other_FF(self,
+                         mutation: Union[Mutation, str], algorithm, spit_process=True,
+                         scaling_factor:float = 1,  **mutator_options) -> Union[Dict, None]:
+        Mutator.scaling_factor = scaling_factor
         # sort out mutation
         if isinstance(mutation, str):
             mutation = Mutation(mutation)
