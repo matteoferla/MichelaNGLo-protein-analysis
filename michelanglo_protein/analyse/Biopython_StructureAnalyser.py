@@ -65,8 +65,8 @@ class StructureAnalyser:
         """
         # the longest amino acid is 10&Aring; long.
         neighbours = set()
-        overthreshhold = 10+threshhold #no atom in a arginine will be within threshhold of a given atom if any atom is greater than this.
-        double_overthreshhold = 20 + threshhold #no atom in a arginine will be within threshhold of a any atom in a given residue if any atom is greater than this.
+        overthreshhold = 10+threshhold # no atom, even within a arginine, will be within threshhold of a given atom if any atom is greater than this.
+        double_overthreshhold = 20 + threshhold #no atom, even within a arginine, will be within threshhold of a any atom in a given residue if any atom is greater than this.
         doublebreak = False
         for residue in self.model[0][self.chain]:
             for atom in residue:
