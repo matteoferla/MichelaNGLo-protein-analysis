@@ -203,7 +203,8 @@ class StructureAnalyser:
         """
         assert self.pymol is not None, 'Can only be called within a PyMOL session'
         if not sele:
-            sele = f'(not {self.target_selection}) and (byres (({self.target_selection} and name CA) around {threshhold})) and name CA'
+            # none of the paretheses are required, but help in legibility...
+            sele = f'name CA and byres (({self.target_selection} and name CA) expand {threshhold})'
             # sele = f'(byres ({self.target_selection} around {threshhold})) and name CA'
         my_dict = {'residues': []}
         self.pymol.cmd.iterate(sele, "residues.append({'resi': resi, 'resn': resn, 'chain': chain})", space=my_dict)
@@ -214,9 +215,11 @@ class StructureAnalyser:
         # selector = lambda atom: f'resi {atom.resi} and chain {atom.chain} and name {atom.name}'
         target_coords = [atom.coord for atom in self.pymol.cmd.get_model(self.target_selection).atom]
         for res in neighbours:
+            print(res)
             near_coords = [atom.coord for atom in self.pymol.cmd.get_model(self.neigh2selection(res)).atom]
             p_iter = product(map(np.array, target_coords), map(np.array, near_coords))
             res['distance'] = np.min([np.linalg.norm([aa - bb]) for aa, bb in p_iter])
+        print(neighbours)
         return neighbours
 
     def neigh2selection(self, neighbour, name: Optional[str] = None) -> str:
