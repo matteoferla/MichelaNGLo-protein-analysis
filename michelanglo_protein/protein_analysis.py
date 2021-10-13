@@ -437,27 +437,40 @@ class ProteinAnalyser(ProteinCore):
     def annotate_neighbours(self):
         """
         The structural neighbours does not contain data re features.
+        ``detail`` is a string. it is being outphased on the frontend. In favour of
+        {other_chain: bool, gnomad: List[str]}
+
         :return:
         """
         for neigh in self.structural.neighbours:
             neigh['resn'] = Mutation.aa3to1(neigh['resn'])
-            if neigh['chain'] != 'A':
-                neigh['detail'] = 'interface'
+            neigh['ptms'] = []
+            neigh['gnomads'] = {}
+            neigh['other_chain'] = False
+            if neigh['chain'] != 'A': # no details for other chain.
+                neigh['detail'] = 'other chain'  # interface!
+                neigh['other_chain'] = True
             else:
                 specials = []
-                r = int(neigh['resi'])
-                gnomad = ['gnomAD:' + g.description for g in self.gnomAD if r == g.x]
-                specials.extend(gnomad)
+                r = int(neigh['resi']) # will crash at insertion sequence... better show nothing than something odd?
+                ## ----- gnomads
+                gnomads = [g.description for g in self.gnomAD if r == g.x]
+                specials.extend(['gnomAD:' + g for g in gnomads])
+                neigh['gnomads'] = {g.split()[0]: {'full': g} for g in gnomads}
+                ## ----- uniprot ptms
                 for k in ('initiator methionine',
                           'modified residue',
                           'glycosylation site',
                           'non-standard amino acid'):
                     if k in self.features:
-                        specials.extend(['PTM:' + m['description'] for m in self.features[k] if r == m['x']])
+                        neigh['ptms'] = [m['description'] for m in self.features[k] if r == m['x']]
+                ## ----- PSP ptms
                 if 'PSP_modified_residues' in self.features:
-                    specials.extend(
-                        ['PTM:' + self.ptm_definitions[m['ptm']] for m in self.features['PSP_modified_residues'] if
-                         r == m['residue_index']])
+                    neigh['ptms'].extend([
+                                        self.ptm_definitions[m['ptm']] for m in self.features['PSP_modified_residues']
+                                        if r == m['residue_index']
+                                       ])
+                specials.extend(['PTM:' + m for m in neigh['ptms']])
                 neigh['detail'] = ' / '.join(set(specials))
 
     ################### Mutator class calling.
