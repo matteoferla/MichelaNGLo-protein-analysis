@@ -10,6 +10,13 @@ import os, json
 import os, requests, re, unicodedata
 
 def message(msg):
+    """
+    This is not used by Michelanglo app —which has it's own slack function.
+    This is for data assembly operations etc.
+
+    :param msg:
+    :return:
+    """
     if 'SLACK_WEBHOOK' in os.environ:
         msg = unicodedata.normalize('NFKD', msg).encode('ascii', 'ignore').decode('ascii')
         msg = re.sub('[^\w\s\-.,;?!@#()\[\]]', '', msg)
