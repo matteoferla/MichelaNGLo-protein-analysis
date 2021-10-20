@@ -23,6 +23,7 @@ class Structure:
     """
     settings = global_settings
     important_attributes = ['x', 'y', 'id', 'description', 'resolution', 'extra', 'alignment']
+    temporary_folder = 'temp'
 
     # __slots__ = ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'coordinates', 'extra', 'offset_corrected']
     def __init__(self, id, description, x: int, y: int, code, type='rcsb', chain='*', offset: int = 0, coordinates=None,
@@ -530,7 +531,7 @@ class Structure:
         pdbblock = self.get_coordinates()
         meta = PDBMeta(template_code, chain)
         with pymol2.PyMOL() as pymol:
-            pymol.cmd.set('fetch_path', os.getcwd() + '/michelanglo_app/temp')
+            pymol.cmd.set('fetch_path', self.temporary_folder)
             pymol.cmd.read_pdbstr(pdbblock, 'threaded')
             pymol.cmd.fetch(template_code, 'template', file=None, type='pdb1')
             log.debug('Merging with template...')
