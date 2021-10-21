@@ -16,12 +16,13 @@ If it is just the one gene, you can use the following, which will retrieve the U
 
     p = ProteinGatherer(uniprot='Q86V25')
     p.parse_uniprot()
-    
 
 The site [michelanglo.sgc.ox.ac.uk](https://michelanglo.sgc.ox.ac.uk) depends on three repos:
 * [MichelaNGLo-app](https://github.com/matteoferla/MichelaNGLo)
 * [MichelaNGLo-transpiler](https://github.com/matteoferla/MichelaNGLo-transpiler)
 * **MichelaNGLo-protein-module**
+
+The top-level repo is [Michelanglo-and-Venus](https://github.com/matteoferla/Michelanglo-and-Venus)
 
 This module can be used independently of Michelanglo app module, but requires the transpiler module.
 
