@@ -533,7 +533,12 @@ class Structure:
         with pymol2.PyMOL() as pymol:
             pymol.cmd.set('fetch_path', self.temporary_folder)
             pymol.cmd.read_pdbstr(pdbblock, 'threaded')
-            pymol.cmd.fetch(template_code, 'template', file=None, type='pdb1')
+            try:
+                pymol.cmd.fetch(template_code, 'template', file=None, type='pdb1')
+            except Exception as err:
+                # Nowadays pymol2.pymol.CmdException inherits Exception and not BaseException directly
+                log.warning(f'Error caused with pdb1. {err.__class__.__name__}')
+                pymol.cmd.fetch(template_code, 'template', file=None)
             log.debug('Merging with template...')
             pymol.cmd.remove('solvent')
             overlap_iter = pymol.cmd.get_model('template and (threaded around 0.1)').atom
