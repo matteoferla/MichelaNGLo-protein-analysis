@@ -377,7 +377,9 @@ class PDBMeta:
     # ---- cached props (cannot use 3.8 method)
 
     def _cached(self, attr_name, url, first=True):
-        if getattr(self, attr_name) is not None:
+        if not attr_name:
+            raise KeyError(f'meta datafetcher was given a blank "{attr_name}" for {url}')
+        elif getattr(self, attr_name) is not None:
             return getattr(self, attr_name)
         else:
             reply = requests.get(url + self.code).json()
@@ -572,5 +574,7 @@ class PDBMeta:
 
     @classmethod
     def bulk_resolution(cls, codes: list):
+        if not codes:
+            return {}  # or assert error?
         reply = requests.post('https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/', data=','.join(codes)).json()
         return {code: info[0]['resolution'] if 'resolution' in info[0] else 0. for code, info in reply.items()}
