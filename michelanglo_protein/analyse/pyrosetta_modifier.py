@@ -130,7 +130,10 @@ class Mutator:
             than the original is accepted. This prevents it... but often fails to so no relaxation is done.
         :type prevent_acceptance_of_incrementor:bool
         """
+        _keys = [cycles, radius, params_filenames, scorefxn_name, neighbour_only_score, outer_constrained,
+                 remove_ligands, single_chain, prevent_acceptance_of_incrementor]
         log.debug('Initialising')
+        log.debug(f'Mutator {_keys}')
         if 'ref' in scorefxn_name:
             pass
         elif 'beta_july15' in scorefxn_name or 'beta_nov15' in scorefxn_name:
