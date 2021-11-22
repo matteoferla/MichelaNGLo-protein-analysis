@@ -3,7 +3,7 @@
 from michelanglo_protein import ProteinAnalyser, ProteinCore, Mutation, structure
 from michelanglo_protein.settings_handler import global_settings
 from michelanglo_protein.generate import ProteinGatherer, ProteomeGatherer
-from michelanglo_protein.generate.split_gnomAD import gnomAD
+from michelanglo_protein.generate.old_split_gnomAD import gnomAD
 from michelanglo_protein.generate.uniprot_master_parser import UniprotMasterReader
 from michelanglo_protein.generate.split_phosphosite import Phosphosite
 import os, json

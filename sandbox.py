@@ -1,7 +1,7 @@
 from michelanglo_protein import ProteinAnalyser, ProteinCore, Mutation, structure
 from michelanglo_protein.settings_handler import global_settings
 from michelanglo_protein.generate import ProteinGatherer, ProteomeGatherer
-from michelanglo_protein.generate.split_gnomAD import gnomAD
+from michelanglo_protein.generate.old_split_gnomAD import gnomAD
 from michelanglo_protein.protein_analysis import StructureAnalyser
 # Settings = namedtuple('settings', 'dictionary_folder', 'reference_folder', 'temp_folder')
 import pickle
@@ -443,6 +443,8 @@ def hotfix_swiss(taxid=9606):
                 model.url = re.sub(r'from\=(\d+)&to\=(\d+)', r'sort=seqsim&range=\1-\2', model.url)
             p.dump()
 
+def add_clinvar():
+    clinvar.json
 
 if __name__ == '__main__':
     global_settings.verbose = True  # False
@@ -497,8 +499,6 @@ if 1 == 0:
     # p.dump()
     # print('**************************************')
     # pprint(p.asdict())
-
-
 elif 1 == 9:
     p = ProteinGatherer(taxid=9606, uniprot='P62873').load()
     print(p.gnomAD)

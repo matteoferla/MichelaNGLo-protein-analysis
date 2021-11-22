@@ -101,7 +101,8 @@ class ProteinCore(FromSwissmodel, FromAlphaFold2):
         self.ENST = ''
         self.ENSG = ''
         ## ExAC
-        self.gnomAD = []  # formerlly alleles
+        self.gnomAD = []  # formerly alleles
+        self.clinvar = []
         # self.ExAC_type (property= 'Unparsed' # Dominant | Recessive | None | Unknown (=???)
         self.pLI = -1
         self.pRec = -1

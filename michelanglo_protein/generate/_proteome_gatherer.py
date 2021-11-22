@@ -11,7 +11,7 @@ import os, json
 from warnings import warn
 from ._protein_gatherer import ProteinGatherer
 from .uniprot_master_parser import UniprotMasterReader
-from .split_gnomAD import gnomAD
+from .old_split_gnomAD import gnomAD
 from .PDB_blast import Blaster
 from ..settings_handler import global_settings #the instance not the class.
 import random

@@ -242,7 +242,7 @@ class Structure:
                                        'y': d["SP_END"],
                                        'offset': offset,
                                        'range': f'{d["SP_BEG"]}-{d["SP_END"]}',
-                                       'name': None,
+                                       'name': d['SP_PRIMARY'],
                                        'description': None} for d in details]
         try:
             if self.chain != '*':

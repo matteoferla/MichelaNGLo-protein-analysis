@@ -1,183 +1,136 @@
-__doc__ = """
-This script is actually independent of settings.
-Entry point: ``gnomAD().split().write()``
-"""
+# This script is actually independent of settings.
 
-
-
-import os, time
-import gzip
+import re
+import vcf
+from collections import defaultdict
 import json
+import os
+from typing import *
 
-from pprint import PrettyPrinter
-pprint = PrettyPrinter().pprint
+folder: str = '/well/gel/HICF2/ref/alleleFrequencies/gnomAD/v3.1.1/'
 
-from collections import defaultdict, namedtuple
-from typing import Union, Dict, List
-from warnings import warn
+vcf_filenames: List[str] = [os.path.join(folder, file) for file in os.listdir(folder) if all([
+    os.path.splitext(file)[1] == '.gz',
+    '.PASS.vcf.gz' in file
+])]
 
 
-class gnomADVariant:
-    """This is the same as the namedtuple but with more stuff. It does not get written. to_dict does."""
-    def __init__(self, symbol: str, identifier: str, from_residue: str, residue_index: Union[str, int], to_residue: str, impact: str, count: int, homozygous: int):
-        self.symbol = symbol
-        self.id = identifier
-        self.from_residue = from_residue
-        self.to_residue = to_residue
-        self.residue_index = int(residue_index)
-        self.impact = impact
-        self.homozygous = int(homozygous)
-        self.count = int(count)
+class NonSNPError(Exception):
+    pass
 
-    @staticmethod
-    def parse_line(line: str) -> List[Dict]:
-        data = dict(zip(['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO'], line.split('\t')))
-        # unpack info
-        info = {x.split('=')[0]: x.split('=')[1] for x in data['INFO'].split(';') if '=' in x}
-        del data['INFO']
-        # definitions were taken from the .vep.vcf
-        if 'CSQ' in info:
-            vep_id = 'CSQ'
-        elif 'vep' in info:
-            vep_id = 'vep'
-        else:
-            raise ValueError('Not a VEP.')
-        veps = info[vep_id].split(',')
-        del info[vep_id]
-        get_csq = lambda entry: dict(zip(
-                'Allele|Consequence|IMPACT|SYMBOL|Gene|Feature_type|Feature|BIOTYPE|EXON|INTRON|HGVSc|HGVSp|cDNA_position|CDS_position|Protein_position|Amino_acids|Codons|Existing_variation|ALLELE_NUM|DISTANCE|STRAND|FLAGS|VARIANT_CLASS|MINIMISED|SYMBOL_SOURCE|HGNC_ID|CANONICAL|TSL|APPRIS|CCDS|ENSP|SWISSPROT|TREMBL|UNIPARC|GENE_PHENO|SIFT|PolyPhen|DOMAINS|HGVS_OFFSET|GMAF|AFR_MAF|AMR_MAF|EAS_MAF|EUR_MAF|SAS_MAF|AA_MAF|EA_MAF|ExAC_MAF|ExAC_Adj_MAF|ExAC_AFR_MAF|ExAC_AMR_MAF|ExAC_EAS_MAF|ExAC_FIN_MAF|ExAC_NFE_MAF|ExAC_OTH_MAF|ExAC_SAS_MAF|CLIN_SIG|SOMATIC|PHENO|PUBMED|MOTIF_NAME|MOTIF_POS|HIGH_INF_POS|MOTIF_SCORE_CHANGE|LoF|LoF_filter|LoF_flags|LoF_info|context|ancestral'.split(
-                    '|'), entry.split('|')))
-        return [{**data, **info, **get_csq(entry)} for entry in veps]
 
-    def to_dict(self) -> Dict:
-        return self.__dict__
-
-    @classmethod
-    def from_line(cls, line: str):
-        """
-        This takes one millisecond per line.
-        :param line:
-        :return:
-        """
-        multidata = cls.parse_line(line)
-        variant = []
-        for data in multidata:
-            if data['Consequence'] in ('missense_variant', 'stop_gained', 'stop_lost', 'frameshift_variant'):
-                if not data['Amino_acids'].strip():
-                    continue
-                if data['CANONICAL'] == 'YES' and data['FILTER'] == 'PASS':
-                    variant.append(cls(symbol=data['SYMBOL'],
-                                   identifier=data['ID'],
-                                   from_residue=data['Amino_acids'].split('/')[0],
-                                   residue_index=int(data['Protein_position'].split('-')[0]),
-                                   to_residue=data['Amino_acids'].split('/')[1] if '/' in data['Amino_acids'] else 'X',
-                                   impact=data['IMPACT'],
-                                   homozygous=int(data['nhomalt']),
-                                   count=int(data['AC'])))
-            else:
-                pass
-        return variant
-
-class gnomAD:
+class gnomADSplitter:
+    totals = [  # https://gnomad.broadinstitute.org/help/what-populations-are-represented-in-the-gnomad-data
+        {'name': 'African/African American', 'counts': 4554, 'abbreviation': 'afr'},
+        {'name': 'Amish', 'counts': 30, 'abbreviation': 'ami'},
+        {'name': 'Latino/Admixed American', 'counts': 2345, 'abbreviation': 'amr'},
+        {'name': 'Ashkenazi Jewish', 'counts': 68, 'abbreviation': 'asj'},
+        {'name': 'East Asian', 'counts': 1215, 'abbreviation': 'eas'},
+        {'name': 'European (Finnish)', 'counts': 2750, 'abbreviation': 'fin'},
+        {'name': 'Middle Eastern', 'counts': 123, 'abbreviation': 'mid'},
+        {'name': 'European (non-Finnish)', 'counts': 3427, 'abbreviation': 'nfe'},
+        {'name': 'South Asian', 'counts': 1558, 'abbreviation': 'sas'},
+        {'name': 'Other', 'counts': 395, 'abbreviation': 'oth'},
+        {'name': 'XX', 'counts': 6717, 'abbreviation': 'XX'},
+        {'name': 'XY', 'counts': 9748, 'abbreviation': 'XY'},
+        {'name': 'Total', 'counts': 16465, 'abbreviation': '-'}
+    ]
 
     def __init__(self,
-                 masterfiles: Union[str,List],
-                 namedexfile : str,
-                 folder: str = 'gNOMAD',
-                 store_in_memory: bool = False):
-        """
-        Instantiation starts the settings. But the settings can be changed.
-        ``split`` splits the file into the self.data dict containing gene acc id as key and list of gnomADVariant.
-        But the bound method `write` writes and the gnomADVariant as regular dictionary.
+                 vcf_filename: str,
+                 out_folder: str = 'gnomAD_split',
+                 save_frequency: int = 10_000,
+                 non_existent: bool = False):
+        vcf_reader = vcf.Reader(filename=vcf_filename,
+                                compressed=True
+                                )
+        self.vep_headers = re.search(r'Format\:\s+(.*)', vcf_reader.infos['vep'].desc).group(1).split('|')
+        self.out_folder = out_folder
+        self.check_out_folder(non_existent)
+        i = 0
+        self.parsed_buffer = defaultdict(list)  # buffer
+        for record in vcf_reader:
+            try:
+                summary = self.summarize_record(record)
+            except NonSNPError:
+                continue
+            except Exception as error:
+                print(f'{error.__class__.__name__}: {error} for {record} in {vcf_filename}')
+            self.parsed_buffer[summary['symbol']].append(summary)
+            i += 1
+            if i == save_frequency:
+                print('Saving ', *self.parsed_buffer.keys())
+                self.save()
+                i = 0
 
-        :param masterfiles: path to ``gnomad.genomes.r2.1.1.exome_calling_intervals.sites.vcf.bgz`` or ``gnomad.exomes.r2.1.1.sites.vcf.bgz`` from gnomAD
-        :type masterfiles: Union[str,List]
-        :param namedexfile: path to json generated by ``UniprotMasterReader`` which all the gene synomyms to Uniprot id.
-        :type namedexfile: str
-        :param folder: Where to save. Internally this is ``self.datafolder``.
-        :type folder: str
-        :param store_in_memory: If True ``self.data`` will contain all the data.
-        """
-        self._namedex = json.load(open(namedexfile))
-        self.data = defaultdict(list)  #: the data parsed. It is cleared if store_in_memory is False
-        if isinstance(masterfiles, str):
-            masterfiles = [masterfiles]
-        self.masterfiles = masterfiles
-        if folder:
-            if not os.path.exists(folder):
-                os.mkdir(folder)
-            self.datafolder = folder
+    def check_out_folder(self, non_existent=True):
+        if not os.path.exists(self.out_folder):
+            os.mkdir(out_folder)
+        elif non_existent:
+            raise FileExistsError
         else:
-            self.datafolder = None
-            assert store_in_memory, 'If you don\'t want to save the files, store_in_memory has to be true.'
-        self.store_in_memory = store_in_memory
+            pass
 
-    def save_entry(self, previous):
-        path = os.path.join(self.datafolder, previous + '.json')
-        if os.path.exists(path) and not self.store_in_memory:
-            print('... preexistant!')
-            with open(path, 'r') as r:
-                older = json.load(r)
-        else:
-            older = []
-        with open(path, 'w') as w:
-            json.dump([v.to_dict() for v in self.data[previous]] + older, w)
-        if self.store_in_memory == False:
-            self.data[previous] = []
-
-    def split(self):
-        """
-        This takes a whole 30 per gene. This means that the 58 GB file ``gnomad.exomes.r2.1.1.sites.vcf.bgz`` takes 9 days.
-        :return:
-        """
-        for masterfile in self.masterfiles:
-            print(masterfile)
-            uniprot = ''
-            tick = time.time()
-            n = 0 # line count for debug.
-            with gzip.open(masterfile, 'rt') as f:
-                previous = ''
-                for line in f:
-                    if n % 100 == 0:
-                        #print(n, line[:50])
-                        pass
-                    n += 1
-                    if line[0] != '#':
-                        for variant in gnomADVariant.from_line(line):
-                            if variant and variant.symbol in self._namedex:
-                                uniprot = self._namedex[variant.symbol]
-                                #print(variant.symbol, '? This gene is', uniprot)
-                                if self.datafolder and previous and uniprot != previous:
-                                    tock = time.time()
-                                    print(f'GENE CHANGE from {previous} TO {uniprot}. store:{self.store_in_memory} time:{tock-tick}s')
-                                    tick = tock
-                                    self.save_entry(previous)
-                                if variant.id in [v.id for v in self.data[uniprot]]:
-                                    continue #dejavu
-                                else:
-                                    self.data[uniprot].append(variant)
-                                previous = uniprot
-                            else:
-                                if variant:
-                                    warn(f'This line has a mystery gene {variant.symbol}!')
-                    else:
-                        pass
-                        #print(line)
-            if uniprot:
-                self.save_entry(uniprot)
+    def save(self):
+        for gene in list(self.parsed_buffer.keys()):
+            filepath = os.path.join(self.out_folder, gene + '.json')
+            if os.path.exists(filepath):
+                with open(filepath, 'r') as fh:
+                    old = json.load(fh)
             else:
-                warn(f'{masterfile} appears to be empty')
-            print('Complete!')
-        return self
+                old = []
+            entries = sorted(old + self.parsed_buffer[gene], key=lambda entry: entry['residue_index'])
+            with open(filepath, 'w') as fh:
+                json.dump(entries, fh)
+            del self.parsed_buffer[gene]
 
+    def get_canonical(self, vep_entries: List[str]) -> dict:
+        vep_data = [dict(zip(self.vep_headers, entry.split('|'))) for entry in vep_entries if entry]
 
-    def write(self):
-        """
-        This saves self.data. Makes sense only if self.store_in_memory is True.
-        """
-        assert not self.store_in_memory, 'Store in memory is off?!'
-        for gene in self.data:
-            with open(os.path.join(self.datafolder, gene+'.json'),'w') as w:
-                json.dump([v.to_dict() for v in self.data[gene]],w)
-        return self
+        canonicals = [datum for datum in filter(lambda e: len(e) > 1, vep_data) if 'CANONICAL' in datum and \
+                      datum['CANONICAL'] == 'YES' and \
+                      datum['Consequence'] in ('missense_variant', 'stop_gained', 'stop_lost', 'frameshift_variant')
+                      ]
+        if not canonicals:
+            raise NonSNPError
+        else:
+            return canonicals[0]
 
+    def summarize_vep(self, record: vcf.model._Record) -> dict:
+        canonical_vep = self.get_canonical(record.INFO['vep'])
+        return dict(symbol=canonical_vep['SYMBOL'],
+                    from_residue=canonical_vep['Amino_acids'].split('/')[0],
+                    residue_index=int(canonical_vep['Protein_position'].split('-')[0]),
+                    to_residue=canonical_vep['Amino_acids'].split('/')[1] if '/' in canonical_vep[
+                        'Amino_acids'] else 'X',
+                    impact=canonical_vep['IMPACT'],
+                    consequence=canonical_vep['Consequence']
+                    )
+
+    def summarize_info(self, record: vcf.model._Record) -> dict:
+        key_mapping = dict(homozygous='nhomalt_controls_and_biobanks',
+                           count='AC_controls_and_biobanks',
+                           frequency='AF_controls_and_biobanks')
+        summary = {new: int(record.INFO[old][0]) if old in record.INFO else 0 for new, old in key_mapping.items()}
+        # ethnicity subs
+        for total in self.totals:  # totals: List[Dict] . Used for abbr only...
+            abbr = total['abbreviation']
+            if total['name'] in ('XX', 'XY', 'Total', 'Amish'):
+                continue
+            elif 'AF_controls_and_biobanks_' + abbr not in record.INFO:
+                continue
+            summary[f'frequency {abbr}'] = record.INFO['AF_controls_and_biobanks_' + abbr][0]
+        return summary
+
+    def summarize_record(self, record: vcf.model._Record) -> dict:
+        # if record.FILTER != 'PASS': raise NonSNPError
+        return {'identifier': record.ID,
+                **self.summarize_vep(record),
+                **self.summarize_info(record)
+                }
+
+if __name__ == '__main__':
+    from multiprocessing import Pool
+
+    with Pool(15) as p:
+        p.map(gnomADSplitter, vcf_filenames)

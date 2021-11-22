@@ -588,10 +588,18 @@ class Mutation:
         return ['{n} ({s}, {t})'.format(n=n,s=s,t=t) for s, t, n in cls.names if s == letter][0]
 
     @classmethod
-    def aa3to1(cls, value):
-        v = value.strip().title()
-        for one, three, full in cls.names:
-            if three == v:
-                return one
+    def aa3to1(cls, value:str):
+        if len(value) == 3:
+            v = value.strip().title()
+            for one, three, full in cls.names:
+                if three == v:
+                    return one
+            else:
+                return value  # not an aminoacid
+        elif len(value) == 1:
+            return value
+        else:
+            return value   # not an aminoacid
+            # raise ValueError
 
 

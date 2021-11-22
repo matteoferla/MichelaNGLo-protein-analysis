@@ -1,4 +1,6 @@
 """
+This is no longer used. Release 3.1 is.
+
 The splitting of gnomAD data is the slowest step. On my 2015 core i5 desktop it takes 30 secs per gene (3s on a single thread on the cluster).
 Therefore, this script is a hack to run it on n cores.
 NB. The Uniprot splitter runs on threads but within one core.
@@ -39,7 +41,7 @@ wget https://storage.googleapis.com/gnomad-public/release/2.1.1/vcf/exomes/gnoma
 ################
 
 def gwrap(file):
-    from michelanglo_protein.generate.split_gnomAD import gnomAD
+    from michelanglo_protein.generate.old_split_gnomAD import gnomAD
     import os, requests, re, unicodedata
     def message(msg):
         if 'SLACK_WEBHOOK' in os.environ:

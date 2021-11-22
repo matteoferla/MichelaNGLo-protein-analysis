@@ -11,7 +11,7 @@ from .ET_monkeypatch import ET
 from ._protein_gatherer import ProteinGatherer as Protein
 from warnings import warn
 
-from michelanglo_protein.generate.split_gnomAD import gnomAD
+from michelanglo_protein.generate.old_split_gnomAD import gnomAD
 
 from collections import defaultdict
 
