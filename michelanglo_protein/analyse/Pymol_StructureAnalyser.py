@@ -215,11 +215,11 @@ class StructureAnalyser:
         # selector = lambda atom: f'resi {atom.resi} and chain {atom.chain} and name {atom.name}'
         target_coords = [atom.coord for atom in self.pymol.cmd.get_model(self.target_selection).atom]
         for res in neighbours:
-            print(res)
+            #print(res)
             near_coords = [atom.coord for atom in self.pymol.cmd.get_model(self.neigh2selection(res)).atom]
             p_iter = product(map(np.array, target_coords), map(np.array, near_coords))
             res['distance'] = np.min([np.linalg.norm([aa - bb]) for aa, bb in p_iter])
-        print(neighbours)
+        # print(neighbours)
         return neighbours
 
     def neigh2selection(self, neighbour, name: Optional[str] = None) -> str:

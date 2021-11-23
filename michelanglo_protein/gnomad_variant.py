@@ -23,6 +23,8 @@ class Variant(namedtuple('Variant',
     """
     This should be generated the once... the complication comes from updating legacy data.
 
+    ``x`` and ``y`` are the same as ``residue_index`` but are basically for the feature viewer.
+
     Stores the gnomAD/Clinvar data for easy use by FeatureViewer and co.
 
     NB. Clinvar ``description`` has the phenotypes and ``count`` has the number of submitters.
@@ -50,6 +52,10 @@ class Variant(namedtuple('Variant',
                 return 'missense'
             else:
                 return 'nonsense'
+
+    @property
+    def mutation(self) -> str:
+        return f'{self.from_residue}{self.residue_index}{self.to_residue}'
 
     def to_dict(self):
         return dict(**self._asdict(),

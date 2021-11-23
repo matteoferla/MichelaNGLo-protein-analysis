@@ -14,7 +14,7 @@ from typing import Union, List, Dict, Tuple, Optional
 
 
 class ProteinAnalyser(ProteinCore):
-    ptm_definitions = {'p': 'phosphorylated',
+    ptm_definitions = {'p':  'phosphorylated',
                        'ub': 'ubiquitinated',
                        'sm': 'sumoylated',
                        'ga': 'O-galactosylated',
@@ -28,7 +28,7 @@ class ProteinAnalyser(ProteinCore):
                  scorefxn_name: str = 'ref2015',
                  cycles: int = 1,
                  radius: int = 12,
-                 use_pymol_for_neighbours: bool = False,
+                 use_pymol_for_neighbours: bool = False,  # this feature has not been used in years.
                  **kwargs):
         super().__init__(*args, **kwargs)
         ## other ##
@@ -42,6 +42,7 @@ class ProteinAnalyser(ProteinCore):
         self.scorefxn_name = scorefxn_name
         self.radius = radius  # the radius via PyMol radius=3
         self.cycles = cycles
+        # Works but do not use:
         self.use_pymol_for_neighbours = use_pymol_for_neighbours
 
     ####### elm
@@ -170,13 +171,15 @@ class ProteinAnalyser(ProteinCore):
             neighbours = self._neighbours(midresidue=self.sequence[self.mutation.residue_index - 1],
                                           position=self.mutation.residue_index,
                                           marker='*')
-            return 'Residue {i} is {n} in Uniprot {g}, while user claimed it was {f}. (neighbouring residues: {s})'.format(
-                i=self.mutation.residue_index,
-                n=self.sequence[self.mutation.residue_index - 1],
-                g=self.uniprot,
-                f=self.mutation.from_residue,
-                s=neighbours
-            )
+            # ye olde str.format not f-string.
+            return 'Residue {i} is {n} in Uniprot {g}, while user claimed it was {f}.' + \
+                   ' (neighbouring residues: {s})'.format(
+                       i=self.mutation.residue_index,
+                       n=self.sequence[self.mutation.residue_index - 1],
+                       g=self.uniprot,
+                       f=self.mutation.from_residue,
+                       s=neighbours
+                   )
         elif self.mutation.to_residue not in 'ACDEFGHIKLMNPQRSTVWY':
             return 'Analysis can only deal with missenses right now.'
         else:
@@ -224,9 +227,9 @@ class ProteinAnalyser(ProteinCore):
             w = self._rex_elm(neighbours, r['Regex'], starter, ender)
             m = self._rex_elm(mut_neighbours, r['Regex'], starter, ender)
             if w != False or m != False:
-                match = {'name': r['FunctionalSiteName'],
+                match = {'name':        r['FunctionalSiteName'],
                          'description': r['Description'],
-                         'regex': r['Regex'],
+                         'regex':       r['Regex'],
                          'probability': float(r['Probability'])}
                 if w != False and m != False:
                     match['x'] = w[0] + position - 5
@@ -263,17 +266,17 @@ class ProteinAnalyser(ProteinCore):
                     if f['x'] - wobble <= position and position <= f['y'] + wobble:
                         gnomad = self.get_gnomAD_in_range(f['x'], f['y'])
                         valid.append({**f,
-                                      'type': g,
+                                      'type':   g,
                                       'gnomad': self._tally_gnomad(gnomad)})
                 elif 'residue_index' in f:  # TODO FIX THIS DAMN DIFFERENT STANDARD.
                     if f['residue_index'] - wobble <= position and position <= f['residue_index'] + wobble:
                         # PTM from phosphosite plus are formatted differently. the feature viewer and the .structural known this.
                         gnomad = self.get_gnomAD_in_range(f['residue_index'], f['residue_index'])
-                        valid.append({'x': f['residue_index'],
-                                      'y': f['residue_index'],
+                        valid.append({'x':           f['residue_index'],
+                                      'y':           f['residue_index'],
                                       'description': self.ptm_definitions[f['ptm']],
-                                      'type': 'Post translational',
-                                      'gnomad': self._tally_gnomad(gnomad)})
+                                      'type':        'Post translational',
+                                      'gnomad':      self._tally_gnomad(gnomad)})
         svalid = sorted(valid, key=lambda v: int(v['y']) - int(v['x']))
         return svalid
 
@@ -339,7 +342,8 @@ class ProteinAnalyser(ProteinCore):
                 if model.includes(self.mutation.residue_index):
                     good.append(model)
             if good:
-                good.sort(key=lambda x: x.resolution if (isinstance(x.resolution, (int, float)) and x.resolution > 0) else x.resolution + 10)
+                good.sort(key=lambda x: x.resolution if (
+                            isinstance(x.resolution, (int, float)) and x.resolution > 0) else x.resolution + 10)
                 return good[0]
         # ========== Swissmodels ==========
         if allow_swiss:
@@ -368,7 +372,7 @@ class ProteinAnalyser(ProteinCore):
                 has_ligands = len(model.extra['ligand_chains']) > 0 if 'ligand_chains' in model.extra else False
                 # --------- discard conditions ---------
                 if not model.includes(self.mutation.residue_index):
-                    continue # does not cover variant
+                    continue  # does not cover variant
                 if qmean < swiss_oligomer_qmean_cutoff or identity < swiss_oligomer_identity_cutoff:
                     continue  # too nasty even if oligomer
                 if (is_monomer and not has_ligands) and \
@@ -423,53 +427,72 @@ class ProteinAnalyser(ProteinCore):
         else:
             chain = structure.chain
         # chain definition is used heavily clientside.
-        structure.chain_definitions = [{'chain': chain,
-                                        'uniprot': self.uniprot,
-                                        'x': structure.x,
-                                        'y': structure.y,
-                                        'offset': 0,
-                                        'range': f'{structure.x}-{structure.y}',
+        structure.chain_definitions = [{'chain':       chain,
+                                        'uniprot':     self.uniprot,
+                                        'x':           structure.x,
+                                        'y':           structure.y,
+                                        'offset':      0,
+                                        'range':       f'{structure.x}-{structure.y}',
                                         'description': structure.description,
-                                        'name': self.gene_name,
-                                        'note': 'Retroactively filled data. May be wrong.'
+                                        'name':        self.gene_name,
+                                        'note':        'Retroactively filled data. May be wrong.'
                                         }]
 
     def annotate_neighbours(self):
         """
         The structural neighbours does not contain data re features.
+        (the attribute ``.structural`` is a ``StructureAnalyser`` from ``.analyse.Pymol_StructureAnalyser.py``)
+        The list of dictionaries within its attribute ``.neighbours`` is not
+
         ``detail`` is a string. it is being outphased on the frontend. In favour of
         {other_chain: bool, gnomad: List[str]}
 
+        the assumption that self.structural is not none but a ``StructureAnalyser`` is checked upstream
+
+        gnomads and clinvars are lists of mutations and not the whole variants as that would be redundant...
+
         :return:
         """
-        for neigh in self.structural.neighbours:
-            neigh['resn'] = Mutation.aa3to1(neigh['resn'])
-            neigh['ptms'] = []
-            neigh['gnomads'] = {}
-            neigh['other_chain'] = False
-            if neigh['chain'] != 'A': # no details for other chain.
+        for neigh in self.structural.neighbours:  #type: Dict[str, Any]
+            # keys of `neigh`: `resi` (changed to int), `resn` (changed to 1 letter), `chain`, `distance`
+            # added keys:`detail` (str), `ptms` (list), `gnomads`  (list), `clinvar`  (list) and `other_chain` (bool).
+            neigh['ptms']: List[str] = []
+            neigh['gnomads']: List[str] = []
+            neigh['clinvars']: List[str] = []
+            neigh['other_chain']: bool = False
+            # fix of resn from 3 to 1
+            neigh['resn']: str = Mutation.aa3to1(neigh['resn'])
+            # prevent insertion site codes.
+            neigh['resi'] = int(re.search(r'(\d+)', neigh['resi']).group(1))
+            # other chain?
+            if neigh['chain'] != 'A':  # no details for other chain.
                 neigh['detail'] = 'other chain'  # interface!
                 neigh['other_chain'] = True
             else:
                 specials = []
-                r = int(neigh['resi']) # will crash at insertion sequence... better show nothing than something odd?
-                ## ----- gnomads
-                gnomads = [g.description for g in self.gnomAD if r == g.x]
-                specials.extend(['gnomAD:' + g for g in gnomads])
-                neigh['gnomads'] = {g.split()[0]: {'full': g} for g in gnomads}
-                ## ----- uniprot ptms
+                # ----- gnomads -----
+                get_variants = lambda variants: [v for v in variants if neigh['resi'] == v.x]
+                get_mutations = lambda variants: [v.mutation for v in variants]
+                gnomads:List[Variant] = get_variants(self.gnomAD)
+                specials.extend(['gnomAD:' + f'{g.mutation}' for g in gnomads])
+                neigh['gnomads'] = get_mutations(gnomads)
+                # ----- clinvars -----
+                clinvars:List[Variant] = get_variants(self.clinvar)
+                specials.extend(['ClinVar:' + f'{c.mutation}' for c in clinvars])
+                neigh['clinvars'] = get_mutations(clinvars)
+                # ----- uniprot ptms -----
                 for k in ('initiator methionine',
                           'modified residue',
                           'glycosylation site',
                           'non-standard amino acid'):
                     if k in self.features:
-                        neigh['ptms'] = [m['description'] for m in self.features[k] if r == m['x']]
-                ## ----- PSP ptms
+                        neigh['ptms'] = [m['description'] for m in self.features[k] if neigh['resi'] == m['x']]
+                # ----- PSP ptms -----
                 if 'PSP_modified_residues' in self.features:
                     neigh['ptms'].extend([
-                                        self.ptm_definitions[m['ptm']] for m in self.features['PSP_modified_residues']
-                                        if r == m['residue_index']
-                                       ])
+                        self.ptm_definitions[m['ptm']] for m in self.features['PSP_modified_residues']
+                        if neigh['resi'] == m['residue_index']
+                    ])
                 specials.extend(['PTM:' + m for m in neigh['ptms']])
                 neigh['detail'] = ' / '.join(set(specials))
 
@@ -543,7 +566,7 @@ class ProteinAnalyser(ProteinCore):
                 pass
         return parent_conn.recv()
 
-    def analyse_FF(self, spit_process=True, scaling_factor = 1, **mutator_options) -> Union[Dict, None]:
+    def analyse_FF(self, spit_process=True, scaling_factor=1, **mutator_options) -> Union[Dict, None]:
         """
         Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
 
@@ -572,7 +595,7 @@ class ProteinAnalyser(ProteinCore):
         self.energetics = msg
         return msg
 
-    def analyse_gnomad_FF(self, spit_process=True, scaling_factor = 1, **mutator_options) -> Union[Dict, None]:
+    def analyse_gnomad_FF(self, spit_process=True, scaling_factor=1, **mutator_options) -> Union[Dict, None]:
         """
         Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
 
@@ -596,13 +619,13 @@ class ProteinAnalyser(ProteinCore):
             msg = analysis(init_settings=init_settings, gnomads=self.gnomAD)
         else:
             msg = self._run_subprocess(
-                self._subprocess_factory(analysis, gnomads=self.gnomAD, init_settings=init_settings))
+                self._subprocess_factory(analysis, gnomads=self.gnomAD + self.clinvar, init_settings=init_settings))
         self.energetics_gnomAD = msg
         return msg
 
     def analyse_other_FF(self,
                          mutation: Union[Mutation, str], algorithm, spit_process=True,
-                         scaling_factor:float = 1,  **mutator_options) -> Union[Dict, None]:
+                         scaling_factor: float = 1, **mutator_options) -> Union[Dict, None]:
         Mutator.scaling_factor = scaling_factor
         # sort out mutation
         if isinstance(mutation, str):
@@ -654,13 +677,13 @@ class ProteinAnalyser(ProteinCore):
                 :return: a PDB block not a score dict!
                 """
         if self.pdbblock is None:
-            #print('no self.pdbblock')
-            return None # it returns a string not a dictionary.
+            # print('no self.pdbblock')
+            return None  # it returns a string not a dictionary.
         elif 'PSP_modified_residues' not in self.features:
-            #print('no features')
+            # print('no features')
             return None
         elif not self.features['PSP_modified_residues']:
-            #print('no features2')
+            # print('no features2')
             return None
         ### perpare.
         init_settings = self._init_settings

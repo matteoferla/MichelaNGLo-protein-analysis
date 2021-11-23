@@ -610,19 +610,18 @@ class Mutator:
         self.mark('wt')
         pose2pdb = self.native.pdb_info().pdb2pose
         ddG = {}
-        for record in gnomads:
+        for record in gnomads: #type: Variant
             if record.type == 'nonsense':
                 continue
-            n = pose2pdb(chain='A', res=record.x)
+            elif record.to_residue in ('X', '='):  # I am pretty sure this is redundant.
+                continue
+            n = pose2pdb(chain='A', res=record.residue_index)
             if n == 0:
                 continue
-            rex = re.match(r'(\w)(\d+)([\w])', record.description)
-            if rex is None:
-                continue
-            if rex.group(0) in ddG:
+            if record.mutation in ddG:
                 # print('duplicate mutation.')
                 continue
-            ddG[rex.group(0)] = self._repack_gnomad(n, rex.group(1), rex.group(3))
+            ddG[record.mutation] = self._repack_gnomad(n, record.from_residue, record.to_residue)
         return ddG
 
 
