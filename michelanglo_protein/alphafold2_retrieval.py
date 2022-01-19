@@ -22,7 +22,9 @@ alphamodels = {'Arabidopsis thaliana': 3702,
                'Trypanosoma cruzi': 5693}
 
 # this has to be external as it is used by app.
-def is_alphafold_taxon(taxid:int) -> bool:
+def is_alphafold_taxon(taxid:int, legacy: bool=False) -> bool:
+    if not legacy:
+        return True
     try:
         if int(taxid) in alphamodels.values():
             return True
@@ -37,8 +39,9 @@ class FromAlphaFold2:  # to be inherited by ProteinCore
     def add_alphafold2(self):
         if 'NCBI Taxonomy' not in self.organism:
             return
-        if not is_alphafold_taxon(self.organism['NCBI Taxonomy']):
-            return
+        # alphafold has all uniprot now so thsi no longer applies:
+        # if not is_alphafold_taxon(self.organism['NCBI Taxonomy']):
+        #     return
         suffix = 'F1-model_v1' # will this change in future?
         url = f'https://alphafold.ebi.ac.uk/files/AF-{self.uniprot}-{suffix}.pdb'
         structure = Structure(
