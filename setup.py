@@ -15,12 +15,20 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/matteoferla/MichelaNGLo-protein-module",
     packages=setuptools.find_packages(),
+    include_package_data=True,
+    package_data={'michelanglo_protein.analyse.params': ['*.params'],},
     classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        'Development Status :: 5 - Production/Stable', #
+        'Intended Audience :: Science/Research',
+        'Topic :: Scientific/Engineering :: Bio-Informatics',
+        'Topic :: Scientific/Engineering :: Chemistry',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         "Operating System :: OS Independent",
-    ], install_requires=['Bio', 'requests_ftp'
-    ]
+    ],
+    install_requires=['Bio', 'requests_ftp']
 )
 
 '''

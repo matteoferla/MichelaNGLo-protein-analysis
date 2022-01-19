@@ -25,13 +25,12 @@ from typing import *
 from collections import namedtuple, defaultdict
 from Bio.SeqUtils import seq3
 from ..gnomad_variant import Variant
+from .params import get_default_params_filenames
 import logging
 
 log = logging.getLogger()
 
 Target = namedtuple('target', ['resi', 'chain'])
-
-default_params_folder = os.path.join(os.path.split(__file__)[0], 'params')
 
 pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
 
@@ -81,8 +80,7 @@ class Mutator:
         "yhh_planarity":        "Sidechain hydroxyl group torsion preference for Tyr, superseded by hxl_tors"
     })
 
-    default_params = [os.path.join(default_params_folder, filename) for filename in os.listdir(default_params_folder)
-                      if os.path.splitext(filename)[1] == '.params']
+    default_params = get_default_params_filenames()
 
     def __init__(self,
                  pdbblock: str,
