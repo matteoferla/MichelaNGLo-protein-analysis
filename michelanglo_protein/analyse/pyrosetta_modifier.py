@@ -20,13 +20,17 @@ But for debug this was done...
 # I did not realise that the Americans spell it without a ``u`` until it was too embedded.
 # ``colour`` is correctly spelt ``color`` throughout.
 
-import pyrosetta, pymol2, re, os
-from typing import *
-from collections import namedtuple, defaultdict
-from Bio.SeqUtils import seq3
-from ..gnomad_variant import Variant
-from .params import get_default_params_filenames
 import logging
+from collections import namedtuple, defaultdict
+from typing import *
+
+import pymol2
+import pyrosetta
+import re
+from Bio.SeqUtils import seq3
+
+from .params import get_default_params_filenames
+from ..gnomad_variant import Variant
 
 log = logging.getLogger()
 
@@ -81,6 +85,9 @@ class Mutator:
     })
 
     default_params = get_default_params_filenames()
+    aminoacid_letters = ('A', 'C', 'D', 'E', 'F', 'G',
+                         'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q',
+                         'R', 'S', 'T', 'V', 'W', 'Y')
 
     def __init__(self,
                  pdbblock: str,
@@ -198,7 +205,7 @@ class Mutator:
         """
         pose = pyrosetta.Pose()
         if self.params_filenames:
-            params_paths = pyrosetta.rosetta.utility.vector1_string()
+            params_paths = pyrosetta.rosetta.utility.vector1_string()  # noqa -- it's there.
             params_paths.extend(self.params_filenames)
             rts = pyrosetta.generate_nonstandard_residue_set(pose, params_paths)
             # the filename AFAIK does nothing.
@@ -239,14 +246,14 @@ class Mutator:
                 neighbours.append(Target(resi=res, chain=atom.chain))
         return neighbours
 
-    def targets2vector(self, targets: List[Target]) -> pyrosetta.rosetta.utility.vector1_bool:
-        neighbours = pyrosetta.rosetta.utility.vector1_bool(self.pose.total_residue())
+    def targets2vector(self, targets: List[Target]) -> pyrosetta.rosetta.utility.vector1_bool:  # noqa -- it's there.
+        neighbours = pyrosetta.rosetta.utility.vector1_bool(self.pose.total_residue())  # noqa -- it's there.
         for target in targets:
             r = self.target_pdb2pose(target)
             neighbours[r] = True
         return neighbours
 
-    def calculate_neighbours_in_pyrosetta(self, radius: int = 12) -> pyrosetta.rosetta.utility.vector1_bool:
+    def calculate_neighbours_in_pyrosetta(self, radius: int = 12) -> pyrosetta.rosetta.utility.vector1_bool:  # noqa
         """
         Gets the residues within the radius of target. THis method uses pyrosetta.
         It is for filling self.neighbour_vector
@@ -262,13 +269,13 @@ class Mutator:
         resi_sele = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector(r)
         return pyrosetta.rosetta.core.select.residue_selector.NeighborhoodResidueSelector(resi_sele, radius, True)
 
-    def ready_relax(self, cycles: int = 1, fixed_bb: bool = False) -> pyrosetta.rosetta.protocols.moves.Mover:
+    def ready_relax(self, cycles: int = 1, fixed_bb: bool = False) -> pyrosetta.rosetta.protocols.moves.Mover:  # noqa
         """
 
         :param cycles:
         :return:
         """
-        self.relax = pyrosetta.rosetta.protocols.relax.FastRelax(self.scorefxn, cycles)
+        self.relax = pyrosetta.rosetta.protocols.relax.FastRelax(self.scorefxn, cycles)  # noqa -- it's there.
         self.movemap = pyrosetta.MoveMap()
         if not fixed_bb:
             self.movemap.set_bb(self.neighbour_vector)
@@ -345,8 +352,8 @@ class Mutator:
         """
         if pose is None:
             pose = self.pose
-        buffer = pyrosetta.rosetta.std.stringbuf()
-        pose.dump_pdb(pyrosetta.rosetta.std.ostream(buffer))
+        buffer = pyrosetta.rosetta.std.stringbuf()  # noqa -- it's there.
+        pose.dump_pdb(pyrosetta.rosetta.std.ostream(buffer))  # noqa -- it's there.
         return buffer.str()
 
     def get_diff_solubility(self) -> float:
@@ -360,11 +367,11 @@ class Mutator:
         return diff
 
     def get_all_scores(self) -> Dict[str, Dict[str, Union[float, str]]]:
-        data = {}
+        data: Dict[str, Dict[str, Union[float, str]]] = {}
         for term in self.scorefxn.get_nonzero_weighted_scoretypes():
             data[term.name] = dict(zip(['native', 'mutant', 'difference'], self.get_term_scores(term)))
             data[term.name]['weight'] = self.scorefxn.get_weight(term)
-            data[term.name]['meaning'] = self.term_meanings[term.name]
+            data[term.name]['meaning']: str = self.term_meanings[term.name]
         return data
 
     def get_term_scores(self, term: pyrosetta.rosetta.core.scoring.ScoreType) -> Tuple[float, float, float]:
@@ -511,7 +518,7 @@ class Mutator:
 
     def make_phospho(self, ptms):
         phospho = self.pose.clone()
-        MutateResidue = pyrosetta.rosetta.protocols.simple_moves.MutateResidue
+        MutateResidue = pyrosetta.rosetta.protocols.simple_moves.MutateResidue  # noqa -- it's there.
         pdb2pose = phospho.pdb_info().pdb2pose
         changes = 0
         resi_sele = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector()
@@ -565,9 +572,11 @@ class Mutator:
         self.pose = self.native.clone()
         self.pose.remove_constraints()
         # local repack...
+        assert from_resi in self.aminoacid_letters, f'What is a {from_resi} AA?'
+        assert to_resi in self.aminoacid_letters, f'What is a {to_resi} AA?'
         pyrosetta.toolbox.mutate_residue(self.pose,
                                          mutant_position=pose_idx,
-                                         mutant_aa=from_resi,
+                                         mutant_aa=from_resi,  # silent mutation first
                                          pack_radius=7.0,
                                          pack_scorefxn=self.scorefxn)
         resi_sele = pyrosetta.rosetta.core.select.residue_selector.ResidueIndexSelector(pose_idx)
@@ -608,10 +617,17 @@ class Mutator:
         self.mark('wt')
         pose2pdb = self.native.pdb_info().pdb2pose
         ddG = {}
-        for record in gnomads: #type: Variant
+        for record in gnomads:  # type: Variant
             if record.type == 'nonsense':
                 continue
-            elif record.to_residue in ('X', '='):  # I am pretty sure this is redundant.
+            elif record.to_residue in ('X', '=', '*', 'fs'):
+                # this is just to be clear for me reading the code that it did not come from here
+                # as the next one catches it too :zany_face:
+                continue
+            elif record.to_residue not in self.aminoacid_letters:
+                # lol.
+                continue
+            elif record.from_residue not in self.aminoacid_letters:
                 continue
             n = pose2pdb(chain='A', res=record.residue_index)
             if n == 0:
@@ -648,7 +664,7 @@ def test():
     print(m.scores)
     muta = m.target_pdb2pose(m.target)
     print(pyrosetta.rosetta.core.scoring.CA_rmsd(native, m.pose, muta - 1, muta + 1))
-    m.output()
+    # m.output()
 
 
 def paratest():
