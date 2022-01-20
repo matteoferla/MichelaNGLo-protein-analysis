@@ -1,12 +1,44 @@
+from __future__ import annotations
+import sys
+import warnings
 from typing import *
 
+if sys.version_info < (3, 8):
+    from typing_extensions import TypedDict
 import re
 import logging
 import requests
 from collections import Counter
 
+if TYPE_CHECKING:
+    import pandas as pd
+    import pyrosetta
 
-# not std lib imports in methods --> bad typehinting
+
+__all__ = ['Consurfer']
+
+# the value in `.data` is a `Dict[str, ResidueDataType]`
+# 'MET1:A': {'POS': '1',
+#   'SEQ': 'M',
+#   '3LATOM': 'MET1:A',
+#   'SCORE': '-1.610',
+#   'COLOR': '9',
+#   'CONFIDENCE INTERVAL': '-1.838,-1.537',
+#   'CONFIDENCE COLORS': '9,9',
+#   'MSA DATA': '94/300',
+#   'RESIDUE VARIETY': 'M,L,V,I'}
+ResidueDataType = TypedDict('ResidueDataType',
+                            {'POS':                 int,
+                             'SEQ':                 str,
+                             '3LATOM':              str,
+                             'SCORE':               float,
+                             'COLOR':               int,
+                             'CONFIDENCE INTERVAL': Tuple[float, float],
+                             'CONFIDENCE COLORS':   Tuple[int, int],
+                             'MSA DATA':            str,
+                             'RESIDUE VARIETY':     str,
+                             })
+
 
 class Consurfer:
     """
@@ -17,16 +49,16 @@ class Consurfer:
 
     Either from web
 
-    >>> cp = ConsurfPoser.from_web('1UBQ', 'A')
+    >>> cp = Consurfer.from_web('1UBQ', 'A')
 
     or filename
 
-    >>> cp = ConsurfPoser.from_filename('grades.txt')
+    >>> cp = Consurfer.from_filename('grades.txt')
 
-    Data is in self.data (dict of ``MET1:A`` to dict of values (see ``ConsurfPoser.keys`` class attribute))
+    Data is in self.data (dict of ``MET1:A`` to dict of values (see ``Consurfer.keys`` class attribute))
     and can be converted to pandas:
 
-    >>> cp = ConsurfPoser.from_web('1UBQ', 'A')
+    >>> cp = Consurfer.from_web('1UBQ', 'A')
     >>> cp.to_pandas()
 
     If a residue appears in SEQPOS but no ATOM records are present, they will be like ``cp.data['___1:A']``.
@@ -35,6 +67,7 @@ class Consurfer:
 
     Also can add a consurf conservation to a PyRosetta pose in place.
 
+    >>> pose : pyrosetta.Pose = ...
     >>> cp.add_bfactor_to_pose(pose)
 
     Or a pymol object
@@ -43,32 +76,34 @@ class Consurfer:
 
     >>> cp.remap_chains({'B': 'A'})
 
-    Likewise with offset
-
-    >>> cp.offset({'A': 10})
+    Likewise with offset.
 
     If the Uniprot id is known, the offset can be taken from Swissmodel
 
-    >>> self.apply_offset_from_swissmodel(uniprot, code, chain)
+    >>> cp.apply_offset_from_swissmodel(uniprot, code, chain) # noqa
 
     Potentially support multi-chain operations, but not tested.
 
-    >>> cp = ConsurfPoser.merge([cp1, cp2, cp3])
+    >>> cp = Consurfer.merge([cp1, cp2, cp3]) # noqa
 
     """
     log = logging.getLogger()
 
     # ----- init methods ---------
 
+    REQUEST_VERIFY_SETTING = False  # False for now, but may be a risk of attack
+    ResidueDataType = ResidueDataType
+    keys: List[str] = list(ResidueDataType.__annotations__.keys())
+
     def __init__(self):
-        self.request = requests.session()
+        self.req_session = requests.session()
         self.grades_block = ''
-        self.data = {}
+        self.data: Dict[str, ResidueDataType] = {}
         self.present_chain = 'A'  # fallback
         self.code = None
 
     @classmethod
-    def from_web(cls, code: str, chain: str):
+    def from_web(cls, code: str, chain: str) -> Consurfer:
         """
         Consurf DB. Two requests.
         """
@@ -77,7 +112,7 @@ class Consurfer:
         return self
 
     @classmethod
-    def from_filename(cls, grades_filename: str):
+    def from_filename(cls, grades_filename: str) -> Consurfer:
         """
         dot grades file.
         """
@@ -86,25 +121,23 @@ class Consurfer:
         return self
 
     @classmethod
-    def merge(cls, consufers: List['self']):
+    def merge(cls, consufers: List[Consurfer]) -> Consurfer:
         """
         Merging into one.
         """
         self = cls()
         # shoddy chaining.
-        self.data = {key: values for cs in consufers for key, values in cs.items()}
+        self.data: Dict[str, ResidueDataType] = {key: values for cs in consufers
+                                                             for key, values in cs.data.items()} # noqa
         return self
-
-    keys = ['POS', 'SEQ', '3LATOM', 'SCORE', 'COLOR', 'CONFIDENCE INTERVAL', 'CONFIDENCE COLORS', 'MSA DATA',
-            'RESIDUE VARIETY']
 
     # ----- inner methods: parse ---------
 
-    def parse(self) -> dict:
+    def parse(self) -> Dict[str, ResidueDataType]:
         """
         parses a grades block and fills self.conscores
         """
-        # self.data = {} # outer key is MET1:A
+        data: Dict[str, ResidueDataType] = {}
         assert len(self.grades_block), 'self.grades_block is empty'
         for row in self.grades_block.split('\n'):
             row = row.strip()
@@ -119,8 +152,30 @@ class Consurfer:
                 name = '___' + parts['POS'] + ':' + self.present_chain
             else:
                 self.present_chain = name[-1]
-            self.data[name] = parts
-        return self.data
+            unstar = lambda value: value.replace('*', '') if isinstance(value, str) else value
+            for key, anno_type in ResidueDataType.__annotations__.items():
+                if key not in parts:
+                    warnings.warn(f'{key} not in residue information of {name}')
+                elif not hasattr(anno_type, '_name'):  # standard library
+                    parts[key] = anno_type(unstar(parts[key])) if parts[key] else anno_type()
+                elif anno_type._name == 'Tuple':  # its a typing.Tuple
+                    subparts: List[str] = unstar(parts[key]).split(',')
+                    subtypes: Tuple[type] = anno_type.__args__
+                    parts[key] = tuple([subtype(subpart) for subtype, subpart in zip(subtypes, subparts)])
+                else:
+                    raise NotImplementedError('Dev changed TypedDict!')
+            data[name] = ResidueDataType(parts) # noqa
+        return data
+
+    # 'MET1:A': {'POS': '1',
+    #   'SEQ': 'M',
+    #   '3LATOM': 'MET1:A',
+    #   'SCORE': '-1.610',
+    #   'COLOR': '9',
+    #   'CONFIDENCE INTERVAL': '-1.838,-1.537',
+    #   'CONFIDENCE COLORS': '9,9',
+    #   'MSA DATA': '94/300',
+    #   'RESIDUE VARIETY': 'M,L,V,I'}
 
     # ----- inner methods: getters ---------
 
@@ -142,12 +197,14 @@ class Consurfer:
     def get_residue_index(self, res: str) -> int:
         return int(res[3:-2])
 
-    def get_color(self, res: str) -> int:
+    def get_color(self, res: str) -> float:
         # COLOR is an integer... A wee more resolution with confidence range!
         conf_colors = self.data[res]['CONFIDENCE COLORS']
-        color = sum(map(int, conf_colors.strip().split(','))) / 2
-        # 9 is conserved 1 is not.
-        return color
+        if isinstance(conf_colors, str):  # self.data was not run through parse!
+            warnings.warn('Please use `.parse` for `.data`')
+            return sum(map(int, conf_colors.strip().split(','))) / 2
+        else:
+            return sum(conf_colors) / 2
 
     def get_key(self, index: int, chain: Optional[str] = None) -> str:
         for entry in self.data:
@@ -165,11 +222,11 @@ class Consurfer:
 
     # ----- inner methods: utils ---------
 
-    def to_pandas(self) -> 'pd.DataFrame':
+    def to_pandas(self) -> pd.DataFrame:
         import pandas as pd
         return pd.DataFrame(self.data).transpose()
 
-    def add_bfactor_to_pose(self, pose: 'pyrosetta.Pose', strict: bool = True):
+    def add_bfactor_to_pose(self, pose: pyrosetta.Pose, strict: bool = True):
         """
         Adds the conscores dictionary to bfactor in place.
 
@@ -195,27 +252,27 @@ class Consurfer:
         """
         pymol is a pymol2.PyMOL object.
 
-        >>> with pymol2.PyMOL() as pymol:
+        >>> with pymol2.PyMOL() as pymol: # noqa
         >>>     pymol.cmd.fetch('3CMD', 'model')
-        >>>     cp.offset_pymol()
+        >>>     cp.offset_pymol() # noqa
         >>>     pymol.cmd.save('test.pse')
 
         ``add_score`` True adds the score (zero centered), else the 10-1 color
         """
         pymol.cmd.alter(f'*', f'b={missing}')
-
-        for key, values in self.data.items():
+        for key, values in self.data.items():  #: Tuple[str, ResidueDataType]
             resi = self.get_residue_index(key)
             chain = self.get_residue_chain(key)
-            # COLOR is an integer... A wee more resolution with confidence range!
-            color = sum(map(int, values['CONFIDENCE COLORS'].strip().split(','))) / 2
+            # COLOR is an integer... A wee more resolution can be had with confidence range
+            # hence `.get_color`
+
             # 9 is conserved 1 is not.
             if add_score:
-                color = self.get_conscore(key)
+                anticolor: float = self.get_conscore(key)
             else:
                 # 9 is conserved 1 is not.
-                color = 10 - self.get_color(key)
-            pymol.cmd.alter(f'resi {resi} and chain {chain}', f'b={color}')
+                anticolor : float = 10 - self.get_color(key)
+            pymol.cmd.alter(f'resi {resi} and chain {chain}', f'b={anticolor}')
         pymol.cmd.sort()
 
     def add_bfactor_via_pymol(self, coordinates: str, add_score: bool = False):
@@ -227,21 +284,22 @@ class Consurfer:
 
     # ----- dependent methods: web
 
-    def fetch(self, code: str, chain: str) -> dict:
+    def fetch(self, code: str, chain: str) -> None:
         """Uses https://consurfdb.tau.ac.il/ so make sure you fall within its usage."""
         first = self._fetch_initial(code, chain)
         self.code = first
         self.grades_block = self._fetch_final(first)
-        self.parse()
+        self.data: Dict[str, ResidueDataType] = self.parse()
 
     def _fetch_initial(self, code: str, chain: str) -> str:
-        reply = self.request.get('https://consurfdb.tau.ac.il/scripts/chain_selection.php',
-                                 params=dict(pdb_ID=code.upper()))
+        reply = self.req_session.get('https://consurfdb.tau.ac.il/scripts/chain_selection.php',
+                                     params=dict(pdb_ID=code.upper()),
+                                     verify=self.REQUEST_VERIFY_SETTING)
         self.assert_reply(reply, msg=f'matching {code}')
         mapping = dict(re.findall('option value="(\w) (\w{5})"', reply.text))
         if 'No chains found for' in reply.text:
             self.log.debug(f'Reply: {reply.text.strip()}')
-            raise KeyError(f'{code} has no chains according to Consurf')
+            raise KeyError(f'The PDB {code} has no chains according to Consurf')
         elif len(mapping) == 1:
             return list(mapping.values())[0]
         elif chain not in mapping:
@@ -252,7 +310,7 @@ class Consurfer:
 
     def _fetch_final(self, final: str):
         url = f'https://consurfdb.tau.ac.il/DB/{final}/consurf_summary.txt'
-        reply = self.request.get(url)
+        reply = self.req_session.get(url, verify=self.REQUEST_VERIFY_SETTING)
         self.assert_reply(reply, msg=f'retrieval of suggestion {final}')
         return reply.text
 
@@ -260,26 +318,26 @@ class Consurfer:
         if 'The requested URL was rejected' in reply.text:
             requests.exceptions.ConnectionError(
                 f'{msg} gave an error code 200 with Consurf.',
-                request=reply.request,
+                request=reply.req_session,
                 response=reply)
         if reply.status_code == 200:
             pass
         elif reply.status_code == 404:
             raise requests.exceptions.InvalidURL(f'{msg} could not be found in Consurf',
-                                                 request=reply.request,
+                                                 request=reply.req_session,
                                                  response=reply)
         else:
             raise requests.exceptions.ConnectionError(
                 f'{msg} gave a code {reply.status_code} with Consurf ({reply.text})',
-                request=reply.request,
+                request=reply.req_session,
                 response=reply)
 
     # ----- dependent methods: file
 
-    def read(self, grades_filename: str) -> dict:
+    def read(self, grades_filename: str) -> None:
         with open(grades_filename) as r:
             self.grades_block = r.read()
-        self.parse()
+        self.data: Dict[str, ResidueDataType] = self.parse()
 
     # ---- offset correction
 
@@ -299,7 +357,7 @@ class Consurfer:
             self.present_chain = chain_map[self.present_chain]
         self.data = new_data
 
-    def get_consurf_chain(self):
+    def get_consurf_chain(self) -> str:
         # corrects self.present_chain
         chains = [self.get_residue_chain(res) for res in self.data]
         self.present_chain = Counter(chains).most_common(1)[0][0]
@@ -329,7 +387,7 @@ class Consurfer:
         new_data = {}
         for ri, (res, values) in enumerate(list(self.data.items())):
             chain = self.get_residue_chain(res)
-            resi = self.get_residue_index(res)
+            # resi = self.get_residue_index(res)
             resn = self.get_residue_name(res)
             if chain in offset_map:
                 if isinstance(offset_map[chain], int):
@@ -357,7 +415,7 @@ class Consurfer:
         Swissmodel has the offset from the SEQPOS, SIFTS from the ATOM,
         but if there is no ATOM, it is none, so this is safe.
         """
-        sm_data = self.request.get(f'https://swissmodel.expasy.org/repository/uniprot/{uniprot}.json').json()
+        sm_data = self.req_session.get(f'https://swissmodel.expasy.org/repository/uniprot/{uniprot}.json').json()
         segs_data = [structure['chains'] for structure in sm_data['result']['structures'] if
                      structure['template'].upper() == code]
         chain_data = [seg for seg in segs_data[0] if seg['id'] == chain][0]['segments'][0]
@@ -391,8 +449,12 @@ class Consurfer:
 
     def get_offset_by_alignment(self, ref_sequence: str) -> int:
         """
-        Offset by alignment. SEQPOS alignment
+        Offset iteger determined by alignment (SEQPOS sequence)
+        Assumed there are no internal gaps in the sequence only at the N-terminus
+
+        cf. get_offset_vector_by_alignment for -> List[int]
         """
+        warnings.warn('Use get_offset_vector_by_alignment', category=DeprecationWarning)
         ref_al, con_al = self.align(ref_sequence)
         offset = 0
         for r, c in zip(ref_al, con_al):
@@ -406,7 +468,8 @@ class Consurfer:
 
     def get_offset_vector_by_alignment(self, ref_sequence: str) -> List[int]:
         """
-        Offset by alignment. SEQPOS alignment
+        Offset list determined by alignment (SEQPOS sequence)
+        cf. get_offset_by_alignment for -> int
         """
         ref_al, con_al = self.align(ref_sequence)
         c2r = []
@@ -423,10 +486,10 @@ class Consurfer:
                 ri += 1  # no match for R.
         return [ri - ci if ri is not None else None for ci, ri in enumerate(c2r)]
 
-    def apply_offset_by_alignment(self, ref_sequence: str, chain: Optional[str] = None) -> int:
+    def apply_offset_by_alignment(self, ref_sequence: str, chain: Optional[str] = None) -> List[int]:
         if chain is None:
             chain = self.present_chain
-        offset_vector = self.get_offset_vector_by_alignment(ref_sequence)
-        self.log.debug(f'offset {offset_vector}')
+        offset_vector: List[int] = self.get_offset_vector_by_alignment(ref_sequence)
+        self.log.debug(f'offset vector {offset_vector}')
         self.offset_seqpos({chain: offset_vector})
         return offset_vector
