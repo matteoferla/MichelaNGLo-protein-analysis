@@ -28,7 +28,7 @@ setuptools.setup(
         'Programming Language :: Python :: 3.9',
         "Operating System :: OS Independent",
     ],
-    install_requires=['Bio', 'requests_ftp']
+    install_requires=['Bio', 'requests_ftp', 'typing-extensions']
 )
 
 '''
