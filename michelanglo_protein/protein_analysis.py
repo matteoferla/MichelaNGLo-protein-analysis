@@ -7,7 +7,7 @@ from .gnomad_variant import Variant
 from .mutation import Mutation
 from .structure import Structure
 import re
-import io, os
+import os
 from .analyse import StructureAnalyser, Mutator
 from multiprocessing import Process, Pipe  # pyrosetta can throw segfaults.
 from typing import Union, List, Dict, Tuple, Optional

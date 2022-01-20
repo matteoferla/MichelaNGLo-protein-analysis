@@ -27,7 +27,7 @@ and wait for the missing file. There surely is one. generate.__init__ has a list
 
 from .settings_handler import global_settings
 from .core import ProteinCore, Variant, Structure
-from .protein_analysis import ProteinAnalyser
+from .protein_analysis import ProteinAnalyser, StructureAnalyser
 from .protein_manual import ProteinManual
 from .mutation import Mutation
 from .metadata_from_PDBe import PDBMeta
