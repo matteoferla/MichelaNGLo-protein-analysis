@@ -1,6 +1,6 @@
 from .params import get_default_params_filenames
 from .base import MutatorBase, log, Target
-from .relax import MutatorRelax
+from .description import MutatorDescribe
 
 __doc__ = """
 This file does all the pyrosetta operations. The energetical or ddG variable in the API of VENUS.
@@ -29,8 +29,8 @@ import pyrosetta
 # todo is this line necessary???
 pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
 
-# MutatorRelax -> Mutator
-class Mutator(MutatorRelax):
+# mro: MutatorBase -> MutatorInit -> MutatorNeighbors -> MutatorCon -> MutatorRelax -> MutatorDescribe -> Mutator
+class Mutator(MutatorDescribe):
     """
     Relaxes around a residue on init and mutates.
 

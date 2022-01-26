@@ -1,7 +1,7 @@
 import pyrosetta
 from .neighbors import MutatorNeighbors
 
-# mro: MutatorBase -> MutatorInit -> MutatorNeighbors -> MutatorCon -> MutatorRelax -> Mutator
+# mro: MutatorBase -> MutatorInit -> MutatorNeighbors -> MutatorCon -> MutatorRelax -> MutatorDescribe -> Mutator
 class MutatorCon(MutatorNeighbors):
 
     def explicit_cons(self, proximity_threshold=3) -> pyrosetta.rosetta.core.scoring.constraints.ConstraintSet:

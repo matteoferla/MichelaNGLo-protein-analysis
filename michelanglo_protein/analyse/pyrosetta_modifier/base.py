@@ -6,7 +6,7 @@ from collections import namedtuple, defaultdict
 log = logging.getLogger()
 Target = namedtuple('target', ['resi', 'chain'])
 
-# mro: MutatorBase -> MutatorInit -> MutatorNeighbors -> MutatorCon -> MutatorRelax -> Mutator
+# mro: MutatorBase -> MutatorInit -> MutatorNeighbors -> MutatorCon -> MutatorRelax -> MutatorDescribe -> Mutator
 class MutatorBase:
     scaling_factor = 0.239  # multiplied scale. This is also set in the app (to the same value, just because)
 
