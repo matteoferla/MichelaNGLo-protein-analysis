@@ -585,7 +585,8 @@ class ProteinAnalyser(ProteinCore):
 
         def analysis(to_resn, init_settings):
             mut = Mutator(**init_settings)
-            return mut.analyse_mutation(to_resn)
+            return {**mut.analyse_mutation(to_resn),
+                    'neighbor_description': mut.describe_neighbors()}
 
         if not spit_process:
             msg = analysis(init_settings=init_settings, to_resn=self.mutation.to_residue)

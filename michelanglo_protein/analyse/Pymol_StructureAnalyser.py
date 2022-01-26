@@ -1,7 +1,7 @@
 from ..structure import Structure
 from ..mutation import Mutation
 from michelanglo_transpiler import PyMolTranspiler
-from .consurf import Consurfer
+from consurfDB import ConsurfDB #: pip install ConsurfDB-client-API
 import pymol2
 from itertools import product
 import math, re, time, logging
@@ -245,7 +245,7 @@ class StructureAnalyser:
         else:
             cought = ()
         try:
-            con = Consurfer().from_web(code, chain)
+            con = ConsurfDB().from_web(code, chain)
             con.apply_offset_by_alignment(self.sequence)
             self.has_conservation = True
             self.pymol.cmd.delete('*')
