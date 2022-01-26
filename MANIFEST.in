@@ -1,1 +1,1 @@
-include michelanglo_protein/analyse/params/*.params
+include michelanglo_protein/analyse/pyrosetta_modifier/params/*.params

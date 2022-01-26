@@ -16,7 +16,7 @@ setuptools.setup(
     url="https://github.com/matteoferla/MichelaNGLo-protein-module",
     packages=setuptools.find_packages(),
     include_package_data=True,
-    package_data={'michelanglo_protein.analyse.params': ['*.params'],},
+    package_data={'michelanglo_protein.analyse.pyrosetta_modifier.params': ['*.params'],},
     classifiers=[
         'Development Status :: 5 - Production/Stable', #
         'Intended Audience :: Science/Research',

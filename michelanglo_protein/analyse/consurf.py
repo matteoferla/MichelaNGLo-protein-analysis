@@ -1,7 +1,8 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa Optimise imports removes this...
+
 import sys
 import warnings
-from typing import *
+from typing import (Optional, Tuple, Union, Dict, List, TYPE_CHECKING)
 
 if sys.version_info < (3, 8):
     from typing_extensions import TypedDict
@@ -223,7 +224,7 @@ class Consurfer:
     # ----- inner methods: utils ---------
 
     def to_pandas(self) -> pd.DataFrame:
-        import pandas as pd
+        import pandas as pd  # noqa outer scope is typechecking
         return pd.DataFrame(self.data).transpose()
 
     def add_bfactor_to_pose(self, pose: pyrosetta.Pose, strict: bool = True):
