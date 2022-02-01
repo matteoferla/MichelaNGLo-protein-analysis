@@ -60,7 +60,7 @@ class MutatorInit(MutatorBase):
         ap_st = pyrosetta.rosetta.core.scoring.ScoreType.atom_pair_constraint
         self.scorefxn.set_weight(ap_st, 10)
         # correct for split as per https://www.rosettacommons.org/node/11245
-        weights = self.scorefxn.weights()  # Create the EnergyMap
+        self.scorefxn.weights()  # Create the EnergyMap
         emopts = pyrosetta.rosetta.core.scoring.methods.EnergyMethodOptions(self.scorefxn.energy_method_options())
         emopts.hbond_options().decompose_bb_hb_into_pair_energies(True)
         self.scorefxn.set_energy_method_options(emopts)

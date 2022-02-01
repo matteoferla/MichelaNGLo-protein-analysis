@@ -198,21 +198,26 @@ class StructureAnalyser:
         Throughout the modules neighbors/neighbours is accidentally written in British English.
         Do not correct.
 
+        pymol.cmd.distance` gets the last atom distance
+        pymol.cmd.get_distance is atom to atom. 23 s
+        atom.coord gives coord. 0.2 s
+
         :param threshhold: &Aring;ngstrom distance.
         :return:
         """
         assert self.pymol is not None, 'Can only be called within a PyMOL session'
         if not sele:
-            # none of the paretheses are required, but help in legibility...
-            sele = f'name CA and byres (({self.target_selection} and name CA) expand {threshhold})'
-            # sele = f'(byres ({self.target_selection} around {threshhold})) and name CA'
-        my_dict = {'residues': []}
-        self.pymol.cmd.iterate(sele, "residues.append({'resi': resi, 'resn': resn, 'chain': chain})", space=my_dict)
-        neighbours = my_dict['residues']
-        # pymol.cmd.distance gets the last atom distance
-        # pymol.cmd.get_distance is atom to atom. 23 s
-        # atom.coord gives coord. 0.2 s
-        # selector = lambda atom: f'resi {atom.resi} and chain {atom.chain} and name {atom.name}'
+            sele = f'byres ({self.target_selection} expand {threshhold})'
+            # Formerly only name CA where chosen but this killed ligands!
+        # ## Get neighbours
+        neighbours: List[dict] = []
+        jejavu = set()
+        for atom in self.pymol.cmd.get_model(sele).atom:
+            if (atom.resi, atom.chain) in jejavu:
+                continue
+            jejavu.add((atom.resi, atom.chain))
+            neighbours.append(dict(resi=atom.resi, chain=atom.chain, resn=atom.resn))
+        # ## Get neighbour distances
         target_coords = [atom.coord for atom in self.pymol.cmd.get_model(self.target_selection).atom]
         for res in neighbours:
             #print(res)

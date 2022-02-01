@@ -4,6 +4,13 @@ import pyrosetta_help as ph
 import pyrosetta
 from typing import List
 
+class ExtendedBondDataType(ph.BondDataType):
+    direction: str  # acceptor/donor
+    other_pdb_idx: int
+    other_pdb_chain: str
+    other_atm_name: str
+    own_atm_name: str
+
 # mro: MutatorBase -> MutatorInit -> MutatorNeighbors -> MutatorCon -> MutatorRelax -> MutatorDescribe -> Mutator
 class MutatorDescribe(MutatorRelax):
     def describe_neighbors(self) -> List[dict]:
@@ -17,23 +24,38 @@ class MutatorDescribe(MutatorRelax):
         # self.neighbour_vector is a pyrosetta.rosetta.utility.vector1_bool
         # whereas I want a pyrosetta.rosetta.core.select.residue_selector.ResidueVector,
         # which is a pyrosetta.rosetta.utility.vector1_unsigned_long,
-        for neigh_i in pyrosetta.rosetta.core.select.residue_selector.ResidueVector( self.neighbour_vector ):
+        for neigh_i in pyrosetta.rosetta.core.select.residue_selector.ResidueVector( self.neighbour_vector ):  # noqa
             residue = self.pose.residue(neigh_i)
-            resi_hbonds = hbonds[neigh_i] if neigh_i in hbonds else []  # technically it should be there
+            xlink = {}
+            if ph.is_xlinked(residue):
+                xlink = ph.get_xlink_details(neigh_i, self.pose)
+                # pose2pdb:
+                xlink['other_pdb_chain'] = pdb_info.chain(xlink['other_idx'])
+                xlink['other_pdb_idx'] = pdb_info.number(xlink['other_idx'])
             # get_hbond_dicts does not clean split by own and other:
-            for hbond in resi_hbonds:
+            raw_resi_hbonds = hbonds[neigh_i] if neigh_i in hbonds else []  # technically it should be there
+            neigh_hbonds: List[ExtendedBondDataType] = []
+            for hbond in raw_resi_hbonds:
                 if hbond['acc_resi'] == neigh_i:
-                    hbond['direction'] = 'acceptor'
-                    hbond['other_pdb_idx'] = pdb_info.number(hbond['don_resi'])
-                    hbond['other_pdb_chain'] = pdb_info.chain(hbond['don_resi'])
-                    hbond['other_atm_name'] = hbond['don_atm_name']
-                    hbond['own_atm_name'] = hbond['acc_atm_name']
+                    # acceptor
+                    neigh_hbonds.append(ExtendedBondDataType(**hbond,
+                                                             direction='acceptor',
+                                                             other_pdb_idx=pdb_info.number(hbond['don_resi']),
+                                                             other_pdb_chain=pdb_info.chain(hbond['don_resi']),
+                                                             other_atm_name=hbond['don_atm_name'],
+                                                             own_atm_name=hbond['acc_atm_name']
+                                                             )
+                                        )
                 else:
-                    hbond['direction'] = 'donor'
-                    hbond['other_pdb_idx'] = pdb_info.number(hbond['acc_resi'])
-                    hbond['other_pdb_chain'] = pdb_info.chain(hbond['acc_resi'])
-                    hbond['other_atm_name'] = hbond['acc_atm_name']
-                    hbond['own_atm_name'] = hbond['don_atm_name']
+                    # donor
+                    neigh_hbonds.append(ExtendedBondDataType(**hbond,
+                                                             direction='donor',
+                                                             other_pdb_idx=pdb_info.number(hbond['acc_resi']),
+                                                             other_pdb_chain=pdb_info.chain(hbond['acc_resi']),
+                                                             other_atm_name=hbond['acc_atm_name'],
+                                                             own_atm_name=hbond['don_atm_name']
+                                                             )
+                                        )
             descriptions.append(
                 dict(pose_idx=neigh_i,
                      pdb_idx=pdb_info.number(neigh_i),
@@ -44,7 +66,8 @@ class MutatorDescribe(MutatorRelax):
                      # unlike SS string, which skips non-peptides this will give L for them:
                      ss=self.pose.secstruct(neigh_i),
                      betaturn=beta[neigh_i] if neigh_i in beta else '',
-                     hbonds=resi_hbonds,
+                     hbonds=neigh_hbonds,
+                     xlink=xlink
                      )
             )
         return descriptions

@@ -270,13 +270,17 @@ class ProteinAnalyser(ProteinCore):
                                       'gnomad': self._tally_gnomad(gnomad)})
                 elif 'residue_index' in f:  # TODO FIX THIS DAMN DIFFERENT STANDARD.
                     if f['residue_index'] - wobble <= position and position <= f['residue_index'] + wobble:
-                        # PTM from phosphosite plus are formatted differently. the feature viewer and the .structural known this.
+                        # PTM from phosphosite plus are formatted differently.
+                        # the feature viewer and the .structural known this.
                         gnomad = self.get_gnomAD_in_range(f['residue_index'], f['residue_index'])
                         valid.append({'x':           f['residue_index'],
                                       'y':           f['residue_index'],
                                       'description': self.ptm_definitions[f['ptm']],
                                       'type':        'Post translational',
                                       'gnomad':      self._tally_gnomad(gnomad)})
+                else:
+                    pass
+                    # todo figure when if ever this happens!?
         svalid = sorted(valid, key=lambda v: int(v['y']) - int(v['x']))
         return svalid
 
