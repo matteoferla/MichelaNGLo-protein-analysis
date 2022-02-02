@@ -720,19 +720,28 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
     def _test_failsafe(self):
         raise ValueError('Will failsafe catch it? ({})'.format(self.settings.error_tollerant))
 
-    def compute_params(self):
+    def compute_params(self) -> dict:
+        """
+        Computes protein scales filling `properties` attribute using `ProtParam.ProteinAnalysis`
+
+        * kd: Kyte & Doolittle index of hydrophobicity J. Mol. Biol. 157:105-132(1982).
+        * Flex: Flexibility Normalized flexibility parameters (B-values), average
+            Vihinen M., Torkkila E., Riikonen P. Proteins. 19(2):141-9(1994).
+        * hw: Hydrophilicity Hopp & Wood Proc. Natl. Acad. Sci. U.S.A. 78:3824-3828(1981)
+        * em: Surface accessibility Vergoten G & Theophanides T, Biomolecular Structure and Dynamics, pg.138 (1997).
+        * ja: Janin Interior to surface transfer energy scale
+
+        DIWV requires a mod. so is not calculated
+
+        :return:
+        """
         self.sequence = self.sequence.replace(' ', '').replace('X', '')
         p = ProtParam.ProteinAnalysis(self.sequence)
-        self.properties = {}
-        self.properties['kd'] = p.protein_scale(ProtParamData.kd, window=9,
-                                                edge=.4)  # Kyte & Doolittle index of hydrophobicity J. Mol. Biol. 157:105-132(1982).
-        self.properties['Flex'] = p.protein_scale(ProtParamData.Flex, window=9,
-                                                  edge=.4)  # Flexibility Normalized flexibility parameters (B-values), average Vihinen M., Torkkila E., Riikonen P. Proteins. 19(2):141-9(1994).
-        self.properties['hw'] = p.protein_scale(ProtParamData.hw, window=9,
-                                                edge=.4)  # Hydrophilicity Hopp & Wood Proc. Natl. Acad. Sci. U.S.A. 78:3824-3828(1981)
-        self.properties['em'] = p.protein_scale(ProtParamData.em, window=9,
-                                                edge=.4)  # Surface accessibility Vergoten G & Theophanides T, Biomolecular Structure and Dynamics, pg.138 (1997).
-        self.properties['ja'] = p.protein_scale(ProtParamData.ja, window=9,
-                                                edge=.4)  # Janin Interior to surface transfer energy scale
-        # DIWV requires a mod.
-        return self
+        properties = {}
+        properties['kd'] = p.protein_scale(ProtParamData.kd, window=9, edge=.4)
+        properties['Flex'] = p.protein_scale(ProtParamData.Flex, window=9, edge=.4)
+        properties['hw'] = p.protein_scale(ProtParamData.hw, window=9, edge=.4)
+        properties['em'] = p.protein_scale(ProtParamData.em, window=9, edge=.4)
+        properties['ja'] = p.protein_scale(ProtParamData.ja, window=9, edge=.4)
+        self.properties = properties
+        return properties

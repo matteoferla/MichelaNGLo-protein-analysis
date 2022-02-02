@@ -146,13 +146,16 @@ class ProteinAnalyser(ProteinCore):
         #  'gnomAD_near_mutation': protein.get_gnomAD_near_position()},
         # self.analyse_structure()
 
-    def check_mutation(self):
+    def check_mutation(self) -> bool:
+        """
+        Is the mutation valid? if False call mutation_discrepancy to see why.
+        """
         if len(self.sequence) >= self.mutation.residue_index and \
                 self.sequence[self.mutation.residue_index - 1] == self.mutation.from_residue and \
                 self.mutation.to_residue in 'ACDEFGHIKLMNPQRSTVWY':
             return True
         else:
-            return False  # call mutation_discrepancy to see why.
+            return False
 
     def mutation_discrepancy(self) -> str:
         """
@@ -396,12 +399,8 @@ class ProteinAnalyser(ProteinCore):
         return {k: self.properties[k][self.mutation.residue_index - 1] for k in self.properties}
 
     def analyse_structure(self, structure: Optional[Structure] = None,
-                          params: Optional[List[str]] = None,
                           no_conservation=False,
                           **options) -> Union[Structure, None]:
-        # params
-        if params is None:
-            params = []
         # fetch structure if not provided
         if structure is None:
             structure = self.get_best_model(**options)
