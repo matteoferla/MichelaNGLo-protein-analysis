@@ -4,7 +4,7 @@ from michelanglo_transpiler import PyMolTranspiler
 from consurfDB import ConsurfDB #: pip install ConsurfDB-client-API
 import pymol2
 from itertools import product
-import math, re, time, logging
+import math, re, logging
 import numpy as np
 from typing import *
 
