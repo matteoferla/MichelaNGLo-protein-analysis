@@ -42,7 +42,7 @@ class FromAlphaFold2:  # to be inherited by ProteinCore
         # alphafold has all uniprot now so thsi no longer applies:
         # if not is_alphafold_taxon(self.organism['NCBI Taxonomy']):
         #     return
-        suffix = 'F1-model_v1' # will this change in future?
+        suffix = 'F1-model_v2'  # formerly v1!
         url = f'https://alphafold.ebi.ac.uk/files/AF-{self.uniprot}-{suffix}.pdb'
         structure = Structure(
             # these two do ziltch:
