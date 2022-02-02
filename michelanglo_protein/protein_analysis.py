@@ -125,9 +125,9 @@ class ProteinAnalyser(ProteinCore):
         return neighbours
 
     ########## mutant related
-    def predict_effect(self):
+    def predict_effect(self, full: bool=False):
         """
-        main entry point for analyses.
+        Former main entry point for analyses. argument full to do more.
         Do note that there is another class called StructureAnalyser which deals with the model specific details.
 
         :return:
@@ -139,12 +139,21 @@ class ProteinAnalyser(ProteinCore):
         self.check_elm()
         # affected = {}
         # affected['features'] = self.get_features_at_position()
-        # The following properties are defined stupidly. When functools.cached_property comes out I'll switch to that!
+        # The following properties are defined stupidly.
+        # When in future python functools.cached_property comes out I'll switch to that...
         # {**jsonable(protein.mutation),
         #  'features_near_mutation': protein.get_features_near_position(protein.mutation.residue_index),
         #  'position_as_protein_percent': round(protein.mutation.residue_index / len(protein) * 100),
         #  'gnomAD_near_mutation': protein.get_gnomAD_near_position()},
-        # self.analyse_structure()
+        if not full:
+            # stepwise mode. the current way
+            return None
+        # pseudo-legacy way:
+        self.add_alphafold2()
+        self.retrieve_structures_from_swissmodel()
+        self.analyse_structure()
+        self.analyse_FF(spit_process=False)
+        self.analyse_gnomad_FF(spit_process=False)
 
     def check_mutation(self) -> bool:
         """
@@ -602,7 +611,9 @@ class ProteinAnalyser(ProteinCore):
         self.energetics = msg
         return msg
 
-    def analyse_gnomad_FF(self, spit_process=True, scaling_factor=1, **mutator_options) -> Union[Dict, None]:
+    def analyse_gnomad_FF(self, spit_process=True,
+                          scaling_factor:Optional[float]=None,
+                          **mutator_options) -> Union[Dict, None]:
         """
         Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
 
@@ -611,8 +622,8 @@ class ProteinAnalyser(ProteinCore):
         :params mutator_options: neighbour_only_score, outer_constrained for debug
         :return:
         """
-
-        Mutator.scaling_factor = scaling_factor
+        if scaling_factor:
+            Mutator.scaling_factor = scaling_factor
         if self.pdbblock is None:
             return {'error': 'ValueError', 'msg': 'no PDB block'}
         ### perpare.
@@ -631,9 +642,13 @@ class ProteinAnalyser(ProteinCore):
         return msg
 
     def analyse_other_FF(self,
-                         mutation: Union[Mutation, str], algorithm, spit_process=True,
-                         scaling_factor: float = 1, **mutator_options) -> Union[Dict, None]:
-        Mutator.scaling_factor = scaling_factor
+                         mutation: Union[Mutation, str],
+                         algorithm,
+                         spit_process=True,
+                         scaling_factor:Optional[float]=None,
+                         **mutator_options) -> Union[Dict, None]:
+        if scaling_factor:
+            Mutator.scaling_factor = scaling_factor
         # sort out mutation
         if isinstance(mutation, str):
             mutation = Mutation(mutation)
