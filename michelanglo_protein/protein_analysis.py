@@ -570,7 +570,9 @@ class ProteinAnalyser(ProteinCore):
                 pass
         return parent_conn.recv()
 
-    def analyse_FF(self, spit_process=True, scaling_factor=1, **mutator_options) -> Union[Dict, None]:
+    def analyse_FF(self, spit_process=True,
+                   scaling_factor:Optional[float]=None,
+                   **mutator_options) -> Union[Dict, None]:
         """
         Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
 
@@ -579,7 +581,8 @@ class ProteinAnalyser(ProteinCore):
         :params mutator_options: neighbour_only_score, outer_constrained for debug
         :return:
         """
-        Mutator.scaling_factor = scaling_factor
+        if scaling_factor:
+            Mutator.scaling_factor = scaling_factor
 
         if self.pdbblock is None:
             # to do remember what kind of logging happens down here...
