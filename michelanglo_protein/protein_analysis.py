@@ -601,6 +601,7 @@ class ProteinAnalyser(ProteinCore):
         def analysis(to_resn, init_settings):
             mut = Mutator(**init_settings)
             return {**mut.analyse_mutation(to_resn),
+                    'scaling_factor': mut.scaling_factor,
                     'neighbor_description': mut.describe_neighbors()}
 
         if not spit_process:
