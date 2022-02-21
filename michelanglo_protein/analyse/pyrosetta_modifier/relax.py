@@ -16,6 +16,10 @@ class MutatorRelax(MutatorCon):
         :param cycles:
         :return:
         """
+        if cycles == 0:
+            # relax actually accepts zero as a cycle number. It goes on for eternity.
+            self.relax = pyrosetta.rosetta.protocols.moves.NullMover()  # noqa -- it's there.
+            return self.relax
         self.relax = pyrosetta.rosetta.protocols.relax.FastRelax(self.scorefxn, cycles)  # noqa -- it's there.
         self.movemap = pyrosetta.MoveMap()
         if not fixed_bb:
