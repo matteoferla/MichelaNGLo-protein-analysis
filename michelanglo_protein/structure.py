@@ -25,12 +25,23 @@ class Structure:
     important_attributes = ['x', 'y', 'id', 'description', 'resolution', 'extra', 'alignment']
     temporary_folder = 'temp'
 
+    # type (fake enum):
+    RCSB = 'rcsb'
+    SWISSMODEL = 'swissmodel'
+    HOMOLOGUE = 'homologue'
+    WWW = 'www'
+    LOCAL = 'local'
+    CUSTOM = 'custom' # PDB block.
+    ALPHAFOLD2 = 'alphafold2'
+
     # __slots__ = ['id', 'description', 'x', 'y', 'url','type','chain','offset', 'coordinates', 'extra', 'offset_corrected']
     def __init__(self, id, description, x: int, y: int, code, type='rcsb', chain='*', offset: int = 0, coordinates=None,
                  extra=None, url=''):
         """
         Stores the structural data for easy use by FeatureViewer and co. Can be converted to StructureAnalyser
-        type = rcsb | swissmodel | homologue | www | local | custom
+        type is string, but  now a fake enum can be used.
+        rcsb | swissmodel | homologue | www | local | custom | alphafold2
+
 
         The type ``rcsb`` isnt called pdb as that would be ambiguous w/ the format
         """
@@ -106,32 +117,34 @@ class Structure:
     def get_coordinates(self) -> str:
         """
         Gets the coordinates (PDB block) based on ``self.url`` and ``self.type``
+        If ``.coordinates`` are already present returns those.
+
         :return: coordinates
         :rtype: str
         """
         # custom/w coordinates
         if self.coordinates:
             return self.coordinates
-        elif self.type == 'custom':  # provided.
+        elif self.type == self.CUSTOM:  # provided.
             # self.coordinates was empty
             raise ValueError('No coordinates provided for custom retrieval')
         # url is filepath
-        elif self.url and self.type == 'local':
+        elif self.url and self.type == self.LOCAL:
             self.coordinates = open(self.url).read()
             return self.coordinates
-        elif self.type == 'local':
+        elif self.type == self.LOCAL:
             # self.url was empty
             raise ValueError('No filepath provided for local retrieval')
         # url present
         elif self.url:  # regardless of type/
             r = requests.get(self.url, allow_redirects=True)
-        elif self.type in ('www', 'alphafold2'):
+        elif self.type in (self.WWW, self.ALPHAFOLD2):
             assert self.url, 'No URL provided for www retrieval'
             r = requests.get(self.url)
         # other
-        elif self.type == 'rcsb':
+        elif self.type == self.RCSB:
             r = requests.get(f'https://files.rcsb.org/download/{self.code}.pdb')
-        elif self.type == 'swissmodel':
+        elif self.type == self.SWISSMODEL:
             assert self.url, 'No URL provided for SWISSMODEL retrieval'
             r = requests.get(self.url, allow_redirects=True)
         else:
@@ -208,7 +221,7 @@ class Structure:
         Also for a good list of corner case models see https://proteopedia.org/wiki/index.php/Unusual_sequence_numbering
         :return: self
         """
-        if self.type != 'rcsb':
+        if self.type != self.RCSB:
             return self  # it is probably clean.
         log.debug(f'Looking up sifts if this is empty: {self.chain_definitions}')
         if not self.chain_definitions:
@@ -344,7 +357,7 @@ class Structure:
             return 0
 
     def lookup_resolution(self):
-        if self.type != 'rcsb':
+        if self.type != self.RCSB:
             return self
         with self.settings.open('resolution') as fh:
             resolution = json.load(fh)
@@ -525,7 +538,7 @@ class Structure:
         [('-', ''), ('A', ''), ('B', ''), ('C', '')])
 
         """
-        assert self.type == 'swissmodel'
+        assert self.type == self.SWISSMODEL
         template_code, chain = re.search('(\w{4})\.\w+\.(\w)', self.code).groups()
         log.debug(f'template_code={template_code} chain={chain} current={self.chain}')
         pdbblock = self.get_coordinates()
