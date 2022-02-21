@@ -15,6 +15,7 @@ This is old code.
 import os, json
 import zipfile
 from pprint import PrettyPrinter
+from typing import Optional
 
 #these are needed for reference file retrieval
 import requests, gzip, shutil, tarfile
@@ -108,13 +109,18 @@ class GlobalSettings(metaclass=Singleton):
         self.home_url = home_url
         self._initialised = False
 
-    def startup(self, data_folder='data'):
-        if self._initialised:
+    def startup(self, data_folder: Optional[str]=None):
+        if data_folder is None and 'MICHELANGLO_PROTEIN_DATA' in os.environ:
+            data_folder = os.environ['MICHELANGLO_PROTEIN_DATA']
+        if not self._initialised:
+            self._initialised = True
+            self.data_folder = data_folder
+            # self.page_folder = page_folder  # does nothing.
+            print(f'Folder path set to {self.data_folder}')
+        elif data_folder != self.data_folder:
             raise Exception('The module is already initialised.')
-        self._initialised = True
-        self.data_folder = data_folder
-        #self.page_folder = page_folder  # does nothing.
-        print(f'Folder path set to {self.data_folder}')
+        else:
+            pass
         return self
 
 
