@@ -143,7 +143,8 @@ class StructureAnalyser:
 
         Do note that statistically Simba-I scores well in benchmarks, but that is mainly driven by
         the fact that the values are always mild.
-        Assuming a buried residue is RSA=0. and a surface one is RSA=1.(One can have 1.1 for GXG in a loop),
+        Assuming a buried residue is RSA=0. and a surface one is RSA=1.(One can have 1.1 for GXG in a loop),
+
         one can get the extremes:
 
         - stabilising surface... LEU to ASP: 2.2 kcal/mol
