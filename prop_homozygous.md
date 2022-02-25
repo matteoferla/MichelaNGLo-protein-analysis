@@ -17,7 +17,7 @@ If the homozygous frequency is small enough the assumption that allele frequency
 is the same as heterozygous frequency is a totally sane thing to do.
 
 The probability of finding one or more persons with homozygous alleles would
-follow a negative binomial, e.g. one minus the binomial probability of getting zero successes from population sized trials with the squared frequency as propability.
+follow a negative binomial, e.g. one minus the binomial probability of getting zero successes from population sized trials with the squared frequency as probability.
 
 Using the ethnicity split may give a better result, however, 
 whereas the number of individuals in each subgroup is known within gnomAD,
