@@ -26,10 +26,9 @@ But for debug this was done...
 
 import pyrosetta
 
-# todo is this line necessary???
-# it is also very simplistic.
-#ex1 ex2
-pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
+# todo should this line be here or in the app initialisation?
+# it is also very simplistic. But pyrosetta_help params generation on the fly is too slow though.
+pyrosetta.init(silent=True, options='-ex1 -ex2 -mute core basic protocols -ignore_unrecognized_res true')
 
 # mro: MutatorBase -> MutatorInit -> MutatorNeighbors -> MutatorCon -> MutatorRelax -> MutatorDescribe -> Mutator
 class Mutator(MutatorDescribe):
