@@ -27,6 +27,8 @@ But for debug this was done...
 import pyrosetta
 
 # todo is this line necessary???
+# it is also very simplistic.
+#ex1 ex2
 pyrosetta.init(silent=True, options='-mute core basic protocols -ignore_unrecognized_res true')
 
 # mro: MutatorBase -> MutatorInit -> MutatorNeighbors -> MutatorCon -> MutatorRelax -> MutatorDescribe -> Mutator
