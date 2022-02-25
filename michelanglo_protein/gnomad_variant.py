@@ -2,8 +2,9 @@ import re
 from collections import namedtuple
 from .mutation import Mutation # for the aa3to1
 
+# variables for Variant:
 ethnicities = ['afr', 'amr', 'asj', 'eas', 'fin', 'mid', 'nfe', 'oth', 'sas']  # no Amish
-defaults = tuple([None] * 11 + [{e: 0 for e in ethnicities}])
+defaults = tuple([None] * 11 + [{e: 0 for e in ethnicities}] + [None])  # noqa
 aa3to1 = Mutation.aa3to1
 
 class Variant(namedtuple('Variant',
@@ -17,7 +18,8 @@ class Variant(namedtuple('Variant',
                           'frequency',
                           'N',  # count and index are reserved
                           'consequence',
-                          'frequencies'
+                          'frequencies',
+                          'precomputed_ddG',
                           ],
                          defaults=defaults)):
     """
@@ -30,6 +32,9 @@ class Variant(namedtuple('Variant',
     NB. Clinvar ``description`` has the phenotypes and ``count`` has the number of submitters.
 
     A note that is likely now invalid: "Can be converted to Mutation."
+
+    When a new field is added, the protein will load fine and can be updated with namedtuple's `_replace`
+    protein.gnomAD[0]._replace(precomputed_ddG=float('nan'))
     """
     ethnicities = ethnicities
 
