@@ -263,8 +263,13 @@ class ProteinAnalyser(ProteinCore):
 
     def get_features_at_position(self, position=None) -> List[Dict]:
         """
+        Calls ``get_features_near_position`` but with wobble preset to zero.
+
         :param position: mutation, str or position
-        :return: list of gnomAD mutations, which are dictionary e.g. {'id': 'gnomAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
+        :return: list of definitions, which are dictionaries with keys:
+        'x', 'y', 'description', 'id', 'type', 'gnomad'
+        gnomad is added separate and is the regular variant to_dict conversion.
+        e.g. {'id': 'gnomAD_19_19_rs562294556', 'description': 'R19Q (rs562294556)', 'x': 19, 'y': 19, 'impact': 'MODERATE'}
         """
         position = position if position is not None else self.mutation.residue_index
         return self.get_features_near_position(position, wobble=0)
