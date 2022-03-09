@@ -107,6 +107,9 @@ class ProteinCore(FromSwissmodel, FromAlphaFold2):
         self.pLI = -1
         self.pRec = -1
         self.pNull = -1
+        self.oe_lof = -1
+        self.oe_mis = -1
+        self.oe_syn = -1
         ## pdb
         self.pdb_matches = []  # {'match': align.title[0:50], 'match_score': hsp.score, 'match_start': hsp.query_start, 'match_length': hsp.align_length, 'match_identity': hsp.identities / hsp.align_length}
         self.swissmodel = []  # parse_swissmodel() fills it.
