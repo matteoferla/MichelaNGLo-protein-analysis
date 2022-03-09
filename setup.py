@@ -7,7 +7,7 @@ long_description = 'See github readme.md'
 
 setuptools.setup(
     name="michelanglo_protein",
-    version="0.4.0",
+    version="0.4.1",
     author="Matteo Ferla",
     author_email="matteo@well.ox.ac.uk",
     description="protein module for Michelanglo",
