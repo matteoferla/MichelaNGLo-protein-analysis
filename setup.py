@@ -6,7 +6,7 @@ long_description = 'See github readme.md'
 
 setuptools.setup(
     name="michelanglo_protein",
-    version="0.4.1",
+    version="0.4.2",
     author="Matteo Ferla",
     author_email="matteo@well.ox.ac.uk",
     description="protein module for Michelanglo",
@@ -27,7 +27,10 @@ setuptools.setup(
         'Programming Language :: Python :: 3.9',
         "Operating System :: OS Independent",
     ],
-    install_requires=['Bio', 'requests_ftp', 'typing-extensions', 'pyrosetta-help', 'ConsurfDB-client-API']
+    install_requires=['Bio', 'requests_ftp', 'typing-extensions',
+                      'pyrosetta-help', 'ConsurfDB-client-API',
+                      'multiprocessing_on_dill'
+                      ]
 )
 
 '''

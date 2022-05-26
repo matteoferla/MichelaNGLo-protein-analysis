@@ -25,11 +25,8 @@ But for debug this was done...
 # ``colour`` is correctly spelt ``color`` throughout.
 
 import pyrosetta
-
-# todo should this line be here or in the app initialisation?
-# it is also very simplistic. But pyrosetta_help params generation on the fly is too slow though.
-pyrosetta.init(silent=True, options='-ex1 -ex2 -mute core basic protocols -ignore_unrecognized_res true')
-
+# this prevents functioning in 3.8 in a subthread but not directly in tests...
+# pyrosetta.init(silent=True, options='-ex1 -ex2 -mute core basic protocols -ignore_unrecognized_res true')
 # mro: MutatorBase -> MutatorInit -> MutatorNeighbors -> MutatorCon -> MutatorRelax -> MutatorDescribe -> Mutator
 class Mutator(MutatorDescribe):
     """
