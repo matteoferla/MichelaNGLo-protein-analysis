@@ -226,7 +226,8 @@ class ProteinCore(FromSwissmodel, FromAlphaFold2):
 
     @_ready_load
     def load(self, file):
-        self.__dict__ = {**self.__dict__, **pickle.load(open(file, 'rb'))}
+        with open(file, 'rb') as fh:
+            self.__dict__ = {**self.__dict__, **pickle.load(fh)}
         self.log('Data from the pickled dictionary {}'.format(file))
         return self
 

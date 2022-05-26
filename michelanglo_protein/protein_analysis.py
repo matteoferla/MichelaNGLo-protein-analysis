@@ -8,8 +8,10 @@ from .mutation import Mutation
 from .structure import Structure
 import re
 import os
+import json
 from .analyse import StructureAnalyser, Mutator
-from multiprocessing import Process, Pipe  # pyrosetta can throw segfaults.
+# pyrosetta can throw segfaults:
+from multiprocessing_on_dill import Process, Pipe  # noqa
 from typing import Union, List, Dict, Tuple, Optional
 
 
@@ -613,7 +615,45 @@ class ProteinAnalyser(ProteinCore):
             msg = analysis(init_settings=init_settings, to_resn=self.mutation.to_residue)
         else:
             msg = self._run_subprocess(
-                self._subprocess_factory(analysis, to_resn=self.mutation.to_residue, init_settings=init_settings))
+                self._subprocess_factory(analysis,
+                                         to_resn=self.mutation.to_residue,
+                                         init_settings=init_settings))
+        self.energetics = msg
+        return msg
+
+    def analyse_FF(self, spit_process=True,
+                   scaling_factor:Optional[float]=None,
+                   **mutator_options) -> Union[Dict, None]:
+        """
+        Calls the pyrosetta, which tends to raise segfaults, hence the whole subpro business.
+
+        :param spit_process: run as a separate process to avoid segfaults?
+        :params scaling_factor: multiplied to fix overestimated ddG
+        :params mutator_options: neighbour_only_score, outer_constrained for debug
+        :return:
+        """
+        if scaling_factor:
+            Mutator.scaling_factor = scaling_factor
+
+        if self.pdbblock is None:
+            # to do remember what kind of logging happens down here...
+            return {'error': 'ValueError', 'msg': 'no PDB block'}
+        ### prepare.
+        init_settings = {**self._init_settings, **mutator_options}
+
+        def analysis(to_resn, init_settings):
+            mut = Mutator(**init_settings)
+            return {**mut.analyse_mutation(to_resn),
+                    'scaling_factor': mut.scaling_factor,
+                    'neighbor_description': mut.describe_neighbors()}
+
+        if not spit_process:
+            msg = analysis(init_settings=init_settings, to_resn=self.mutation.to_residue)
+        else:
+            msg = self._run_subprocess(
+                self._subprocess_factory(analysis,
+                                         to_resn=self.mutation.to_residue,
+                                         init_settings=init_settings))
         self.energetics = msg
         return msg
 

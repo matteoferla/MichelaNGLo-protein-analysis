@@ -52,10 +52,14 @@ class MutatorInit(MutatorBase):
             than the original is accepted. This prevents it... but often fails to so no relaxation is done.
         :type prevent_acceptance_of_incrementor:bool
         """
-        _keys = [cycles, radius, params_filenames, scorefxn_name, neighbour_only_score, outer_constrained,
-                 remove_ligands, single_chain, prevent_acceptance_of_incrementor]
         log.debug('Initialising')
-        log.debug(f'Mutator {_keys}')
+        # it is also very simplistic. But pyrosetta_help params generation on the fly is too slow though.
+        pyrosetta.init(silent=True, options='-ex1 -ex2 -mute core basic protocols -ignore_unrecognized_res true')
+        log.debug(f'Mutator cycles={cycles}, radius={radius}, scorefxn_name={scorefxn_name} '+
+                  f'params_filenames={params_filenames}, ' +
+                  f'neighbour_only_score={neighbour_only_score}, outer_constrained={outer_constrained}, '+
+                  f'remove_ligands={remove_ligands}, single_chain={single_chain}, '+
+                  f'prevent_acceptance_of_incrementor={prevent_acceptance_of_incrementor}')
         self.scorefxn = self.get_scorefunction(scorefxn_name)
         ap_st = pyrosetta.rosetta.core.scoring.ScoreType.atom_pair_constraint
         self.scorefxn.set_weight(ap_st, 10)

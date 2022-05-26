@@ -1,40 +1,13 @@
 # these are not real test...
 
-from . import Mutator
-import pyrosetta
 
-
-def test():
-    # these are tests.
-    import requests
-    import time
-    # 1SFT/A/A/HIS`166
-    pdbblock = requests.get('https://files.rcsb.org/download/1SFT.pdb').text
-    tick = time.time()
-    m = Mutator(pdbblock=pdbblock, target_resi=166, target_chain='A', cycles=1, radius=3)
-    tock = time.time()
-    print('LOAD', tock - tick)
-    m.do_relax()
-    m.mark('relaxed')
-    tack = time.time()
-    print('RELAX', tack - tock)
-    native = m.pose.clone()
-    m.mutate('P')
-    m.mark('mutate')
-    m.do_relax()
-    m.mark('mutarelax')
-    teck = time.time()
-    print('MutaRelax', teck - tack)
-    print(m.scores)
-    muta = m.target_pdb2pose(m.target)
-    print(pyrosetta.rosetta.core.scoring.CA_rmsd(native, m.pose, muta - 1, muta + 1))
     # m.output()
 
 
 def paratest():
     import requests
     import time
-    from multiprocessing import (Pipe, Process)
+    from multiprocessing_on_dill import (Pipe, Process)  # noqa
     # 1SFT/A/A/HIS`166
     pdbblock = requests.get('https://files.rcsb.org/download/1SFT.pdb').text
     kwargs = dict(pdbblock=pdbblock, target_resi=166, target_chain='A', cycles=1, radius=3)

@@ -18,8 +18,11 @@ class MutatorRelax(MutatorCon):
         """
         if cycles == 0:
             # relax actually accepts zero as a cycle number. It goes on for eternity.
+            log.debug('Relaxing for 0 cycles: no relaxation --> NullMover')
             self.relax = pyrosetta.rosetta.protocols.moves.NullMover()  # noqa -- it's there.
             return self.relax
+        log.debug(f'Setting up FastRelax w {cycles} cycles, {self.scorefxn.get_name()}, fixed_bb={fixed_bb} '+
+                  f'and for neighbour_vector {self.neighbour_vector}')
         self.relax = pyrosetta.rosetta.protocols.relax.FastRelax(self.scorefxn, cycles)  # noqa -- it's there.
         self.movemap = pyrosetta.MoveMap()
         if not fixed_bb:
@@ -30,12 +33,13 @@ class MutatorRelax(MutatorCon):
         # jump is false by def.
         self.relax.set_movemap(self.movemap)
         if self.scorefxn.get_weight(pyrosetta.rosetta.core.scoring.ScoreType.cart_bonded) > 0:
-            # it's cartesian!
+            log.debug('Setting up Cartesian')
             self.relax.cartesian(True)
             self.relax.minimize_bond_angles(True)
             self.relax.minimize_bond_lengths(True)
         if hasattr(self.relax, 'set_movemap_disables_packing_of_fixed_chi_positions'):
             # this is relatively new
+            log.debug('Setting up movemap_disables_packing_of_fixed_chi_positions')
             self.relax.set_movemap_disables_packing_of_fixed_chi_positions(True)
         else:
             print("UPDATE YOUR PYROSETTA NOW.")
@@ -45,20 +49,26 @@ class MutatorRelax(MutatorCon):
         res = self.target_pdb2pose(self.target)
         if res == 0:
             raise ValueError('Residue not in structure')
+        log.debug(f'Mutating {self.target} (internally {res}) to {aa}')
         pyrosetta.toolbox.mutate_residue(self.pose, res, aa)
 
     def do_relax(self):
         """
         Does relax but prevents the odd case that an exploded structure is accepted.
+
+        The ready_relax method should be called before this -- this happens during initialisation.
         """
         if self.n_preventions > 3:
             log.warning(f'Relax cycle failed too many times!')
             return  # do nothing.
+        log.debug('Starting relax')
         if self.prevent_acceptance_of_incrementor:
             original = self.pose.clone()
             initial = self.scorefxn(self.pose)
+            log.debug(f'Copied initial pose (ddG: {initial:.2f})')
             self.relax.apply(self.pose)
             final = self.scorefxn(self.pose)
+            log.debug(f'relax applied (ddG: {final:.2f})')
             if initial + 0.1 < final:
                 log.warning(f'Relax cycle failed {initial} < {final} for {self.target}')
                 self.pose = original
@@ -68,6 +78,7 @@ class MutatorRelax(MutatorCon):
                 self.n_preventions = 0
         else:
             self.relax.apply(self.pose)
+            log.debug('Relaxed')
 
     def _repack_gnomad(self, pose_idx, from_resi, to_resi) -> int:
         self.pose = self.native.clone()
@@ -231,9 +242,14 @@ class MutatorRelax(MutatorCon):
     def get_res_score_terms(self, pose) -> dict:
         data = pose.energies().residue_total_energies_array()  # structured numpy array
         i = self.target_pdb2pose(self.target) - 1  # pose numbering is fortran style. while python is C++
-        return {data.dtype.names[j]: data[i][j] * self.scaling_factor for j in range(len(data.dtype))}
+        # dill issues with numpy float (depracated)
+        return {data.dtype.names[j]: float(data[i][j] * self.scaling_factor) for j in range(len(data.dtype))}
 
     def analyse_mutation(self, alt_resn: str, _failed=0) -> Dict:
+        """
+        Analyse a single mutation. This is the entry point for mutation analysis.
+        ProteinAnalyser.analyse_FF() creates a mutator and calls this function.
+        """
         self.do_relax()
         self.mark('relaxed')
         self.native = self.pose.clone()
@@ -251,7 +267,7 @@ class MutatorRelax(MutatorCon):
             else:
                 self.scores['mutarelax'] = self.scores['mutate']
         return {'ddG':                  self.scores['mutarelax'] - self.scores['relaxed'],
-                'scores':               self.scores,
+                 'scores':               self.scores,
                 'native':               nblock,
                 'mutant':               self.output_pdbblock(),  # pdbb
                 'rmsd':                 pyrosetta.rosetta.core.scoring.CA_rmsd(self.native, self.pose),
