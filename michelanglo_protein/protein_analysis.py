@@ -11,7 +11,7 @@ import os
 import json
 from .analyse import StructureAnalyser, Mutator
 # pyrosetta can throw segfaults:
-from multiprocessing_on_dill import Process, Pipe  # noqa
+from .subprocess import run_subprocess
 from typing import Union, List, Dict, Tuple, Optional
 
 
@@ -75,7 +75,7 @@ class ProteinAnalyser(ProteinCore):
     mutation = property(lambda self: self._mutation, _set_mutation)
 
     # decorator no longer used.
-    def _sanitise_position(fun):
+    def _sanitise_position(self, fun):
         """
         Decorator that makes sure that position is a number. It is a bit unnecassary for a one job task...
         :return: int,
@@ -547,44 +547,6 @@ class ProteinAnalyser(ProteinCore):
         else:
             return None
 
-    def _subprocess_factory(self, fun, **kwargs):
-        """
-        Returns a function that requires a Connection to be run as a subprocess
-
-        :param fun:
-        :param kwargs:
-        :return:
-        """
-
-        def subprocess(child_conn):  # Pipe <- Union[dict, None]:
-            try:
-                data = fun(**kwargs)
-                child_conn.send(data)
-            except BaseException as error:
-                child_conn.send({'error': f'{error.__class__.__name__}:{error}'})
-
-        return subprocess
-
-    def _run_subprocess(self, subpro):
-        """
-        Run a function (subpro) and wait for it.
-
-        :param subpro: unbound function.
-        :return:
-        """
-        parent_conn, child_conn = Pipe()
-        p = Process(target=subpro, args=((child_conn),))
-        p.start()
-        while 1:
-            if parent_conn.poll():
-                break
-            elif not p.is_alive():
-                child_conn.send({'error': 'segmentation fault'})
-                break
-            else:
-                pass
-        return parent_conn.recv()
-
     def analyse_FF(self, spit_process=True,
                    scaling_factor:Optional[float]=None,
                    **mutator_options) -> Union[Dict, None]:
@@ -614,10 +576,7 @@ class ProteinAnalyser(ProteinCore):
         if not spit_process:
             msg = analysis(init_settings=init_settings, to_resn=self.mutation.to_residue)
         else:
-            msg = self._run_subprocess(
-                self._subprocess_factory(analysis,
-                                         to_resn=self.mutation.to_residue,
-                                         init_settings=init_settings))
+            msg = run_subprocess(analysis, to_resn=self.mutation.to_residue, init_settings=init_settings)
         self.energetics = msg
         return msg
 
@@ -650,10 +609,7 @@ class ProteinAnalyser(ProteinCore):
         if not spit_process:
             msg = analysis(init_settings=init_settings, to_resn=self.mutation.to_residue)
         else:
-            msg = self._run_subprocess(
-                self._subprocess_factory(analysis,
-                                         to_resn=self.mutation.to_residue,
-                                         init_settings=init_settings))
+            msg = run_subprocess(analysis, to_resn=self.mutation.to_residue, init_settings=init_settings)
         self.energetics = msg
         return msg
 
@@ -680,10 +636,9 @@ class ProteinAnalyser(ProteinCore):
             return mut.score_gnomads(gnomads)
 
         if not spit_process:
-            msg = analysis(init_settings=init_settings, gnomads=self.gnomAD)
+            msg = analysis(init_settings=init_settings, gnomads=self.gnomAD + self.clinvar)
         else:
-            msg = self._run_subprocess(
-                self._subprocess_factory(analysis, gnomads=self.gnomAD + self.clinvar, init_settings=init_settings))
+            msg = run_subprocess(analysis, init_settings=init_settings, gnomads=self.gnomAD + self.clinvar)
         self.energetics_gnomAD = msg
         return msg
 
@@ -729,12 +684,13 @@ class ProteinAnalyser(ProteinCore):
                            from_resn=mutation.from_residue,
                            resi=mutation.residue_index)
         else:
-            msg = self._run_subprocess(
-                self._subprocess_factory(analysis,
-                                         to_resn=mutation.to_residue,
-                                         from_resn=mutation.from_residue,
-                                         resi=mutation.residue_index,
-                                         init_settings=init_settings))
+
+            msg = run_subprocess(analysis,
+                                 init_settings=init_settings,
+                                 to_resn=mutation.to_residue,
+                                 from_resn=mutation.from_residue,
+                                 resi=mutation.residue_index
+                                 )
         return msg
 
     def phosphorylate_FF(self, spit_process=True) -> Union[str, None]:
@@ -763,9 +719,8 @@ class ProteinAnalyser(ProteinCore):
         if not spit_process:
             msg = analysis(init_settings=init_settings, ptms=self.features['PSP_modified_residues'])
         else:
-            msg = self._run_subprocess(
-                self._subprocess_factory(analysis, ptms=self.features['PSP_modified_residues'],
-                                         init_settings=init_settings))
+
+            msg = run_subprocess(analysis, init_settings=init_settings, ptms=self.features['PSP_modified_residues'])
         # self.phosphorylated_pdbblcok = msg
         return msg
 

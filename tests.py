@@ -11,8 +11,26 @@ import unittest
 
 from michelanglo_protein import ProteinAnalyser, Structure, Mutation, global_settings
 from michelanglo_protein.analyse import Mutator
+from michelanglo_protein.subprocess import run_subprocess
 
 import unittest, requests, json, time, pyrosetta
+
+
+def fun(sleep_time: int):
+    time.sleep(sleep_time)
+    return {'status': 'slept'}
+
+class SubTest(unittest.TestCase):
+    def test_short(self):
+        out = run_subprocess(fun, timeout=5, sleep_time=1)
+        self.assertEqual(out['status'], 'slept')
+
+    def test_long(self):
+        try:
+            run_subprocess(fun, timeout=1, sleep_time=5)
+        except Exception as e:
+            self.assertIn('Timeout', str(e))
+
 
 class MutatorTest(unittest.TestCase):
     def setUp(self):
