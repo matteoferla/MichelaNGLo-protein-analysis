@@ -147,7 +147,10 @@ class MutatorRelax(MutatorCon):
             if record.mutation in ddG:
                 # print('duplicate mutation.')
                 continue
-            ddG[record.mutation] = self._repack_gnomad(n, record.from_residue, record.to_residue)
+            if record.precomputed_ddG is None:
+                ddG[record.mutation] = self._repack_gnomad(n, record.from_residue, record.to_residue)
+            else:
+                ddG[record.mutation] = record.precomputed_ddG
         return ddG
 
     def make_phospho(self, ptms):

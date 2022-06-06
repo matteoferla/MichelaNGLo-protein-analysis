@@ -27,7 +27,7 @@ def run_subprocess(fun:Callable, timeout:float=60*10, **options) -> Any:
     while 1:
         if time.time() - tick > timeout:
             p.terminate()
-            raise Exception(f'Timeout ({timeout} s) for {fun.__qualname__}')
+            return {'error': 'timeout'}
         elif parent_conn.poll():
             break
         elif not p.is_alive():

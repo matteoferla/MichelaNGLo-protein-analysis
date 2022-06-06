@@ -284,7 +284,7 @@ class ProteinCore(FromSwissmodel, FromAlphaFold2):
                 return str(x)
             elif type(x).__name__ == 'method':
                 return None
-            elif x.__class__.__module__ in ('michelanglo_protein.protein_analysis',
+            elif x.__class__.__module__ in ('michelanglo_protein.protein_analyser',
                                             'michelanglo_protein.structure',
                                             'michelanglo_protein.core',
                                             'michelanglo_protein.analyse.Pymol_StructureAnalyser'):

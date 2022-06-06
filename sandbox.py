@@ -2,7 +2,7 @@ from michelanglo_protein import ProteinAnalyser, ProteinCore, Mutation, structur
 from michelanglo_protein.settings_handler import global_settings
 from michelanglo_protein.generate import ProteinGatherer, ProteomeGatherer
 from michelanglo_protein.generate.old_split_gnomAD import gnomAD
-from michelanglo_protein.protein_analysis import StructureAnalyser
+from michelanglo_protein.protein_analyser import ProteinAnalyser
 # Settings = namedtuple('settings', 'dictionary_folder', 'reference_folder', 'temp_folder')
 import pickle
 import sys, traceback, re

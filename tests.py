@@ -1,6 +1,3 @@
-import unittest
-
-
 # from michelanglo_app.transplier import PyMolTranspiler
 #
 # transpiler = PyMolTranspiler(file='michelanglo_app/demo/1gfl.pse')
@@ -11,7 +8,7 @@ import unittest
 
 from michelanglo_protein import ProteinAnalyser, Structure, Mutation, global_settings
 from michelanglo_protein.analyse import Mutator
-from michelanglo_protein.subprocess import run_subprocess
+from michelanglo_protein.protein_analyser.subprocess import run_subprocess
 
 import unittest, requests, json, time, pyrosetta
 
@@ -63,7 +60,6 @@ class MutatorTest(unittest.TestCase):
         print(pyrosetta.rosetta.core.scoring.CA_rmsd(native, m.pose, muta - 1, muta + 1))
 
     def test_main_mutator(self):
-        import requests
         pa = ProteinAnalyser()
         pa.structural = Structure('test', 'test w alaR',
                                   1, 999, 'test',
@@ -74,7 +70,6 @@ class MutatorTest(unittest.TestCase):
         pa.analyse_FF(spit_process=False)
 
     def test_sub_mutator(self):
-        import requests
         pa = ProteinAnalyser()
         pa.structural = Structure('test', 'test w alaR',
                                   1, 999, 'test',
