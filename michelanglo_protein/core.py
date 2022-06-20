@@ -75,7 +75,7 @@ class ProteinCore(FromSwissmodel, FromAlphaFold2):
             self.organism['NCBI Taxonomy'] = int(taxid)
         self.gene_name = gene_name
         self.uniprot_name = uniprot_name.strip()  # S39AD_HUMAN
-        ## uniprot derivved
+        ## uniprot derived
         self.uniprot = uniprot.strip()  # uniprot accession
         self.uniprot_dataset = ''  # Swiss-Prot good, TrEMBL bad.
         self.alt_gene_name_list = []

@@ -97,11 +97,9 @@ class ProteinGatherer(ProteinCore, _BaseMixin, _DisusedMixin, _UniprotMixin):
             warn('Missing file {0}'.format(file))
             self._assert_fetchable(mode)
             if mode == 'uniprot':
-                requestURL = 'https://www.ebi.ac.uk/proteins/api/proteins?offset=0&size=100&accession={acc}'.format(
-                    # &taxid=9606
-                    acc=self.uniprot)
+                requestURL = f'https://www.ebi.ac.uk/proteins/api/proteins?offset=0&size=100&accession={self.uniprot}'
             elif mode == 'pfam':
-                requestURL = 'https://pfam.xfam.org/protein?output=xml&acc={acc}'.format(acc=self.uniprot)
+                requestURL = f'https://pfam.xfam.org/protein?output=xml&acc={self.uniprot}'
             else:
                 raise ValueError('Only options for mode are uniprot or pfam')
             req = requests.get(requestURL, headers={"Accept": "application/xml"})
